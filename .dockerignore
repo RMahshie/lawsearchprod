@@ -1,0 +1,65 @@
+# Node modules
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation (unless needed in container)
+*.md
+DOCKER_GUIDE.md
+
+# Development files
+.env.example
+.env.local
+.env.development
+
+# Build artifacts
+frontend/dist/
+frontend/build/
+*.log
+
+# Test files
+tests/
+test/
+__tests__/
+
+# Coverage reports
+coverage/
+.coverage
+.nyc_output
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Large database files (they're mounted as volumes anyway)
+db/chroma/
+*.sqlite
+*.db
+
+# Backup files
+*.backup
+*.bak
+*~

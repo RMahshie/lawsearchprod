@@ -1,0 +1,67 @@
+services:
+  # FastAPI Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: lawsearch-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ENVIRONMENT=production
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - LOG_LEVEL=INFO
+      - VECTORSTORE_DIR=/app/db/chroma
+      - DATA_DIR=/app/data/bills
+    volumes:
+      # Mount data directories for persistence
+      - ./db:/app/db
+      - ./data:/app/data
+      # Mount config for development (optional)
+      - ./.env:/app/.env:ro
+    networks:
+      - lawsearch-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # React Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: lawsearch-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - lawsearch-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  lawsearch-network:
+    driver: bridge
+
+# Optional: Add volumes for data persistence
+volumes:
+  chroma-data:
+    driver: local
+  bills-data:
+    driver: local

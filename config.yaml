@@ -1,0 +1,13 @@
+credentials:
+  usernames:
+    admin:
+      email: ryan@mahshie.net
+      name: Admin User
+      password: $2b$12$a9z.BcmCdxXldhyXsj912.VbIIF4cwozX2o6udS9wyAgBCqV8tGAG
+cookie:
+  expiry_days: 30
+  key: random_signature_key
+  name: lawsearch_auth
+preauthorized:
+  emails:
+    - someone@example.com

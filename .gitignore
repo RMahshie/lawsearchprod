@@ -1,0 +1,28 @@
+# Environment variables (contains secrets)
+.env
+
+# Virtual environments
+venv/
+venv311/
+.venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# macOS system files
+.DS_Store
+.DS_Store?
+._*
+
+# IDE files
+.vscode/
+.idea/
+
+# Database files (generated locally)
+db/
+
+# Log files
+*.log

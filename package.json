@@ -1,0 +1,35 @@
+{
+  "name": "lawsearch-ai",
+  "version": "1.0.0",
+  "description": "LawSearch AI - Federal Appropriations Query System",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd . && .venv/bin/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "echo 'Backend is Python - no build step needed'",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up",
+    "docker:down": "docker-compose down",
+    "docker:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up",
+    "docker:logs": "docker-compose logs -f",
+    "install": "npm run install:frontend",
+    "install:frontend": "cd frontend && npm install",
+    "install:backend": "pip install -r requirements.txt",
+    "test": "npm run test:frontend",
+    "test:frontend": "cd frontend && npm run test",
+    "test:backend": "python -m pytest",
+    "lint": "npm run lint:frontend",
+    "lint:frontend": "cd frontend && npm run lint",
+    "clean": "npm run clean:frontend && npm run clean:docker",
+    "clean:frontend": "cd frontend && rm -rf dist node_modules",
+    "clean:docker": "docker-compose down -v --rmi all"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["fastapi", "react", "rag", "ai", "legal", "appropriations"],
+  "author": "Your Name",
+  "license": "MIT"
+}
