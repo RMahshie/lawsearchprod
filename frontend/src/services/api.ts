@@ -1,9 +1,12 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
-import type { 
-  QueryRequest, 
-  QueryResponse, 
-  HealthResponse
+import type {
+  QueryRequest,
+  QueryResponse,
+  HealthResponse,
+  StatusResponse,
+  IngestRequest,
+  IngestResponse
 } from '../types/api';
 
 // API configuration
@@ -12,11 +15,37 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // 30 seconds for RAG queries
+  timeout: 120000, // 120 seconds for ingestion operations (queries still use 30s)
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Create separate instance for ingestion with longer timeout
+const ingestionClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 300000, // 5 minutes for ingestion operations
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Apply same interceptors to ingestion client
+ingestionClient.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  (error) => {
+    if (error.response?.data) {
+      // Backend returned an error response
+      throw new Error(error.response.data.message || error.response.data.error || 'API Error');
+    } else if (error.request) {
+      // Network error
+      throw new Error('Unable to connect to the server. Please check your connection.');
+    } else {
+      // Something else went wrong
+      throw new Error(error.message || 'An unexpected error occurred');
+    }
+  }
+);
 
 // Response interceptor to handle errors consistently
 apiClient.interceptors.response.use(
@@ -49,6 +78,19 @@ export const submitQuery = async (queryRequest: QueryRequest): Promise<QueryResp
 };
 
 /**
+ * Trigger data ingestion with a specific embedding model
+ */
+export const submitIngest = async (ingestRequest: IngestRequest): Promise<IngestResponse> => {
+  try {
+    const response = await ingestionClient.post<IngestResponse>('/api/ingest', ingestRequest);
+    return response.data;
+  } catch (error) {
+    console.error('Ingestion failed:', error);
+    throw error;
+  }
+};
+
+/**
  * Check API health status
  */
 export const checkHealth = async (): Promise<HealthResponse> => {
@@ -64,9 +106,9 @@ export const checkHealth = async (): Promise<HealthResponse> => {
 /**
  * Get API status (alternative endpoint)
  */
-export const getStatus = async (): Promise<HealthResponse> => {
+export const getStatus = async (): Promise<StatusResponse> => {
   try {
-    const response = await apiClient.get<HealthResponse>('/api/status');
+    const response = await apiClient.get<StatusResponse>('/api/status');
     return response.data;
   } catch (error) {
     console.error('Status check failed:', error);

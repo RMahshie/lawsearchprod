@@ -17,9 +17,8 @@ services:
       - VECTORSTORE_DIR=/app/db/chroma
       - DATA_DIR=/app/data/bills
     volumes:
-      # Mount data directories for persistence
+      # Mount database directory for persistence (bills now baked into container)
       - ./db:/app/db
-      - ./data:/app/data
       # Mount config for development (optional)
       - ./.env:/app/.env:ro
     networks:
@@ -41,7 +40,7 @@ services:
     ports:
       - "3000:80"
     environment:
-      - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_API_BASE_URL=http://backend:8000
     depends_on:
       backend:
         condition: service_healthy

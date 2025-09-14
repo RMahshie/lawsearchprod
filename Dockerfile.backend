@@ -16,18 +16,22 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better Docker layer caching
-COPY requirements.txt requirements-local.txt ./
+COPY requirements.txt ./
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Install uv and Python dependencies
+RUN pip install --no-cache-dir uv && \
+    uv pip install --system -r requirements.txt
 
 # Copy only the application code (not data/db directories)
 COPY app/ ./app/
 COPY *.py ./
 
+# Copy bills and ingestion code for dynamic ingestion feature
+COPY data/bills/ ./data/bills/
+COPY src/ ./src/
+
 # Create necessary directories
-RUN mkdir -p /app/db/chroma /app/data/bills
+RUN mkdir -p /app/db/chroma
 
 # Expose port
 EXPOSE 8000

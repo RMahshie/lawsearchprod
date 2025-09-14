@@ -42,7 +42,7 @@ from typing import TypedDict, Annotated
 from app.core.config import get_settings
 
 # Import our new models
-from app.models.query import QueryRequest, QueryResponse, SourceDocument
+from app.models.query import QueryRequest, QueryResponse, SourceDocument, IngestResponse
 
 
 class RAGState(TypedDict):
@@ -187,8 +187,19 @@ Comprehensive Answer:
 
     def merge_node(self, state: RAGState) -> dict:
         """Merge all subcommittee answers (transplanted from original)."""
-        merged = "\n\n".join(msg.content for msg in state["subcommittee_answers"])
-        
+        subcommittee_answers = state["subcommittee_answers"]
+
+        if not subcommittee_answers:
+            return {"final_answer": "No answers found."}
+
+        # Handle both string and message object formats
+        if hasattr(subcommittee_answers[0], 'content'):
+            # Message objects - extract content
+            merged = "\n\n".join(msg.content for msg in subcommittee_answers)
+        else:
+            # String format - use directly
+            merged = "\n\n".join(subcommittee_answers)
+
         return {"final_answer": merged}
 
     def build_graph(self) -> any:
@@ -274,6 +285,103 @@ Comprehensive Answer:
             processing_time = time.time() - start_time
             # Return error in structured format
             raise Exception(f"RAG processing failed: {str(e)}")
+
+    async def ingest_data(
+        self,
+        embedding_model: str,
+        clear_existing: bool = True,
+        ingest_id: Optional[str] = None
+    ) -> tuple[IngestResponse, str]:
+        """
+        Re-ingest vector databases with a different embedding model.
+
+        This method allows dynamic switching of embedding models at runtime
+        without restarting the container.
+
+        Args:
+            embedding_model: The OpenAI embedding model to use
+            clear_existing: Whether to clear existing vector stores
+            ingest_id: Optional ID for tracking this ingestion
+
+        Returns:
+            IngestResponse: Results of the ingestion operation
+        """
+        import time
+        import subprocess
+        import sys
+
+        start_time = time.time()
+
+        try:
+            # Clear existing vector stores if requested
+            if clear_existing:
+                import shutil
+                import os
+                chroma_dir = str(self.settings.vectorstore_dir)
+                if os.path.exists(chroma_dir):
+                    # When switching embedding models, we need to completely clear
+                    # the entire ChromaDB directory because collections are tied to
+                    # specific embedding dimensions and are incompatible between models
+                    shutil.rmtree(chroma_dir)
+                    os.makedirs(chroma_dir, exist_ok=True)
+                    print(f"Completely cleared ChromaDB directory: {chroma_dir}")
+
+            # Update the embedding model for this service instance
+            self.embedder = OpenAIEmbeddings(model=embedding_model)
+
+            # Clear the cached stores so they get recreated with new embedder
+            self.get_store.cache_clear()
+
+            # Run the ingestion script as a subprocess
+            # We need to run it in the same Python environment
+            cmd = [sys.executable, "-m", "src.ingest", "--embedding-model", embedding_model]
+            env = os.environ.copy()
+            env["PYTHONPATH"] = "/app"
+            # Ensure the API key is available
+            if "OPENAI_API_KEY" not in env and hasattr(self.settings, 'openai_api_key'):
+                env["OPENAI_API_KEY"] = self.settings.openai_api_key
+
+            print(f"Running ingestion with embedding model: {embedding_model}")
+            result = subprocess.run(
+                cmd,
+                cwd="/app",
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=300  # 5 minute timeout
+            )
+
+            if result.returncode != 0:
+                raise Exception(f"Ingestion failed: {result.stderr}")
+
+            # Count how many divisions were processed
+            # The ingestion script outputs "Created Chroma DB for..." messages
+            output_lines = result.stdout.split('\n')
+            divisions_processed = sum(1 for line in output_lines if "Created Chroma DB for" in line)
+
+            processing_time = time.time() - start_time
+
+            response = IngestResponse(
+                status="completed",
+                message=f"Successfully ingested {divisions_processed} divisions using {embedding_model}",
+                embedding_model=embedding_model,
+                divisions_processed=divisions_processed,
+                processing_time=processing_time
+            )
+
+            # Update the RAG service's embedder to match the new model
+            self.embedder = OpenAIEmbeddings(model=embedding_model)
+            self.get_store.cache_clear()
+
+            return response, embedding_model
+
+        except subprocess.TimeoutExpired:
+            processing_time = time.time() - start_time
+            raise Exception(f"Ingestion timed out after {processing_time:.1f} seconds")
+
+        except Exception as e:
+            processing_time = time.time() - start_time
+            raise Exception(f"Ingestion failed after {processing_time:.1f} seconds: {str(e)}")
 
     async def health_check(self) -> Dict[str, str]:
         """Check the health of the RAG service and its dependencies."""

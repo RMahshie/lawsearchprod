@@ -258,3 +258,101 @@ class ErrorResponse(BaseModel):
         default_factory=datetime.utcnow,
         description="When the error occurred"
     )
+
+
+class IngestRequest(BaseModel):
+    """
+    Request model for data ingestion.
+
+    Used for POST /api/ingest endpoint to re-ingest vector databases
+    with different embedding models.
+    """
+    embedding_model: str = Field(
+        ...,
+        description="OpenAI embedding model to use for vectorizing documents",
+        example="text-embedding-ada-002"
+    )
+
+    clear_existing: Optional[bool] = Field(
+        default=True,
+        description="Whether to clear existing vector databases before ingestion",
+        example=True
+    )
+
+    @field_validator('embedding_model')
+    @classmethod
+    def validate_embedding_model(cls, v):
+        """Validate that embedding model is a supported OpenAI model."""
+        valid_models = [
+            "text-embedding-ada-002",
+            "text-embedding-3-small",
+            "text-embedding-3-large"
+        ]
+
+        if v not in valid_models:
+            raise ValueError(f'Unsupported embedding model: {v}. Valid options: {valid_models}')
+
+        return v
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "embedding_model": "text-embedding-ada-002",
+                "clear_existing": True
+            }
+        }
+    )
+
+
+class IngestResponse(BaseModel):
+    """
+    Response model for ingestion results.
+    """
+    status: str = Field(
+        ...,
+        description="Ingestion status",
+        example="completed"
+    )
+
+    message: str = Field(
+        ...,
+        description="Human-readable status message",
+        example="Successfully ingested 14 divisions using text-embedding-ada-002"
+    )
+
+    embedding_model: str = Field(
+        ...,
+        description="Embedding model used for ingestion",
+        example="text-embedding-ada-002"
+    )
+
+    divisions_processed: int = Field(
+        ...,
+        description="Number of divisions processed",
+        example=14
+    )
+
+    processing_time: float = Field(
+        ...,
+        ge=0,
+        description="Time taken to complete ingestion in seconds",
+        example=45.67
+    )
+
+    timestamp: datetime = Field(
+        default_factory=datetime.utcnow,
+        description="When ingestion completed"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "status": "completed",
+                "message": "Successfully ingested 14 divisions using text-embedding-ada-002",
+                "embedding_model": "text-embedding-ada-002",
+                "divisions_processed": 14,
+                "processing_time": 45.67,
+                "timestamp": "2024-03-15T14:30:00Z"
+            }
+        }
+    )

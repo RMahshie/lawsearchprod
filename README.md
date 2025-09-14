@@ -15,16 +15,16 @@ A production-ready AI-powered system for querying federal appropriations bills u
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐
-│   React Frontend │    │   FastAPI Backend│    │   OpenAI + ChromaDB │
+│  React Frontend │    │   FastAPI Backend│    │   OpenAI + ChromaDB │
 │   (Port 3000)   │◄──►│   (Port 8000)    │◄──►│   RAG Pipeline      │
 └─────────────────┘    └──────────────────┘    └─────────────────────┘
 ```
 
 ### Tech Stack
-- **Backend**: FastAPI, Pydantic, LangChain, ChromaDB
+- **Backend**: Python, FastAPI, Pydantic, LangChain, ChromaDB
 - **Frontend**: React, TypeScript, Vite, Axios, React Query
-- **AI**: OpenAI GPT-4o, text-embedding-3-small
-- **Infrastructure**: Docker, Docker Compose, Nginx
+- **AI**: OpenAI GPTs, LangGraph, text-embeddings
+- **Infrastructure**: Docker and uv
 
 ## 🚀 Quick Start
 
@@ -40,7 +40,7 @@ cp .env.example .env
 ```
 
 ### 2. Configure Environment
-Edit `.env` file and add your OpenAI API key:
+Create a `.env` file with your OpenAI API key:
 ```bash
 OPENAI_API_KEY=sk-your-openai-api-key-here
 ```
@@ -61,86 +61,13 @@ docker-compose up -d --build
 
 ## 🛠️ Development Setup
 
-### Option 1: Docker Development
-```bash
-# Use development docker-compose with hot reload
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-```
-
-### Option 2: Local Development
-```bash
-# Install dependencies
-npm install                    # Root level scripts
-npm run install:frontend      # React dependencies
-pip install -r requirements.txt  # Python dependencies
-
-# Run services separately
-npm run dev:backend           # FastAPI server (localhost:8000)
-npm run dev:frontend          # React dev server (localhost:5173)
-
-# Or run both concurrently
-npm run dev
-```
-
-## 📋 Available Scripts
-
-```bash
-# Development
-npm run dev                   # Run both frontend and backend
-npm run dev:frontend          # React development server
-npm run dev:backend           # FastAPI development server
-
-# Building
-npm run build                 # Build frontend for production
-npm run build:frontend        # Build React app
-npm run build:backend         # No-op (Python doesn't need building)
-
-# Docker
-npm run docker:build          # Build Docker images
-npm run docker:up             # Start all services
-npm run docker:down           # Stop all services
-npm run docker:dev            # Development mode with hot reload
-npm run docker:logs           # View logs
-
-# Utilities
-npm run clean                 # Clean build artifacts and Docker
-npm run test                  # Run tests
-npm run lint                  # Lint frontend code
-```
-
-## 🔧 Configuration
-
 ### Environment Variables
 
 #### Backend (.env)
+**Required:**
 ```bash
-# API Configuration
-API_HOST=0.0.0.0
-API_PORT=8000
-ENVIRONMENT=development
-
-# OpenAI (Required)
 OPENAI_API_KEY=sk-your-key-here
-LLM_INGEST=gpt-4o
-LLM_QA=gpt-4o
-EMBEDDING_MODEL=text-embedding-3-small
-
-# RAG Settings
-CHUNK_SIZE=1000
-CHUNK_OVERLAP=200
-TOP_K_RETRIEVAL=8
-SIMILARITY_THRESHOLD=0.7
-
-# CORS
-CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]
 ```
-
-#### Frontend (frontend/.env)
-```bash
-VITE_API_BASE_URL=http://localhost:8000
-VITE_DEBUG=false
-```
-
 ## 📖 API Documentation
 
 ### Endpoints
@@ -170,6 +97,28 @@ Submit a query about federal appropriations.
 }
 ```
 
+#### `POST /api/ingest`
+Re-ingest data with a different embedding model.
+
+**Request:**
+```json
+{
+  "embedding_model": "text-embedding-3-small",
+  "clear_existing": true
+}
+```
+
+**Response:**
+```json
+{
+  "status": "completed",
+  "message": "Successfully ingested 14 divisions using text-embedding-3-small",
+  "embedding_model": "text-embedding-3-small",
+  "divisions_processed": 14,
+  "processing_time": 45.2
+}
+```
+
 #### `GET /api/health`
 Health check endpoint.
 
@@ -186,39 +135,66 @@ Detailed status information.
 lawsearchprod/
 ├── app/                      # FastAPI backend
 │   ├── api/endpoints/        # API route handlers
+│   │   └── query.py          # Query and ingestion endpoints
 │   ├── core/                 # Configuration and utilities
-│   ├── models/               # Pydantic models
-│   ├── services/             # Business logic (RAG service)
-│   └── main.py              # FastAPI application
-├── frontend/                 # React frontend
+│   │   └── config.py         # Pydantic settings
+│   ├── models/               # Pydantic data models
+│   │   └── query.py          # Request/response models
+│   ├── services/             # Business logic
+│   │   └── rag_service.py    # LangGraph RAG pipeline
+│   └── main.py               # FastAPI application
+├── frontend/                 # React TypeScript frontend
 │   ├── src/
 │   │   ├── components/       # React components
+│   │   │   ├── IngestionSelector.tsx
+│   │   │   ├── QueryForm.tsx
+│   │   │   └── QueryResults.tsx
+│   │   ├── hooks/           # React Query hooks
+│   │   │   └── useApi.ts
 │   │   ├── services/         # API client
+│   │   │   └── api.ts
 │   │   ├── types/           # TypeScript interfaces
-│   │   └── hooks/           # React Query hooks
-│   └── package.json
+│   │   │   └── api.ts
+│   │   └── utils/
+│   │       └── config.ts
+│   ├── dist/                 # Built frontend (Docker)
+│   ├── package.json
+│   └── vite.config.ts
 ├── data/bills/              # Appropriations bill documents
 ├── db/chroma/               # ChromaDB vector storage
 ├── docker-compose.yml       # Production Docker setup
 ├── docker-compose.dev.yml   # Development Docker setup
 ├── Dockerfile.backend       # Backend Docker image
 ├── Dockerfile.frontend      # Frontend Docker image
-└── requirements.txt         # Python dependencies
+├── requirements.txt         # Python dependencies
+├── package.json             # Root npm scripts
+├── DOCKER_GUIDE.md          # Detailed Docker operations guide
+└── README.md               # This file
 ```
 
-## 🔍 Data Sources
+## Data Sources
 
-The system queries the following 2024 appropriations bills:
-- **Division A**: Military Construction, Veterans Affairs
-- **Division B**: Agriculture, Rural Development, FDA
-- **Division C**: Commerce, Justice, Science
-- **Division D**: Energy and Water Development
-- **Division E**: Interior, Environment
-- **Division F**: Transportation, Housing, Urban Development
+The system queries **14 divisions** across two 2024 appropriations bills:
+
+### Consolidated Appropriations Act, 2024
+- **Division A**: Military Construction, Veterans Affairs, and Related Agencies
+- **Division B**: Agriculture, Rural Development, Food and Drug Administration, and Related Agencies
+- **Division C**: Commerce, Justice, Science, and Related Agencies
+- **Division D**: Energy and Water Development and Related Agencies
+- **Division E**: Department of the Interior, Environment, and Related Agencies
+- **Division F**: Transportation, Housing and Urban Development, and Related Agencies
 - **Division G**: Other Matters
-- **Further Consolidated Appropriations Act** (8 additional divisions)
 
-## 🧪 Testing the System
+### Further Consolidated Appropriations Act, 2024
+- **Division A**: Department of Defense
+- **Division B**: Financial Services and General Government
+- **Division C**: Department of Homeland Security
+- **Division D**: Departments of Labor, Health and Human Services, and Education, and Related Agencies
+- **Division E**: Legislative Branch
+- **Division F**: Department of State, Foreign Operations, and Related Programs
+- **Division G**: Other Matters
+
+## Testing the System
 
 ### Sample Queries
 Try these example questions:
@@ -227,72 +203,8 @@ Try these example questions:
 - "How much did FEMA receive for disaster relief?"
 - "What transportation projects were funded?"
 
-### Health Checks
-```bash
-# Backend health
-curl http://localhost:8000/api/health
-
-# Frontend health (Docker)
-curl http://localhost:3000/health
-```
-
-## 🚀 Deployment
-
-### Production Deployment
-1. Set production environment variables
-2. Build and deploy with Docker Compose
-3. Configure reverse proxy (nginx/traefik)
-4. Set up SSL certificates
-5. Configure monitoring and logging
-
-### Scaling Considerations
-- Use Redis for caching query results
-- Implement rate limiting
-- Add monitoring with Prometheus/Grafana
-- Use container orchestration (Kubernetes)
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
 ## 📝 License
 
 MIT License - see LICENSE file for details.
 
-## 🆘 Troubleshooting
-
-### Common Issues
-
-**Frontend can't connect to backend:**
-- Check CORS settings in backend configuration
-- Verify API_BASE_URL in frontend environment
-
-**OpenAI API errors:**
-- Ensure OPENAI_API_KEY is set correctly
-- Check API key permissions and billing
-
-**Docker build issues:**
-- Clear Docker cache: `docker system prune -a`
-- Check Docker daemon is running
-
-**Performance issues:**
-- Reduce CHUNK_SIZE for faster processing
-- Adjust TOP_K_RETRIEVAL for relevance vs speed
-
-### Logs
-```bash
-# View all logs
-docker-compose logs -f
-
-# View specific service
-docker-compose logs -f backend
-docker-compose logs -f frontend
-```
-
 ---
-
-**Built with ❤️ for legal and policy research**

@@ -32,10 +32,35 @@ export interface HealthResponse {
   database_status?: string;
 }
 
+export interface StatusResponse {
+  service: string;
+  version: string;
+  status: string;
+  timestamp: string;
+  database_status: string;
+  available_divisions: string;
+  current_embedding_model: string;
+  endpoints: Record<string, string>;
+}
+
 export interface ErrorResponse {
   error: string;
   message: string;
   details?: Record<string, any>;
+  timestamp: string;
+}
+
+export interface IngestRequest {
+  embedding_model: string;
+  clear_existing?: boolean;
+}
+
+export interface IngestResponse {
+  status: string;
+  message: string;
+  embedding_model: string;
+  divisions_processed: number;
+  processing_time: number;
   timestamp: string;
 }
 
@@ -72,3 +97,12 @@ export const AVAILABLE_DIVISIONS = [
 ] as const;
 
 export type DivisionName = typeof AVAILABLE_DIVISIONS[number];
+
+// Available embedding models
+export const AVAILABLE_EMBEDDING_MODELS = [
+  { value: "text-embedding-ada-002", label: "Ada-002 (Recommended)" },
+  { value: "text-embedding-3-small", label: "Embedding-3-Small" },
+  { value: "text-embedding-3-large", label: "Embedding-3-Large" }
+] as const;
+
+export type EmbeddingModel = typeof AVAILABLE_EMBEDDING_MODELS[number]["value"];

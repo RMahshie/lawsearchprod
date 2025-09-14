@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { submitQuery, checkHealth, getStatus, queryKeys, queryOptions } from '../services/api';
-import type { QueryRequest, QueryResponse, HealthResponse } from '../types/api';
+import type { QueryRequest, QueryResponse, HealthResponse, StatusResponse } from '../types/api';
 
 /**
  * Hook for submitting queries to the RAG system
@@ -36,7 +36,7 @@ export const useHealthCheck = (enabled: boolean = true) => {
  * Hook for getting API status
  */
 export const useApiStatus = (enabled: boolean = true) => {
-  return useQuery<HealthResponse, Error>({
+  return useQuery<StatusResponse, Error>({
     queryKey: queryKeys.status,
     queryFn: getStatus,
     enabled,

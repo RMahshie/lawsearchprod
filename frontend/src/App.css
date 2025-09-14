@@ -30,3 +30,74 @@
 .fade-in {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* Responsive layout adjustments */
+/* Very wide screens - larger gap for better visibility */
+@media (min-width: 1401px) {
+  .main-layout {
+    gap: 3rem !important;
+  }
+}
+
+@media (max-width: 1400px) {
+  .main-layout {
+    gap: 2rem;
+  }
+
+  .sidebar {
+    width: 280px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .main-layout {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .sidebar {
+    width: 100% !important;
+    order: 2; /* Move sidebar below main content on mobile */
+  }
+
+  .main-layout > main {
+    order: 1; /* Main content first on mobile */
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .main-layout {
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .main-layout {
+    gap: 1rem;
+  }
+}
+
+/* Full-width results section */
+.full-width-results {
+  width: 100%;
+  max-width: none;
+  /* Add extra visual separation */
+  /* padding-top: 0.5rem; */ /* REMOVED: Testing if this affects spacing */
+  /* Remove the distracting white border */
+}
+
+@media (max-width: 1024px) {
+  .full-width-results {
+    margin-top: 2rem;
+  }
+}

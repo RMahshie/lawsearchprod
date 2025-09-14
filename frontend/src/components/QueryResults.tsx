@@ -25,7 +25,7 @@ export default function QueryResults({ result, question }: QueryResultsProps) {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto mt-6">
+    <div className="w-full max-w-none">
       <div className="card overflow-hidden">
         {/* Header */}
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-500">

@@ -14,10 +14,12 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.responses import JSONResponse
 
 from app.models.query import (
-    QueryRequest, 
-    QueryResponse, 
-    HealthResponse, 
-    ErrorResponse
+    QueryRequest,
+    QueryResponse,
+    HealthResponse,
+    ErrorResponse,
+    IngestRequest,
+    IngestResponse
 )
 from app.services.rag_service import get_rag_service, RAGService
 
@@ -116,6 +118,85 @@ async def process_query(
         )
 
 
+@router.post(
+    "/ingest",
+    response_model=IngestResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Re-ingest data with different embedding model",
+    description="Clear existing vector databases and re-ingest all bill documents using the specified embedding model. This operation may take 30-60 seconds.",
+    responses={
+        200: {"description": "Ingestion completed successfully"},
+        400: {"description": "Invalid request data", "model": ErrorResponse},
+        422: {"description": "Validation error", "model": ErrorResponse},
+        500: {"description": "Internal server error", "model": ErrorResponse},
+    }
+)
+async def ingest_data(
+    request: IngestRequest,
+    rag_service: RAGService = Depends(get_rag_service)
+) -> IngestResponse:
+    """
+    Re-ingest vector databases with a different embedding model.
+
+    This endpoint allows dynamic switching of embedding models without
+    rebuilding the container. The operation clears existing vector stores
+    and re-processes all bill documents.
+
+    Args:
+        request: Ingestion parameters including embedding model
+        rag_service: Injected RAG service instance
+
+    Returns:
+        IngestResponse: Results of the ingestion operation
+
+    Raises:
+        HTTPException: For various error conditions
+    """
+    # Generate unique ingestion ID for tracking
+    ingest_id = f"ingest_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
+
+    logger.info(f"Starting ingestion {ingest_id} with model: {request.embedding_model}")
+
+    try:
+        # Perform the ingestion
+        response, used_model = await rag_service.ingest_data(
+            embedding_model=request.embedding_model,
+            clear_existing=request.clear_existing,
+            ingest_id=ingest_id
+        )
+
+        logger.info(
+            f"Ingestion {ingest_id} completed in {response.processing_time:.2f}s, "
+            f"processed {response.divisions_processed} divisions with model {used_model}"
+        )
+
+        return response
+
+    except ValueError as e:
+        # Handle validation or input errors
+        logger.warning(f"Ingestion {ingest_id} validation error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "validation_error",
+                "message": str(e),
+                "ingest_id": ingest_id
+            }
+        )
+
+    except Exception as e:
+        # Handle unexpected errors
+        logger.error(f"Ingestion {ingest_id} unexpected error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "ingestion_error",
+                "message": "An unexpected error occurred during data ingestion.",
+                "ingest_id": ingest_id
+            }
+        )
+
+
 @router.get(
     "/health",
     response_model=HealthResponse,
@@ -206,6 +287,7 @@ async def service_status(
             "timestamp": datetime.utcnow().isoformat(),
             "database_status": health_info.get("database_status", "unknown"),
             "available_divisions": health_info.get("available_divisions", "unknown"),
+            "current_embedding_model": rag_service.settings.embedding_model,
             "endpoints": {
                 "query": "/api/query",
                 "health": "/api/health",
