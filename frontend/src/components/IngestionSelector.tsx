@@ -74,16 +74,16 @@ export default function IngestionSelector({ onIngest }: IngestionSelectorProps) 
         </div>
 
         {/* Ingestion Controls */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
-            <label htmlFor="embeddingModel" className="block text-xs font-medium text-gray-700 mb-1">
+            <label htmlFor="embeddingModel" className="block text-xs font-medium text-gray-700 mb-2">
               Switch Model
             </label>
             <select
               id="embeddingModel"
               value={selectedEmbeddingModel}
               onChange={(e) => setSelectedEmbeddingModel(e.target.value)}
-              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 text-sm form-input"
               disabled={isIngesting}
             >
               {AVAILABLE_EMBEDDING_MODELS.map((model) => (
