@@ -28,7 +28,6 @@ COPY *.py ./
 
 # Copy bills and ingestion code for dynamic ingestion feature
 COPY data/bills/ ./data/bills/
-COPY src/ ./src/
 
 # Create necessary directories
 RUN mkdir -p /app/db/chroma
