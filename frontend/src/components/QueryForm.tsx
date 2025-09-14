@@ -51,6 +51,7 @@ export default function QueryForm({ onSubmit, isLoading, query, onQueryChange }:
               onKeyPress={handleKeyPress}
               placeholder="e.g. How much funding did FEMA receive?"
               className="form-input w-full px-3 py-2 text-base rounded-md border focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              style={{ paddingLeft: '16px' }}
               disabled={isLoading}
             />
             {query.trim() && !isLoading && (
