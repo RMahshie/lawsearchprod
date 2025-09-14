@@ -1,5 +1,7 @@
 # LawSearch AI - Federal Appropriations Query System
 
+![LawSearch AI Application Screenshot](images/app-screenshot.png)
+
 A production-ready AI-powered system for querying federal appropriations bills using natural language. Built with **FastAPI**, **React**, and **OpenAI**, containerized with **Docker** for easy deployment.
 
 ## 🌟 Features
