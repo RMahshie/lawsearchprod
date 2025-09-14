@@ -1,6 +1,8 @@
 /* Custom styles */
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;500;600;700&family=Roboto+Slab:wght@400;500;600&display=swap');
 
+@import "tailwindcss";
+
 /* Basic CSS Reset and Base Styles */
 * {
   margin: 0;
@@ -190,14 +192,14 @@ h1 {
 .card {
   background-color: #1e293b;
   border: 1px solid #334155;
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.3), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
 .card:hover {
   border-color: #475569;
-  box-shadow: 0 20px 40px -12px rgb(0 0 0 / 0.4), 0 8px 16px -4px rgb(0 0 0 / 0.2);
-  transition: all 0.3s ease;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+  transition: all 0.2s ease;
 }
 
 /* Professional status indicators */
@@ -293,12 +295,14 @@ h1 {
   border: 1px solid #475569;
   color: #e2e8f0;
   transition: all 0.2s ease;
+  border-radius: 0.375rem;
 }
 
 .form-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
   background-color: #3b4252;
+  outline: none;
 }
 
 .form-input::placeholder {
@@ -373,8 +377,88 @@ h1 {
   font-weight: 500;
   padding: 0.375rem 0.75rem;
   border-radius: 9999px;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: white;
+  background: linear-gradient(135deg, #374151, #1f2937);
+  color: #e2e8f0;
   letter-spacing: 0.025em;
   margin: 0.25rem;
+  border: 1px solid #475569;
+}
+
+/* Expandable section styling */
+.expandable-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.expandable-button:hover {
+  background-color: #374151;
+  color: #cbd5e1;
+}
+
+.expandable-content {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+}
+
+/* Fixed Sidebar Layout */
+.app-container {
+  min-height: 100vh;
+  background-color: #0f172a;
+}
+
+.fixed-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 16.67vw; /* 1/6 of viewport width */
+  height: 100vh;
+  background-color: #1e293b;
+  border-right: 1px solid #334155;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.main-content {
+  margin-left: 16.67vw; /* Match sidebar width */
+  width: calc(100vw - 16.67vw); /* Remaining width */
+  min-height: 100vh;
+  background-color: #0f172a;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.content-wrapper {
+  padding: 2rem;
+  max-width: none;
+  position: relative;
+}
+
+.search-section {
+  margin-bottom: 2rem;
+}
+
+.results-section {
+  width: 100%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .fixed-sidebar {
+    width: 100vw;
+    height: auto;
+    position: relative;
+  }
+
+  .main-content {
+    margin-left: 0;
+    width: 100vw;
+  }
 }
