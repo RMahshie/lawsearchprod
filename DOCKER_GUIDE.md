@@ -30,10 +30,8 @@ docker-compose logs -f
 docker-compose ps
 
 # Initial data ingestion (required)
-docker-compose up -d
-docker cp src/ingest.py $(docker-compose ps -q backend):/app/src/ingest.py
-docker cp src/config.py $(docker-compose ps -q backend):/app/src/config.py
-docker-compose exec backend python3 -m src.ingest
+# Use the web interface at http://localhost:3000
+# Click "Run Ingestion" in the Data Management pane
 ```
 
 ## Detailed Operations Guide
@@ -72,18 +70,19 @@ docker-compose up --build
 
 #### Initial Data Ingestion (Required Before First Use)
 
-The application requires vector databases to be created from the bill documents before it can answer queries. This process must be run **inside the container** to ensure ChromaDB compatibility.
+The application requires vector databases to be created from the bill documents before it can answer queries. This is now handled through the web interface for ease of use.
 
 ```bash
-# 1. Start the containers (they will be unhealthy until data is ingested)
-docker-compose up -d
+# 1. Start the application
+docker-compose up
 
-# 2. Copy the ingestion script into the running backend container
-docker cp src/ingest.py $(docker-compose ps -q backend):/app/src/ingest.py
-docker cp src/config.py $(docker-compose ps -q backend):/app/src/config.py
+# 2. Open the web interface
+# Visit: http://localhost:3000
 
-# 3. Run the ingestion script inside the container
-docker-compose exec backend python3 -m src.ingest
+# 3. Run initial ingestion
+# - Click the "Run Ingestion" button in the Data Management pane
+# - This will create 14 vector databases from the bill documents
+# - The process takes ~30-60 seconds
 
 # 4. Verify the backend is now healthy
 curl http://localhost:8000/api/health
@@ -93,10 +92,10 @@ curl http://localhost:8000/api/health
 - Creates 14 vector databases (one per bill division) from the HTML bill documents
 - Embeds all text chunks using the configured embedding model
 - Stores everything in the `/app/db/chroma/` directory (mounted volume)
-- Takes ~30-60 seconds depending on your machine
+- Uses the API endpoint `/api/ingest` which calls the integrated ingestion service
 
 **Important Notes:**
-- **Must run inside container**: Running ingestion from host machine creates ChromaDB tenant mismatches
+- **Web interface only**: No manual Docker commands needed - everything is handled through the frontend
 - **Required for first startup**: Backend will show "unhealthy" status until databases are created
 - **Only needs to be done once**: Databases persist in the mounted volume
 - **Re-run if**: You change embedding models, clear databases, or update bill documents
@@ -106,15 +105,16 @@ curl http://localhost:8000/api/health
 If you need to re-ingest data (e.g., after changing embedding models or updating documents):
 
 ```bash
-# Clear existing databases
+# Option 1: Clear existing databases and restart
 rm -rf db/chroma/*
+docker-compose restart
 
-# Then follow steps 1-4 above
-docker-compose up -d
-docker cp src/ingest.py $(docker-compose ps -q backend):/app/src/ingest.py
-docker cp src/config.py $(docker-compose ps -q backend):/app/src/config.py
-docker-compose exec backend python3 -m src.ingest
+# Option 2: Use the web interface
+# 1. Select a different embedding model from the dropdown
+# 2. Click "Run Ingestion" - this will automatically clear and re-ingest
 ```
+
+**Note:** The web interface method is recommended as it handles the model switching automatically and provides real-time progress updates.
 
 ### 🛑 Stopping the Application
 
