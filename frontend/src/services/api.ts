@@ -30,8 +30,34 @@ const ingestionClient = axios.create({
   },
 });
 
+// Create separate instance for long queries with extended timeout
+const longQueryClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 480000, // 8 minutes for long thinking speed queries
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
 // Apply same interceptors to ingestion client
 ingestionClient.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  (error) => {
+    if (error.response?.data) {
+      // Backend returned an error response
+      throw new Error(error.response.data.message || error.response.data.error || 'API Error');
+    } else if (error.request) {
+      // Network error
+      throw new Error('Unable to connect to the server. Please check your connection.');
+    } else {
+      // Something else went wrong
+      throw new Error(error.message || 'An unexpected error occurred');
+    }
+  }
+);
+
+// Apply same interceptors to long query client
+longQueryClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error) => {
     if (error.response?.data) {
@@ -66,10 +92,18 @@ apiClient.interceptors.response.use(
 
 /**
  * Submit a query to the RAG system
+ * Uses appropriate timeout based on thinking speed:
+ * - quick/normal: 2 minutes
+ * - long: 8 minutes
  */
 export const submitQuery = async (queryRequest: QueryRequest): Promise<QueryResponse> => {
   try {
-    const response = await apiClient.post<QueryResponse>('/api/query', queryRequest);
+    // Choose client based on thinking speed to handle different timeouts
+    const client = queryRequest.thinking_speed === 'long' ? longQueryClient : apiClient;
+
+    console.log(`Submitting query with thinking_speed: ${queryRequest.thinking_speed}, using timeout: ${queryRequest.thinking_speed === 'long' ? '8 minutes' : '2 minutes'}`);
+
+    const response = await client.post<QueryResponse>('/api/query', queryRequest);
     return response.data;
   } catch (error) {
     console.error('Query submission failed:', error);

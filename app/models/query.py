@@ -50,6 +50,12 @@ class QueryRequest(BaseModel):
         example=False
     )
 
+    thinking_speed: Optional[str] = Field(
+        default="normal",
+        description="Thinking speed mode affecting model selection and retrieval parameters",
+        example="normal"
+    )
+
     @field_validator('question')
     @classmethod
     def validate_question(cls, v):
@@ -71,7 +77,7 @@ class QueryRequest(BaseModel):
         """Validate that division names are from the allowed list."""
         if v is None:
             return v
-            
+
         # Valid division names from your config
         valid_divisions = {
             "MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES",
@@ -89,11 +95,24 @@ class QueryRequest(BaseModel):
             "DEPARTMENT OF STATE, FOREIGN OPERATIONS, AND RELATED PROGRAMS",
             "OTHER MATTERS (FURTHER)"
         }
-        
+
         invalid_divisions = [div for div in v if div not in valid_divisions]
         if invalid_divisions:
             raise ValueError(f'Invalid division names: {invalid_divisions}')
-            
+
+        return v
+
+    @field_validator('thinking_speed')
+    @classmethod
+    def validate_thinking_speed(cls, v):
+        """Validate that thinking speed is one of the allowed values."""
+        if v is None:
+            return "normal"  # Default value
+
+        valid_speeds = {"quick", "normal", "long"}
+        if v not in valid_speeds:
+            raise ValueError(f'Invalid thinking speed: {v}. Valid options: {valid_speeds}')
+
         return v
 
     model_config = ConfigDict(
@@ -102,7 +121,8 @@ class QueryRequest(BaseModel):
                 "question": "How much funding was allocated to cybersecurity initiatives?",
                 "max_results": 8,
                 "include_sources": True,
-                "divisions_filter": None
+                "divisions_filter": None,
+                "thinking_speed": "normal"
             }
         }
     )

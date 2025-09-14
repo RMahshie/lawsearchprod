@@ -6,9 +6,10 @@ interface QueryFormProps {
   isLoading: boolean;
   query: string;
   onQueryChange: (query: string) => void;
+  thinkingSpeed: 'quick' | 'normal' | 'long';
 }
 
-export default function QueryForm({ onSubmit, isLoading, query, onQueryChange }: QueryFormProps) {
+export default function QueryForm({ onSubmit, isLoading, query, onQueryChange, thinkingSpeed }: QueryFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -25,7 +26,7 @@ export default function QueryForm({ onSubmit, isLoading, query, onQueryChange }:
       return;
     }
 
-    onSubmit({ question: query.trim() });
+    onSubmit({ question: query.trim(), thinking_speed: thinkingSpeed });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

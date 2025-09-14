@@ -4,6 +4,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import QueryForm from './components/QueryForm';
 import QueryResults from './components/QueryResults';
 import IngestionSelector from './components/IngestionSelector';
+import ThinkingSpeedSelector from './components/ThinkingSpeedSelector';
 import { useSubmitQuery, useHealthCheck } from './hooks/useApi';
 import { useSessionState } from './hooks/useSessionState';
 import { submitIngest } from './services/api';
@@ -22,6 +23,7 @@ const queryClient = new QueryClient({
 function AppContent() {
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [lastQuestion, setLastQuestion] = useState<string>('');
+  const [thinkingSpeed, setThinkingSpeed] = useState<'quick' | 'normal' | 'long'>('normal');
 
   const { query, updateQuery } = useSessionState();
   const submitQueryMutation = useSubmitQuery();
@@ -43,12 +45,20 @@ function AppContent() {
     return await submitIngest(ingestRequest);
   };
 
+  const handleThinkingSpeedChange = (speed: 'quick' | 'normal' | 'long') => {
+    setThinkingSpeed(speed);
+  };
+
   return (
     <div className="app-container">
       {/* Fixed Sidebar */}
       <aside className="fixed-sidebar">
-        <div className="p-4">
+        <div className="p-4 space-y-4">
           <IngestionSelector onIngest={handleIngest} />
+          <ThinkingSpeedSelector
+            onSpeedChange={handleThinkingSpeedChange}
+            currentSpeed={thinkingSpeed}
+          />
         </div>
       </aside>
 
@@ -99,6 +109,7 @@ function AppContent() {
               isLoading={submitQueryMutation.isPending}
               query={query}
               onQueryChange={updateQuery}
+              thinkingSpeed={thinkingSpeed}
             />
 
             {/* Loading State */}

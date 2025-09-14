@@ -69,7 +69,8 @@ async def process_query(
     query_id = f"query_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
     
     logger.info(f"Processing query {query_id}: {request.question[:100]}...")
-    
+    logger.info(f"Query {query_id} parameters: thinking_speed={request.thinking_speed}, max_results={request.max_results}")
+
     try:
         # Process the query through RAG service
         response = await rag_service.process_query(request, query_id)

@@ -8,6 +8,7 @@ export interface QueryRequest {
   max_results?: number;
   include_sources?: boolean;
   divisions_filter?: string[];
+  thinking_speed?: 'quick' | 'normal' | 'long';
 }
 
 export interface SourceDocument {
