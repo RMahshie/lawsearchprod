@@ -8,22 +8,50 @@ export interface QueryRequest {
   max_results?: number;
   include_sources?: boolean;
   divisions_filter?: string[];
+  debug_chunks?: boolean;
   thinking_speed?: 'quick' | 'normal' | 'long';
+  model_override?: string;
 }
 
 export interface SourceDocument {
   division: string;
+  division_acronym: string;
+  chunk_id: string;
   content_snippet: string;
+  chunk_summary?: string;
   confidence_score?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface DebugChunk {
+  chunk_id: string;
+  division: string;
+  division_acronym: string;
+  content: string;
+  chunk_summary?: string;
+  score?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface DivisionResult {
+  division: string;
+  division_acronym: string;
+  chunks_retrieved: number;
+  answer: string;
+  source_chunk_ids: string[];
 }
 
 export interface QueryResponse {
   answer: string;
   processing_time: number;
   selected_divisions: string[];
+  division_results: DivisionResult[];
   sources?: SourceDocument[];
+  debug_chunks?: DebugChunk[];
   timestamp: string;
   query_id?: string;
+  thinking_speed?: 'quick' | 'normal' | 'long';
+  model_used?: string;
 }
 
 export interface HealthResponse {

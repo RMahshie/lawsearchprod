@@ -56,6 +56,13 @@ class QueryRequest(BaseModel):
         example="normal"
     )
 
+    model_override: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Optional OpenAI chat model override. If omitted, thinking_speed controls model selection.",
+        example="gpt-4o"
+    )
+
     @field_validator('question')
     @classmethod
     def validate_question(cls, v):
@@ -102,6 +109,23 @@ class QueryRequest(BaseModel):
 
         return v
 
+    @field_validator('model_override')
+    @classmethod
+    def validate_model_override(cls, v):
+        """Allow explicit OpenAI model names without opening multi-provider support."""
+        if v is None:
+            return v
+
+        value = v.strip()
+        if not value:
+            return None
+
+        allowed_prefixes = ("gpt-", "o1", "o3", "o4")
+        if not value.startswith(allowed_prefixes):
+            raise ValueError("model_override must be an OpenAI chat model name")
+
+        return value
+
     @field_validator('thinking_speed')
     @classmethod
     def validate_thinking_speed(cls, v):
@@ -122,7 +146,8 @@ class QueryRequest(BaseModel):
                 "max_results": 8,
                 "include_sources": True,
                 "divisions_filter": None,
-                "thinking_speed": "normal"
+                "thinking_speed": "normal",
+                "model_override": None
             }
         }
     )
@@ -137,12 +162,29 @@ class SourceDocument(BaseModel):
         description="The legislative division this information came from",
         example="DEPARTMENT OF HOMELAND SECURITY"
     )
+
+    division_acronym: str = Field(
+        ...,
+        description="Compact division/committee marker used in inline citations",
+        example="DHS"
+    )
+
+    chunk_id: str = Field(
+        ...,
+        description="Stable chunk identifier for UI citation lookup",
+        example="DHS-1-a1b2c3d4"
+    )
     
     content_snippet: str = Field(
         ...,
-        max_length=500,
-        description="Relevant snippet from the source document",
+        description="Relevant raw source chunk or source excerpt",
         example="For cybersecurity and infrastructure security activities, $2,847,000,000..."
+    )
+
+    chunk_summary: Optional[str] = Field(
+        default=None,
+        description="One-line LLM-generated summary for source hover UI",
+        example="This chunk lists DHS cybersecurity appropriations and availability."
     )
     
     confidence_score: Optional[float] = Field(
@@ -152,6 +194,31 @@ class SourceDocument(BaseModel):
         description="Confidence score for this source (0-1)",
         example=0.95
     )
+
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Raw metadata carried by the vector store"
+    )
+
+
+class DebugChunk(BaseModel):
+    """Retrieved chunk payload returned when debug_chunks is enabled."""
+    chunk_id: str
+    division: str
+    division_acronym: str
+    content: str
+    chunk_summary: Optional[str] = None
+    score: Optional[float] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class DivisionResult(BaseModel):
+    """Per-division reduction output."""
+    division: str
+    division_acronym: str
+    chunks_retrieved: int
+    answer: str
+    source_chunk_ids: List[str] = Field(default_factory=list)
 
 
 class QueryResponse(BaseModel):
@@ -179,6 +246,11 @@ class QueryResponse(BaseModel):
         description="List of divisions that were queried for this request",
         example=["DEPARTMENT OF HOMELAND SECURITY", "OTHER MATTERS"]
     )
+
+    division_results: List[DivisionResult] = Field(
+        default_factory=list,
+        description="Per-division reduced answers and supporting chunk IDs"
+    )
     
     sources: Optional[List[SourceDocument]] = Field(
         default=None,
@@ -198,10 +270,20 @@ class QueryResponse(BaseModel):
         example="query_20240315_143000_abc123"
     )
     
-    debug_chunks: Optional[List[Dict]] = Field(
+    debug_chunks: Optional[List[DebugChunk]] = Field(
         default=None,
         description="Retrieved document chunks for debugging (only if requested)",
         example=None
+    )
+
+    thinking_speed: Optional[str] = Field(
+        default=None,
+        description="Thinking speed used for this query"
+    )
+
+    model_used: Optional[str] = Field(
+        default=None,
+        description="Primary OpenAI chat model used for answer generation"
     )
 
     model_config = ConfigDict(
