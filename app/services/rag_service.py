@@ -105,6 +105,7 @@ class RAGService:
     def __init__(self):
         self.settings = get_settings()
         self.vectorstores = VectorStoreService()
+        self.settings.embedding_model = self.vectorstores.embedding_model
         self.ingestion = IngestionService()
         self._graph = self._build_graph()
 
@@ -183,6 +184,7 @@ class RAGService:
 
         valid_divisions = list(self.settings.subcommittee_stores.keys())
         routing_llm = create_chat_model("routing", "routing").with_structured_output(RouteDecision)
+        allowed_divisions = "\n- ".join(valid_divisions)
         decision = routing_llm.invoke(
             [
                 SystemMessage(
@@ -193,7 +195,7 @@ class RAGService:
                 ),
                 HumanMessage(
                     content=(
-                        f"Allowed divisions:\n- {'\n- '.join(valid_divisions)}\n\n"
+                        f"Allowed divisions:\n- {allowed_divisions}\n\n"
                         f"Question: {state['question']}"
                     )
                 ),
@@ -442,6 +444,7 @@ class RAGService:
         logger.info("Starting ingestion %s with embedding model %s", ingest_id, embedding_model)
 
         try:
+            self.vectorstores.clear_cached_stores()
             divisions_processed = self.ingestion.ingest(embedding_model, clear_existing)
             self.vectorstores.reset_embedding_model(embedding_model)
             self.settings.embedding_model = embedding_model
@@ -477,6 +480,7 @@ class RAGService:
                 "status": "healthy",
                 "database_status": "connected",
                 "available_divisions": str(len(available_stores)),
+                "embedding_model": self.vectorstores.embedding_model,
             }
         except Exception as exc:
             return {"status": "unhealthy", "reason": f"Database connectivity issue: {exc}"}

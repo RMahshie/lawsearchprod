@@ -13,7 +13,17 @@ from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 
 from app.core.config import get_settings
-from app.services.vector_store_service import division_acronym
+from app.services.vector_store_service import (
+    clear_chroma_system_cache,
+    division_acronym,
+    write_persisted_embedding_model,
+)
+
+
+DIVISION_PATTERN = re.compile(
+    r"^\s*DIVISION\s+([A-Z])\s*--\s*(?:(OTHER MATTERS)|((?:(?!APPROPRIATIONS).)+))",
+    re.IGNORECASE | re.MULTILINE | re.DOTALL,
+)
 
 
 class IngestionService:
@@ -25,6 +35,7 @@ class IngestionService:
     def ingest(self, embedding_model: str, clear_existing: bool = True) -> int:
         """Rebuild per-division Chroma stores and return processed count."""
         vectorstore_dir = Path(self.settings.vectorstore_dir)
+        clear_chroma_system_cache()
         if clear_existing and vectorstore_dir.exists():
             shutil.rmtree(vectorstore_dir)
         vectorstore_dir.mkdir(parents=True, exist_ok=True)
@@ -48,6 +59,7 @@ class IngestionService:
             )
             divisions_processed += 1
 
+        write_persisted_embedding_model(vectorstore_dir, embedding_model)
         return divisions_processed
 
     def _bill_path_for_store(self, store_name: str) -> Path:
@@ -64,18 +76,20 @@ class IngestionService:
     def _extract_division_text(self, bill_path: Path, letter: str) -> str:
         html = bill_path.read_text(encoding="utf-8", errors="ignore")
         text = BeautifulSoup(html, "html.parser").get_text("\n")
+        text = re.sub(r"<<NOTE:[^>]+>>", "", text)
         text = re.sub(r"\n{3,}", "\n\n", text)
 
-        starts = [m.start() for m in re.finditer(rf"DIVISION\s+{letter}\s*--", text)]
-        if not starts:
+        matches = list(DIVISION_PATTERN.finditer(text))
+        if not matches:
             return text
 
-        start = starts[1] if len(starts) > 1 else starts[0]
-        next_starts = [
-            m.start()
-            for m in re.finditer(r"DIVISION\s+[A-G]\s*--", text[start + 1 :])
-        ]
-        end = start + 1 + min(next_starts) if next_starts else len(text)
+        matching_indexes = [index for index, match in enumerate(matches) if match.group(1).upper() == letter]
+        if not matching_indexes:
+            return text
+
+        match_index = matching_indexes[-1]
+        start = matches[match_index].start()
+        end = matches[match_index + 1].start() if match_index + 1 < len(matches) else len(text)
         return text[start:end].strip()
 
     def _chunk_documents(self, text: str, division: str, source_file: str) -> list[Document]:

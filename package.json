@@ -27,9 +27,17 @@
     "clean:docker": "docker-compose down -v --rmi all"
   },
   "devDependencies": {
+    "@types/node": "^25.6.0",
     "concurrently": "^8.2.2"
   },
-  "keywords": ["fastapi", "react", "rag", "ai", "legal", "appropriations"],
+  "keywords": [
+    "fastapi",
+    "react",
+    "rag",
+    "ai",
+    "legal",
+    "appropriations"
+  ],
   "author": "Your Name",
   "license": "MIT"
 }

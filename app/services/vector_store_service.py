@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import gc
 import os
 import re
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
+from chromadb.api.shared_system_client import SharedSystemClient
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
@@ -32,6 +35,34 @@ DIVISION_ACRONYMS = {
     "OTHER MATTERS (FURTHER)": "OMF",
 }
 
+EMBEDDING_MODEL_FILE = ".embedding_model"
+
+
+def read_persisted_embedding_model(vectorstore_dir: str | Path) -> str | None:
+    """Read the embedding model that was used to build persisted Chroma stores."""
+    model_file = Path(vectorstore_dir) / EMBEDDING_MODEL_FILE
+    if not model_file.exists():
+        return None
+
+    model = model_file.read_text(encoding="utf-8").strip()
+    return model or None
+
+
+def write_persisted_embedding_model(vectorstore_dir: str | Path, embedding_model: str) -> None:
+    """Persist the embedding model alongside Chroma stores for restart-safe queries."""
+    vectorstore_path = Path(vectorstore_dir)
+    vectorstore_path.mkdir(parents=True, exist_ok=True)
+    (vectorstore_path / EMBEDDING_MODEL_FILE).write_text(embedding_model, encoding="utf-8")
+
+
+def clear_chroma_system_cache() -> None:
+    """Release cached Chroma clients before deleting or rebuilding persisted stores."""
+    try:
+        SharedSystemClient.clear_system_cache()
+    except Exception:
+        pass
+    gc.collect()
+
 
 def division_acronym(division: str) -> str:
     """Return a compact marker for division-level citations."""
@@ -53,7 +84,9 @@ class VectorStoreService:
 
     def __init__(self, embedding_model: str | None = None):
         self.settings = get_settings()
-        self.embedding_model = embedding_model or self.settings.embedding_model
+        persisted_model = read_persisted_embedding_model(self.settings.vectorstore_dir)
+        self.embedding_model = embedding_model or persisted_model or self.settings.embedding_model
+        self.settings.embedding_model = self.embedding_model
         self.embedder = OpenAIEmbeddings(model=self.embedding_model)
 
     @lru_cache(maxsize=None)
@@ -67,9 +100,15 @@ class VectorStoreService:
 
     def reset_embedding_model(self, embedding_model: str) -> None:
         """Switch embeddings after ingestion and clear cached stores."""
+        self.clear_cached_stores()
         self.embedding_model = embedding_model
         self.embedder = OpenAIEmbeddings(model=embedding_model)
+        self.settings.embedding_model = embedding_model
+
+    def clear_cached_stores(self) -> None:
+        """Drop cached Chroma handles before destructive vector store operations."""
         self.get_store.cache_clear()
+        clear_chroma_system_cache()
 
     def retrieve(self, question: str, division: str, k: int) -> list[dict[str, Any]]:
         """Retrieve k chunks for a division, preserving division metadata."""

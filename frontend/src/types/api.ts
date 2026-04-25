@@ -20,7 +20,7 @@ export interface SourceDocument {
   content_snippet: string;
   chunk_summary?: string;
   confidence_score?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface DebugChunk {
@@ -30,7 +30,7 @@ export interface DebugChunk {
   content: string;
   chunk_summary?: string;
   score?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface DivisionResult {
@@ -75,7 +75,7 @@ export interface StatusResponse {
 export interface ErrorResponse {
   error: string;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   timestamp: string;
 }
 

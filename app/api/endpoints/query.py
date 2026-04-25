@@ -288,7 +288,7 @@ async def service_status(
             "timestamp": datetime.utcnow().isoformat(),
             "database_status": health_info.get("database_status", "unknown"),
             "available_divisions": health_info.get("available_divisions", "unknown"),
-            "current_embedding_model": rag_service.settings.embedding_model,
+            "current_embedding_model": health_info.get("embedding_model", rag_service.settings.embedding_model),
             "endpoints": {
                 "query": "/api/query",
                 "health": "/api/health",
