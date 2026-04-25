@@ -27,7 +27,7 @@ MODEL_STRATEGIES = {
     "quick": {
         "map": ModelSpec("gpt-5.4-nano"),
         "summary": ModelSpec("gpt-5.4-nano"),
-        "reduce": ModelSpec("gpt-5.4-nano"),
+        "reduce": ModelSpec("gpt-5.4-mini"),
         "synthesize": ModelSpec("gpt-5.4-mini"),
     },
     "normal": {
