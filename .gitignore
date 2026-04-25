@@ -6,11 +6,17 @@ venv/
 venv311/
 .venv/
 
+# Node dependencies
+node_modules/
+frontend/node_modules/
+
 # Python cache files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
+.ruff_cache/
 
 # macOS system files
 .DS_Store
