@@ -15,6 +15,24 @@ class FakeLLM:
         return FakeMessage("Extracted $10,000,000 for cybersecurity [DHS].")
 
 
+class FakeStatusError(Exception):
+    def __init__(self, status_code: int):
+        super().__init__(f"status {status_code}")
+        self.status_code = status_code
+
+
+class FlakyLLM:
+    def __init__(self, status_code: int):
+        self.status_code = status_code
+        self.calls = 0
+
+    def invoke(self, prompt):
+        self.calls += 1
+        if self.calls == 1:
+            raise FakeStatusError(self.status_code)
+        return FakeMessage("Recovered response.")
+
+
 class FakeStructuredLLM:
     def __init__(self, response):
         self.response = response
@@ -66,6 +84,32 @@ def test_map_chunk_returns_facts_and_summary(monkeypatch):
     assert mapped["division"] == "DEPARTMENT OF HOMELAND SECURITY"
     assert mapped["chunk_summary"] == "Chunk summarizes DHS cybersecurity funding."
     assert "$10,000,000" in mapped["extracted_facts"]
+
+
+def test_invoke_text_retries_once_for_transient_error(monkeypatch):
+    monkeypatch.setattr("app.services.rag_service.time.sleep", lambda seconds: None)
+    service = RAGService.__new__(RAGService)
+    llm = FlakyLLM(500)
+
+    result = service._invoke_text(llm, "prompt", stage="route", query_id="query-test")
+
+    assert result == "Recovered response."
+    assert llm.calls == 2
+
+
+def test_invoke_text_does_not_retry_non_transient_error(monkeypatch):
+    monkeypatch.setattr("app.services.rag_service.time.sleep", lambda seconds: None)
+    service = RAGService.__new__(RAGService)
+    llm = FlakyLLM(400)
+
+    try:
+        service._invoke_text(llm, "prompt", stage="route", query_id="query-test")
+    except FakeStatusError:
+        pass
+    else:
+        raise AssertionError("Expected non-transient error to be raised")
+
+    assert llm.calls == 1
 
 
 def test_response_includes_sources_debug_chunks_and_division_results():

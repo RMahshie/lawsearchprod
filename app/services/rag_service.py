@@ -259,21 +259,24 @@ class RAGService:
             routing_model.reasoning_effort,
         ).with_structured_output(RouteDecision)
         allowed_divisions = "\n- ".join(valid_divisions)
-        decision = routing_llm.invoke(
-            [
-                SystemMessage(
-                    content=(
-                        "Select the relevant appropriations divisions for this question. "
-                        "Return only exact division names from the allowed list."
-                    )
-                ),
-                HumanMessage(
-                    content=(
-                        f"Allowed divisions:\n- {allowed_divisions}\n\n"
-                        f"Question: {state['question']}"
-                    )
-                ),
-            ]
+        route_messages = [
+            SystemMessage(
+                content=(
+                    "Select the relevant appropriations divisions for this question. "
+                    "Return only exact division names from the allowed list."
+                )
+            ),
+            HumanMessage(
+                content=(
+                    f"Allowed divisions:\n- {allowed_divisions}\n\n"
+                    f"Question: {state['question']}"
+                )
+            ),
+        ]
+        decision = self._invoke_with_retry(
+            lambda: routing_llm.invoke(route_messages),
+            stage="route",
+            query_id=state.get("query_id", "unknown"),
         )
         selected = [division for division in decision.divisions if division in self.settings.subcommittee_stores]
         if not selected:
@@ -319,23 +322,26 @@ class RAGService:
                 rewrite_model.reasoning_effort,
             ).with_structured_output(DivisionQueryPlan)
             allowed_divisions = "\n- ".join(selected_divisions)
-            plan = rewrite_llm.invoke(
-                [
-                    SystemMessage(
-                        content=(
-                            "Create one targeted retrieval query for each selected appropriations division. "
-                            "Keep the user's intent, but only include entities, programs, agencies, or terms "
-                            "likely relevant to that division. Do not force unrelated entities into every query. "
-                            "Return exact division names from the selected list."
-                        )
-                    ),
-                    HumanMessage(
-                        content=(
-                            f"Selected divisions:\n- {allowed_divisions}\n\n"
-                            f"Original question:\n{state['question']}"
-                        )
-                    ),
-                ]
+            rewrite_messages = [
+                SystemMessage(
+                    content=(
+                        "Create one targeted retrieval query for each selected appropriations division. "
+                        "Keep the user's intent, but only include entities, programs, agencies, or terms "
+                        "likely relevant to that division. Do not force unrelated entities into every query. "
+                        "Return exact division names from the selected list."
+                    )
+                ),
+                HumanMessage(
+                    content=(
+                        f"Selected divisions:\n- {allowed_divisions}\n\n"
+                        f"Original question:\n{state['question']}"
+                    )
+                ),
+            ]
+            plan = self._invoke_with_retry(
+                lambda: rewrite_llm.invoke(rewrite_messages),
+                stage="rewrite",
+                query_id=state.get("query_id", "unknown"),
             )
             by_division = {
                 item.division: item.query.strip()
@@ -474,8 +480,21 @@ class RAGService:
         )
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            facts_future = executor.submit(self._invoke_text, map_llm, extraction_prompt)
-            summary_future = executor.submit(self._invoke_text, summary_llm, summary_prompt)
+            query_id = state.get("query_id", "unknown")
+            facts_future = executor.submit(
+                self._invoke_text,
+                map_llm,
+                extraction_prompt,
+                stage="map",
+                query_id=query_id,
+            )
+            summary_future = executor.submit(
+                self._invoke_text,
+                summary_llm,
+                summary_prompt,
+                stage="summary",
+                query_id=query_id,
+            )
             extracted_facts = facts_future.result()
             chunk_summary = summary_future.result()
 
@@ -589,7 +608,12 @@ class RAGService:
                 f"Division: {division}\n\n"
                 f"Extracted facts:\n{facts}"
             )
-            answer = self._invoke_text(llm, prompt)
+            answer = self._invoke_text(
+                llm,
+                prompt,
+                stage="reduce",
+                query_id=state.get("query_id", "unknown"),
+            )
 
         division_answer: DivisionAnswerState = {
             "division": division,
@@ -680,7 +704,12 @@ class RAGService:
             f"Question:\n{state['question']}\n\n"
             f"Division answers:\n{context}"
         )
-        final_answer = self._invoke_text(llm, prompt)
+        final_answer = self._invoke_text(
+            llm,
+            prompt,
+            stage="synthesize",
+            query_id=state.get("query_id", "unknown"),
+        )
         self._debug_log(
             "synthesize_done query_id=%s model=%s division_answers=%s input_chars=%s duration=%.2fs answer_chars=%s",
             state.get("query_id", "unknown"),
@@ -692,12 +721,48 @@ class RAGService:
         )
         return {"final_answer": final_answer}
 
-    def _invoke_text(self, llm: Any, prompt: str) -> str:
-        response = llm.invoke(prompt)
+    def _invoke_text(self, llm: Any, prompt: str, *, stage: str, query_id: str) -> str:
+        response = self._invoke_with_retry(
+            lambda: llm.invoke(prompt),
+            stage=stage,
+            query_id=query_id,
+        )
         content = getattr(response, "content", response)
         if isinstance(content, list):
             return "\n".join(str(block) for block in content)
         return str(content).strip()
+
+    def _invoke_with_retry(self, invoke_fn: Callable[[], Any], *, stage: str, query_id: str) -> Any:
+        try:
+            return invoke_fn()
+        except Exception as exc:
+            if not self._is_retryable_llm_error(exc):
+                raise
+
+            self._debug_log(
+                "retry query_id=%s stage=%s attempt=2 status=%s error=%s",
+                query_id,
+                stage,
+                self._llm_error_status(exc),
+                type(exc).__name__,
+            )
+            time.sleep(0.75)
+            return invoke_fn()
+
+    def _is_retryable_llm_error(self, exc: Exception) -> bool:
+        return self._llm_error_status(exc) in {429, 500, 502, 503, 504}
+
+    def _llm_error_status(self, exc: Exception) -> int | None:
+        status_code = getattr(exc, "status_code", None)
+        if isinstance(status_code, int):
+            return status_code
+
+        response = getattr(exc, "response", None)
+        response_status = getattr(response, "status_code", None)
+        if isinstance(response_status, int):
+            return response_status
+
+        return None
 
     def _debug_log(self, message: str, *args: Any) -> None:
         """Emit concise RAG timing traces only when DEBUG=true."""
