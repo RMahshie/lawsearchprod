@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="LawSearch">
+  <!-- Slight background so it reads on both light and dark tab chrome -->
+  <rect width="32" height="32" rx="7" fill="#f4f4f5"/>
+  <!-- Book spines: three volumes, different heights (shelf) — group centered (19.5px wide) -->
+  <rect x="6.25" y="5" width="5.5" height="22" rx="1" fill="#18181b"/>
+  <rect x="13.25" y="3" width="5.5" height="24" rx="1" fill="#27272a"/>
+  <rect x="20.25" y="6" width="5.5" height="21" rx="1" fill="#3f3f46"/>
+  <!-- Spine detail: subtle "bands" (still visible when tiny) -->
+  <rect x="7.75" y="8" width="2.5" height="1.2" rx="0.2" fill="#a1a1aa" opacity="0.35"/>
+  <rect x="14.75" y="7" width="2.5" height="1.2" rx="0.2" fill="#a1a1aa" opacity="0.35"/>
+  <rect x="21.75" y="9" width="2.5" height="1.2" rx="0.2" fill="#a1a1aa" opacity="0.35"/>
+</svg>
