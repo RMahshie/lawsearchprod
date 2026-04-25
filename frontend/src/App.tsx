@@ -50,7 +50,6 @@ function AppContent() {
   const [thinkingSpeed, setThinkingSpeed] = useState<'quick' | 'normal' | 'long'>('normal');
   const [maxResults, setMaxResults] = useState('8');
   const [includeSources, setIncludeSources] = useState(true);
-  const [debugChunks, setDebugChunks] = useState(false);
   const [autoRoute, setAutoRoute] = useState(true);
   const [selectedDivisions, setSelectedDivisions] = useState<DivisionName[]>([]);
   const [embeddingModel, setEmbeddingModel] = useState<string>(AVAILABLE_EMBEDDING_MODELS[0].value);
@@ -120,17 +119,27 @@ function AppContent() {
       thinking_speed: thinkingSpeed,
       max_results: Number(maxResults),
       include_sources: includeSources,
-      debug_chunks: debugChunks,
       divisions_filter: autoRoute ? undefined : selectedDivisions,
     });
   };
 
   const toggleDivision = (division: DivisionName) => {
-    setSelectedDivisions((current) =>
-      current.includes(division)
-        ? current.filter((item) => item !== division)
-        : [...current, division]
+    const isRemoving = selectedDivisions.includes(division);
+    if (autoRoute && !isRemoving) {
+      setAutoRoute(false);
+    }
+    setSelectedDivisions(
+      isRemoving
+        ? selectedDivisions.filter((item) => item !== division)
+        : [...selectedDivisions, division]
     );
+  };
+
+  const handleAutoRouteChange = (checked: boolean) => {
+    if (checked) {
+      setSelectedDivisions([]);
+    }
+    setAutoRoute(checked);
   };
 
   return (
@@ -140,7 +149,7 @@ function AppContent() {
           <div className="flex flex-col gap-3 p-3">
             <div className="px-1 py-2">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">LawSearch</div>
-              <div className="mt-1 text-xl font-semibold tracking-tight">Control Rail</div>
+              <div className="mt-1 text-xl font-semibold tracking-tight">Control Panel</div>
             </div>
 
             <ControlCard title="Data" description="Embedding and ingestion">
@@ -225,14 +234,11 @@ function AppContent() {
               <ControlRow label="Include sources">
                 <Switch checked={includeSources} onCheckedChange={setIncludeSources} />
               </ControlRow>
-              <ControlRow label="Debug chunks">
-                <Switch checked={debugChunks} onCheckedChange={setDebugChunks} />
-              </ControlRow>
             </ControlCard>
 
             <ControlCard title="Divisions" description="Auto route or target manually">
               <ControlRow label="Auto route">
-                <Switch checked={autoRoute} onCheckedChange={setAutoRoute} />
+                <Switch checked={autoRoute} onCheckedChange={handleAutoRouteChange} />
               </ControlRow>
               <div className="flex max-h-64 flex-col gap-1 overflow-y-auto border bg-background p-2">
                 {AVAILABLE_DIVISIONS.map((division) => (
@@ -243,22 +249,22 @@ function AppContent() {
                     <input
                       type="checkbox"
                       checked={selectedDivisions.includes(division)}
-                      disabled={autoRoute}
                       onChange={() => toggleDivision(division)}
                       className="mt-0.5"
                     />
-                    <span className={autoRoute ? 'text-muted-foreground' : ''}>{division}</span>
+                    <span>{division}</span>
                   </label>
                 ))}
               </div>
             </ControlCard>
+
           </div>
         </aside>
 
         <main className="flex min-w-0 flex-col">
           <div className="flex items-center justify-between border-b px-8 py-4">
             <div>
-              <div className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Federal Appropriations RAG</div>
+              <div className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Federal Appropriations Search Tool</div>
               <h1 className="text-3xl font-semibold tracking-tight">LawSearch AI</h1>
             </div>
             <Badge variant={healthError ? 'destructive' : healthData ? 'secondary' : 'outline'} className="rounded-sm">

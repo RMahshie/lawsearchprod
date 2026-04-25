@@ -14,21 +14,23 @@ interface QueryResultsProps {
 
 export default function QueryResults({ result, question }: QueryResultsProps) {
   const answerWithFigureLinks = linkAnswerFigures(result.answer, result.sources ?? []);
+  const excerpts = uniqueSources(result.sources ?? []);
 
   return (
     <div className="flex flex-col gap-5">
       <Card className="rounded-sm">
         <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <CardTitle>Answer</CardTitle>
-              <CardDescription>{question}</CardDescription>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-2xl font-bold tracking-tight">Answer</CardTitle>
+              <Badge className="rounded-sm border-emerald-200 bg-emerald-50 px-1.5 py-0 text-[10px] font-medium text-emerald-700/80 hover:bg-emerald-50">
+                Summary
+              </Badge>
+              <span className="text-xs font-normal text-muted-foreground/70">
+                Response generated in {formatProcessingTime(result.processing_time)}
+              </span>
             </div>
-            <div className="flex flex-wrap justify-end gap-2">
-              <Badge variant="outline" className="rounded-sm">{formatProcessingTime(result.processing_time)}</Badge>
-              {result.model_used && <Badge variant="outline" className="rounded-sm">{result.model_used}</Badge>}
-              {result.query_id && <Badge variant="secondary" className="rounded-sm">{result.query_id}</Badge>}
-            </div>
+            <CardDescription className="text-sm font-medium text-foreground/90">{question}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
@@ -106,25 +108,32 @@ export default function QueryResults({ result, question }: QueryResultsProps) {
         </Card>
       )}
 
-      {result.debug_chunks && result.debug_chunks.length > 0 && (
+      {excerpts.length > 0 && (
         <Card className="rounded-sm">
           <CardHeader>
-            <CardTitle>Debug Chunks</CardTitle>
-            <CardDescription>Raw retrieved chunks returned by the API.</CardDescription>
+            <CardTitle>Relevant Excerpts</CardTitle>
+            <CardDescription>Retrieved chunks that support the answer.</CardDescription>
           </CardHeader>
           <CardContent>
             <Accordion type="multiple" className="w-full">
-              {result.debug_chunks.map((chunk) => (
-                <AccordionItem key={chunk.chunk_id} value={chunk.chunk_id}>
+              {excerpts.map((source, index) => (
+                <AccordionItem key={source.chunk_id} value={source.chunk_id}>
                   <AccordionTrigger>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="rounded-sm">{chunk.division_acronym}</Badge>
-                      <span>{chunk.chunk_id}</span>
+                    <div className="flex min-w-0 items-center gap-3 text-left">
+                      <span className="w-5 shrink-0 text-xs text-muted-foreground">{index + 1}</span>
+                      <span className="min-w-0 text-sm">
+                        <span className="font-medium">{source.division_acronym}</span>
+                        <span className="text-muted-foreground"> - {summaryForSource(source)}</span>
+                      </span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
+                    <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="outline" className="rounded-sm">{source.division_acronym}</Badge>
+                      <span>{source.chunk_id}</span>
+                    </div>
                     <pre className="max-h-80 overflow-auto whitespace-pre-wrap border bg-background p-4 text-xs leading-relaxed">
-                      {chunk.content}
+                      {source.content_snippet}
                     </pre>
                   </AccordionContent>
                 </AccordionItem>
@@ -137,12 +146,27 @@ export default function QueryResults({ result, question }: QueryResultsProps) {
   );
 }
 
+function uniqueSources(sources: SourceDocument[]) {
+  const seen = new Set<string>();
+  return sources.filter((source) => {
+    if (seen.has(source.chunk_id)) return false;
+    seen.add(source.chunk_id);
+    return true;
+  });
+}
+
+function summaryForSource(source: SourceDocument) {
+  return source.chunk_snapshot?.trim() || source.chunk_summary?.trim() || 'Retrieved source excerpt.';
+}
+
 interface FigureCitation {
   figure: string;
   sources: SourceDocument[];
 }
 
 function FigurePopover({ figure, sources }: FigureCitation) {
+  const leadSummary = sources.find((source) => source.chunk_summary?.trim())?.chunk_summary?.trim();
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -154,7 +178,8 @@ function FigurePopover({ figure, sources }: FigureCitation) {
         <div className="flex flex-col gap-3">
           <div>
             <div className="text-sm font-medium">{figure}</div>
-            <p className="mt-1 text-sm text-muted-foreground">
+            {leadSummary && <p className="mt-1 text-sm text-muted-foreground">{leadSummary}</p>}
+            <p className="mt-1 text-xs text-muted-foreground">
               Found in {sources.length} retrieved {sources.length === 1 ? 'chunk' : 'chunks'}.
             </p>
           </div>
@@ -226,5 +251,5 @@ function normalizeFigure(figure: string) {
 
 function formatProcessingTime(seconds: number) {
   if (seconds < 1) return `${Math.round(seconds * 1000)}ms`;
-  return `${seconds.toFixed(2)}s`;
+  return `${seconds.toFixed(1)}s`;
 }

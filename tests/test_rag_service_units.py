@@ -10,7 +10,9 @@ class FakeMessage:
 
 class FakeLLM:
     def invoke(self, prompt):
-        if "UI hover summary" in str(prompt):
+        if "UI excerpt label" in str(prompt):
+            return FakeMessage("DHS cybersecurity funding")
+        if "source hover summary" in str(prompt):
             return FakeMessage("Chunk summarizes DHS cybersecurity funding.")
         return FakeMessage("Extracted $10,000,000 for cybersecurity [DHS].")
 
@@ -83,6 +85,7 @@ def test_map_chunk_returns_facts_and_summary(monkeypatch):
     mapped = result["mapped_chunks"][0]
     assert mapped["division"] == "DEPARTMENT OF HOMELAND SECURITY"
     assert mapped["chunk_summary"] == "Chunk summarizes DHS cybersecurity funding."
+    assert mapped["chunk_snapshot"] == "DHS cybersecurity funding"
     assert "$10,000,000" in mapped["extracted_facts"]
 
 
@@ -146,6 +149,7 @@ def test_response_includes_sources_debug_chunks_and_division_results():
                 "division_acronym": "DHS",
                 "extracted_facts": "Extracted $10,000,000 for cybersecurity [DHS].",
                 "chunk_summary": "Chunk summarizes DHS cybersecurity funding.",
+                "chunk_snapshot": "DHS cybersecurity funding",
                 "source_content": "For cybersecurity, $10,000,000 shall be available.",
                 "score": 0.1,
                 "metadata": {"source_file": "bill.html"},
@@ -166,8 +170,10 @@ def test_response_includes_sources_debug_chunks_and_division_results():
 
     assert response.sources is not None
     assert response.sources[0].chunk_summary == "Chunk summarizes DHS cybersecurity funding."
+    assert response.sources[0].chunk_snapshot == "DHS cybersecurity funding"
     assert response.debug_chunks is not None
     assert response.debug_chunks[0].division_acronym == "DHS"
+    assert response.debug_chunks[0].chunk_snapshot == "DHS cybersecurity funding"
     assert response.debug_division_queries is not None
     assert response.debug_division_queries[0].query == "How much funding is provided for DHS cybersecurity?"
     assert response.division_results[0].source_chunk_ids == ["DHS-1-test"]
@@ -236,7 +242,7 @@ def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
     assert len(result["mapped_chunks"]) == 2
     assert len(result["division_answers"]) == 2
     assert {chunk["division"] for chunk in result["mapped_chunks"]} == {"AAA", "BBB"}
-    assert vectorstores.calls == [
+    assert sorted(vectorstores.calls) == [
         ("AAA-specific funding", "AAA", 1),
         ("BBB-specific funding", "BBB", 1),
     ]

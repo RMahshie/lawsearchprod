@@ -86,6 +86,7 @@ class MappedChunkState(TypedDict):
     division_acronym: str
     extracted_facts: str
     chunk_summary: str
+    chunk_snapshot: str
     source_content: str
     score: float | None
     metadata: dict[str, Any]
@@ -472,14 +473,21 @@ class RAGService:
             f"Source chunk:\n{chunk['content']}"
         )
         summary_prompt = (
-            "Write exactly one plain-English sentence for a UI hover summary. "
-            "State what useful evidence this chunk contains, mentioning the main agency, program, "
-            "account, or dollar figure if present. Do not use bullets and do not introduce new facts.\n\n"
+            "Write exactly one plain-English sentence for a source hover summary. "
+            "Explain what useful evidence this chunk contains and why it matters for the question. "
+            "Keep it under 35 words. Do not use bullets or introduce new facts.\n\n"
+            f"Question:\n{question}\n\n"
+            f"Source chunk:\n{chunk['content']}"
+        )
+        snapshot_prompt = (
+            "Write exactly one plain-English sentence fragment under 14 words for a UI excerpt label. "
+            "Mention the main agency, program, account, or dollar figure if present. "
+            "Do not use bullets, clauses joined by semicolons, or introduce new facts.\n\n"
             f"Question:\n{question}\n\n"
             f"Source chunk:\n{chunk['content']}"
         )
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             query_id = state.get("query_id", "unknown")
             facts_future = executor.submit(
                 self._invoke_text,
@@ -495,8 +503,16 @@ class RAGService:
                 stage="summary",
                 query_id=query_id,
             )
+            snapshot_future = executor.submit(
+                self._invoke_text,
+                summary_llm,
+                snapshot_prompt,
+                stage="summary",
+                query_id=query_id,
+            )
             extracted_facts = facts_future.result()
             chunk_summary = summary_future.result()
+            chunk_snapshot = snapshot_future.result()
 
         mapped: MappedChunkState = {
             "chunk_id": chunk["chunk_id"],
@@ -504,12 +520,13 @@ class RAGService:
             "division_acronym": chunk["division_acronym"],
             "extracted_facts": extracted_facts,
             "chunk_summary": chunk_summary,
+            "chunk_snapshot": chunk_snapshot,
             "source_content": chunk["content"],
             "score": chunk.get("score"),
             "metadata": chunk.get("metadata", {}),
         }
         self._debug_log(
-            "map query_id=%s chunk_id=%s division=%s map_model=%s summary_model=%s duration=%.2fs facts_chars=%s summary_chars=%s",
+            "map query_id=%s chunk_id=%s division=%s map_model=%s summary_model=%s duration=%.2fs facts_chars=%s summary_chars=%s snapshot_chars=%s",
             state.get("query_id", "unknown"),
             chunk["chunk_id"],
             chunk["division_acronym"],
@@ -518,6 +535,7 @@ class RAGService:
             time.time() - start_time,
             len(extracted_facts),
             len(chunk_summary),
+            len(chunk_snapshot),
         )
         return {"mapped_chunks": [mapped]}
 
@@ -836,6 +854,7 @@ class RAGService:
                 chunk_id=chunk["chunk_id"],
                 content_snippet=chunk["content"],
                 chunk_summary=mapped_by_chunk.get(chunk["chunk_id"], {}).get("chunk_summary"),
+                chunk_snapshot=mapped_by_chunk.get(chunk["chunk_id"], {}).get("chunk_snapshot"),
                 confidence_score=None,
                 metadata=chunk.get("metadata", {}),
             )
@@ -864,6 +883,7 @@ class RAGService:
                 division_acronym=chunk["division_acronym"],
                 content=chunk["content"],
                 chunk_summary=mapped_by_chunk.get(chunk["chunk_id"], {}).get("chunk_summary"),
+                chunk_snapshot=mapped_by_chunk.get(chunk["chunk_id"], {}).get("chunk_snapshot"),
                 score=chunk.get("score"),
                 metadata=chunk.get("metadata", {}),
             )

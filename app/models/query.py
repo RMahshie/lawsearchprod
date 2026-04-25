@@ -161,6 +161,12 @@ class SourceDocument(BaseModel):
         description="One-line LLM-generated summary for source hover UI",
         example="This chunk lists DHS cybersecurity appropriations and availability."
     )
+
+    chunk_snapshot: Optional[str] = Field(
+        default=None,
+        description="Short LLM-generated label for source excerpt lists",
+        example="DHS cybersecurity funding"
+    )
     
     confidence_score: Optional[float] = Field(
         default=None,
@@ -183,6 +189,7 @@ class DebugChunk(BaseModel):
     division_acronym: str
     content: str
     chunk_summary: Optional[str] = None
+    chunk_snapshot: Optional[str] = None
     score: Optional[float] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 

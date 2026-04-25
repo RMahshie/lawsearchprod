@@ -18,6 +18,7 @@ export interface SourceDocument {
   chunk_id: string;
   content_snippet: string;
   chunk_summary?: string;
+  chunk_snapshot?: string;
   confidence_score?: number;
   metadata?: Record<string, unknown>;
 }
@@ -28,6 +29,7 @@ export interface DebugChunk {
   division_acronym: string;
   content: string;
   chunk_summary?: string;
+  chunk_snapshot?: string;
   score?: number;
   metadata?: Record<string, unknown>;
 }
