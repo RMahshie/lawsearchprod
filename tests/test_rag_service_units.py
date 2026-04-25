@@ -1,3 +1,4 @@
+from app.services.llm_factory import describe_model_strategy, resolve_model
 from app.services.rag_service import RAGService
 from app.services.vector_store_service import division_acronym, stable_chunk_id
 
@@ -26,7 +27,7 @@ def test_division_acronym_and_chunk_id_are_stable():
 
 
 def test_map_chunk_returns_facts_and_summary(monkeypatch):
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task: FakeLLM())
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: FakeLLM())
     service = RAGService.__new__(RAGService)
 
     result = service._map_chunk(
@@ -104,7 +105,7 @@ def test_response_includes_sources_debug_chunks_and_division_results():
 
 
 def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task: FakeLLM())
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: FakeLLM())
 
     class FakeVectorStore:
         def retrieve(self, question, division, k):
@@ -206,3 +207,16 @@ def test_reduce_fanout_sends_one_job_per_selected_division():
     assert [send.node for send in sends] == ["reduce_division", "reduce_division"]
     assert [send.arg["division"] for send in sends] == ["AAA", "BBB"]
     assert [len(send.arg["mapped_items"]) for send in sends] == [1, 1]
+
+
+def test_model_strategy_resolves_by_speed_and_task():
+    assert resolve_model("quick", "routing").model == "gpt-5.4-nano"
+    assert resolve_model("quick", "map").model == "gpt-5.4-nano"
+    assert resolve_model("quick", "synthesize").model == "gpt-5.4-mini"
+    assert resolve_model("normal", "synthesize").reasoning_effort == "low"
+    assert resolve_model("long", "reduce").reasoning_effort == "medium"
+    assert resolve_model("long", "synthesize").reasoning_effort == "medium"
+    assert (
+        describe_model_strategy("long")
+        == "map:gpt-5.4-mini, reduce:gpt-5.4(reasoning=medium), synthesize:gpt-5.4(reasoning=medium)"
+    )

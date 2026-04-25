@@ -32,7 +32,7 @@ class IngestionService:
     def __init__(self):
         self.settings = get_settings()
 
-    def ingest(self, embedding_model: str, clear_existing: bool = True) -> int:
+    def ingest(self, embedding_model: str, clear_existing: bool = True, chunk_size: int | None = None) -> int:
         """Rebuild per-division Chroma stores and return processed count."""
         vectorstore_dir = Path(self.settings.vectorstore_dir)
         clear_chroma_system_cache()
@@ -46,7 +46,7 @@ class IngestionService:
         for division, store_name in self.settings.subcommittee_stores.items():
             bill_path = self._bill_path_for_store(store_name)
             text = self._extract_division_text(bill_path, self._division_letter(store_name))
-            documents = self._chunk_documents(text, division, bill_path.name)
+            documents = self._chunk_documents(text, division, bill_path.name, chunk_size)
             if not documents:
                 continue
 
@@ -92,9 +92,15 @@ class IngestionService:
         end = matches[match_index + 1].start() if match_index + 1 < len(matches) else len(text)
         return text[start:end].strip()
 
-    def _chunk_documents(self, text: str, division: str, source_file: str) -> list[Document]:
-        chunk_size = self.settings.chunk_size
-        overlap = self.settings.chunk_overlap
+    def _chunk_documents(
+        self,
+        text: str,
+        division: str,
+        source_file: str,
+        chunk_size: int | None = None,
+    ) -> list[Document]:
+        chunk_size = chunk_size or self.settings.chunk_size
+        overlap = min(self.settings.chunk_overlap, max(chunk_size // 8, 1))
         docs: list[Document] = []
 
         start = 0

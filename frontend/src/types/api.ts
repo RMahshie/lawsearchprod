@@ -82,6 +82,7 @@ export interface ErrorResponse {
 export interface IngestRequest {
   embedding_model: string;
   clear_existing?: boolean;
+  chunk_size?: number;
 }
 
 export interface IngestResponse {
@@ -89,6 +90,7 @@ export interface IngestResponse {
   message: string;
   embedding_model: string;
   divisions_processed: number;
+  chunk_size?: number;
   processing_time: number;
   timestamp: string;
 }

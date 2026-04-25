@@ -162,6 +162,7 @@ async def ingest_data(
         # Perform the ingestion
         response, used_model = await rag_service.ingest_data(
             embedding_model=request.embedding_model,
+            chunk_size=request.chunk_size,
             clear_existing=request.clear_existing,
             ingest_id=ingest_id
         )

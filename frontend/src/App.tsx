@@ -37,6 +37,12 @@ const queryClient = new QueryClient({
   },
 });
 
+const AVAILABLE_CHUNK_SIZES = [
+  { value: '1000', label: 'Small', note: 'More precise retrieval, less context per hit.' },
+  { value: '1500', label: 'Balanced', note: 'Default balance of precision and context.' },
+  { value: '2200', label: 'Large', note: 'More context per chunk, less targeted retrieval.' },
+] as const;
+
 function AppContent() {
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [lastQuestion, setLastQuestion] = useState('');
@@ -48,6 +54,7 @@ function AppContent() {
   const [selectedDivisions, setSelectedDivisions] = useState<DivisionName[]>([]);
   const [modelOverride, setModelOverride] = useState('');
   const [embeddingModel, setEmbeddingModel] = useState<string>(AVAILABLE_EMBEDDING_MODELS[0].value);
+  const [ingestChunkSize, setIngestChunkSize] = useState('1500');
   const [ingestStatus, setIngestStatus] = useState<string | null>(null);
   const [ingestPending, setIngestPending] = useState(false);
 
@@ -79,9 +86,12 @@ function AppContent() {
       const response = await handleIngest({
         embedding_model: embeddingModel,
         clear_existing: true,
+        chunk_size: Number(ingestChunkSize),
       });
       void refetchStatus();
-      setIngestStatus(`${response.divisions_processed} divisions rebuilt in ${response.processing_time.toFixed(1)}s`);
+      setIngestStatus(
+        `${response.divisions_processed} divisions rebuilt with ${response.chunk_size ?? ingestChunkSize}-char chunks in ${response.processing_time.toFixed(1)}s`
+      );
     } catch (error) {
       setIngestStatus(error instanceof Error ? error.message : 'Ingestion failed');
     } finally {
@@ -116,7 +126,7 @@ function AppContent() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="grid min-h-screen grid-cols-[400px_1fr]">
         <aside className="border-r bg-sidebar text-sidebar-foreground">
-          <div className="flex h-screen flex-col gap-3 overflow-y-auto p-3">
+          <div className="flex flex-col gap-3 p-3">
             <div className="px-1 py-2">
               <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">LawSearch</div>
               <div className="mt-1 text-xl font-semibold tracking-tight">Control Rail</div>
@@ -142,6 +152,26 @@ function AppContent() {
                   </SelectGroup>
                 </SelectContent>
               </Select>
+              <ControlRow label="Chunk size">
+                <Select value={ingestChunkSize} onValueChange={setIngestChunkSize}>
+                  <SelectTrigger className="w-32 rounded-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {AVAILABLE_CHUNK_SIZES.map((size) => (
+                        <SelectItem key={size.value} value={size.value}>
+                          {size.label} ({size.value})
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </ControlRow>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Chunk size controls source text length during ingestion. Smaller chunks are sharper;
+                larger chunks keep more surrounding context.
+              </p>
               <Button className="w-full rounded-sm" onClick={runIngestion} disabled={ingestPending}>
                 {ingestPending ? 'Ingesting...' : 'Run Ingestion'}
               </Button>
@@ -232,7 +262,7 @@ function AppContent() {
             </Badge>
           </div>
 
-          <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-8">
+          <div className="flex flex-1 flex-col gap-5 p-8">
             <Card className="rounded-sm border-border/80">
               <CardHeader>
                 <CardTitle>Query Workspace</CardTitle>

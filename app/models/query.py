@@ -381,6 +381,14 @@ class IngestRequest(BaseModel):
         example=True
     )
 
+    chunk_size: Optional[int] = Field(
+        default=1500,
+        ge=600,
+        le=3000,
+        description="Approximate characters per source chunk. Smaller chunks improve precision; larger chunks preserve more surrounding context.",
+        example=1500
+    )
+
     @field_validator('embedding_model')
     @classmethod
     def validate_embedding_model(cls, v):
@@ -400,7 +408,8 @@ class IngestRequest(BaseModel):
         json_schema_extra={
             "example": {
                 "embedding_model": "text-embedding-ada-002",
-                "clear_existing": True
+                "clear_existing": True,
+                "chunk_size": 1500
             }
         }
     )
@@ -432,6 +441,12 @@ class IngestResponse(BaseModel):
         ...,
         description="Number of divisions processed",
         example=14
+    )
+
+    chunk_size: Optional[int] = Field(
+        default=None,
+        description="Chunk size used for ingestion",
+        example=1500
     )
 
     processing_time: float = Field(

@@ -37,7 +37,7 @@ from app.models.query import (
     SourceDocument,
 )
 from app.services.ingestion_service import IngestionService
-from app.services.llm_factory import create_chat_model, resolve_model
+from app.services.llm_factory import create_chat_model, describe_model_strategy, format_model_spec, resolve_model
 from app.services.vector_store_service import VectorStoreService, division_acronym
 
 logger = logging.getLogger(__name__)
@@ -79,6 +79,7 @@ class DivisionAnswerState(TypedDict):
 
 
 class RAGState(TypedDict, total=False):
+    query_id: str
     question: str
     thinking_speed: str
     max_results: int
@@ -149,9 +150,10 @@ class RAGService:
         start_time = time.time()
         query_id = query_id or f"query_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
         thinking_speed = request.thinking_speed or "normal"
-        model_used = resolve_model(thinking_speed, request.model_override)
+        model_used = describe_model_strategy(thinking_speed, request.model_override)
 
         state: RAGState = {
+            "query_id": query_id,
             "question": request.question,
             "thinking_speed": thinking_speed,
             "max_results": retrieval_k_for_request(request),
@@ -166,6 +168,19 @@ class RAGService:
             "division_answers": [],
             "final_answer": "",
         }
+        self._debug_log(
+            "query_start query_id=%s speed=%s model=%s max_results=%s include_sources=%s "
+            "debug_chunks=%s filter_count=%s override=%s question_chars=%s",
+            query_id,
+            thinking_speed,
+            model_used,
+            state["max_results"],
+            state["include_sources"],
+            state["debug_chunks"],
+            len(request.divisions_filter or []),
+            bool(request.model_override),
+            len(request.question),
+        )
 
         try:
             result = self._graph.invoke(state, config={"recursion_limit": 50})
@@ -175,15 +190,37 @@ class RAGService:
             raise Exception(f"RAG processing failed: {exc}") from exc
 
         processing_time = time.time() - start_time
+        self._debug_log(
+            "query_done query_id=%s duration=%.2fs selected_divisions=%s retrieved_chunks=%s "
+            "mapped_chunks=%s division_answers=%s",
+            query_id,
+            processing_time,
+            len(result.get("selected_divisions", [])),
+            len(result.get("retrieved_chunks", [])),
+            len(result.get("mapped_chunks", [])),
+            len(result.get("division_answers", [])),
+        )
         return self._to_response(result, processing_time, query_id)
 
     def _route_divisions(self, state: RAGState) -> dict[str, Any]:
+        start_time = time.time()
         requested_filter = state.get("divisions_filter")
         if requested_filter:
+            self._debug_log(
+                "route query_id=%s source=filter duration=%.2fs selected=%s",
+                state.get("query_id", "unknown"),
+                time.time() - start_time,
+                len(requested_filter),
+            )
             return {"selected_divisions": requested_filter}
 
         valid_divisions = list(self.settings.subcommittee_stores.keys())
-        routing_llm = create_chat_model("routing", "routing").with_structured_output(RouteDecision)
+        routing_model = resolve_model(state.get("thinking_speed", "normal"), "routing")
+        routing_llm = create_chat_model(
+            routing_model.model,
+            "routing",
+            routing_model.reasoning_effort,
+        ).with_structured_output(RouteDecision)
         allowed_divisions = "\n- ".join(valid_divisions)
         decision = routing_llm.invoke(
             [
@@ -205,6 +242,14 @@ class RAGService:
         if not selected:
             logger.warning("Router returned no valid divisions; querying all divisions as fallback")
             selected = valid_divisions
+        self._debug_log(
+            "route query_id=%s source=llm model=%s duration=%.2fs selected=%s divisions=%s",
+            state.get("query_id", "unknown"),
+            format_model_spec(routing_model),
+            time.time() - start_time,
+            len(selected),
+            [division_acronym(division) for division in selected],
+        )
         return {"selected_divisions": selected}
 
     def _fan_out_divisions(self, state: RAGState) -> list[Send]:
@@ -213,6 +258,7 @@ class RAGService:
                 "retrieve_division",
                 {
                     "question": state["question"],
+                    "query_id": state.get("query_id", "unknown"),
                     "division": division,
                     "max_results": state["max_results"],
                 },
@@ -221,11 +267,20 @@ class RAGService:
         ]
 
     def _retrieve_division(self, state: RAGState) -> dict[str, Any]:
+        start_time = time.time()
         division = state["division"]  # type: ignore[typeddict-item]
         chunks = self.vectorstores.retrieve(
             question=state["question"],
             division=division,
             k=state["max_results"],
+        )
+        self._debug_log(
+            "retrieve query_id=%s division=%s requested_k=%s returned=%s duration=%.2fs",
+            state.get("query_id", "unknown"),
+            division_acronym(division),
+            state["max_results"],
+            len(chunks),
+            time.time() - start_time,
         )
         return {"retrieved_chunks": chunks}
 
@@ -238,18 +293,24 @@ class RAGService:
                 "map_chunk",
                 {
                     "question": state["question"],
+                    "query_id": state.get("query_id", "unknown"),
                     "chunk": chunk,
-                    "thinking_speed": state["thinking_speed"],
-                    "model_used": state["model_used"],
+                    "thinking_speed": state.get("thinking_speed", "normal"),
+                    "model_override": state.get("model_override"),
                 },
             )
             for chunk in state.get("retrieved_chunks", [])
         ]
 
     def _map_chunk(self, state: RAGState) -> dict[str, Any]:
+        start_time = time.time()
         chunk: RetrievedChunkState = state["chunk"]  # type: ignore[typeddict-item]
-        model = state["model_used"]
-        llm = create_chat_model(model, "map")
+        thinking_speed = state.get("thinking_speed", "normal")
+        model_override = state.get("model_override")
+        map_model = resolve_model(thinking_speed, "map", model_override)
+        summary_model = resolve_model(thinking_speed, "summary", model_override)
+        map_llm = create_chat_model(map_model.model, "map", map_model.reasoning_effort)
+        summary_llm = create_chat_model(summary_model.model, "summary", summary_model.reasoning_effort)
         question = state["question"]
 
         extraction_prompt = (
@@ -268,8 +329,8 @@ class RAGService:
         )
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            facts_future = executor.submit(self._invoke_text, llm, extraction_prompt)
-            summary_future = executor.submit(self._invoke_text, llm, summary_prompt)
+            facts_future = executor.submit(self._invoke_text, map_llm, extraction_prompt)
+            summary_future = executor.submit(self._invoke_text, summary_llm, summary_prompt)
             extracted_facts = facts_future.result()
             chunk_summary = summary_future.result()
 
@@ -283,6 +344,17 @@ class RAGService:
             "score": chunk.get("score"),
             "metadata": chunk.get("metadata", {}),
         }
+        self._debug_log(
+            "map query_id=%s chunk_id=%s division=%s map_model=%s summary_model=%s duration=%.2fs facts_chars=%s summary_chars=%s",
+            state.get("query_id", "unknown"),
+            chunk["chunk_id"],
+            chunk["division_acronym"],
+            format_model_spec(map_model),
+            format_model_spec(summary_model),
+            time.time() - start_time,
+            len(extracted_facts),
+            len(chunk_summary),
+        )
         return {"mapped_chunks": [mapped]}
 
     def _fan_out_reduce_divisions(self, state: RAGState) -> dict[str, Any]:
@@ -303,31 +375,39 @@ class RAGService:
                 "reduce_division",
                 {
                     "question": state["question"],
+                    "query_id": state.get("query_id", "unknown"),
                     "division": division,
                     "division_acronym": division_acronym(division),
                     "mapped_items": by_division.get(division, []),
                     "chunks_retrieved": retrieved_counts.get(division, 0),
-                    "model_used": state["model_used"],
+                    "thinking_speed": state.get("thinking_speed", "normal"),
+                    "model_override": state.get("model_override"),
                 },
             )
             for division in state.get("selected_divisions", [])
         ]
 
     def _reduce_division(self, state: RAGState) -> dict[str, Any]:
+        start_time = time.time()
         division = state["division"]  # type: ignore[typeddict-item]
         mapped_items: list[MappedChunkState] = state.get("mapped_items", [])  # type: ignore[assignment]
         chunks_retrieved = state.get("chunks_retrieved", 0)
-        model = state["model_used"]
-        llm = create_chat_model(model, "reduce")
+        reduce_model = resolve_model(
+            state.get("thinking_speed", "normal"),
+            "reduce",
+            state.get("model_override"),
+        )
+        llm = create_chat_model(reduce_model.model, "reduce", reduce_model.reasoning_effort)
 
         facts = "\n\n".join(item["extracted_facts"] for item in mapped_items)
         if not facts.strip():
             answer = "No relevant facts found for this division."
         else:
             prompt = (
-                "Synthesize the extracted facts into a concise division-level answer. "
+                "Synthesize the extracted facts into a clear division-level answer. "
                 "Preserve all dollar figures and compact citation markers exactly as provided. "
-                "Use bullets when helpful.\n\n"
+                "Use direct language, clear numbers, and no filler. Organize by account or program "
+                "when that helps readability.\n\n"
                 f"Question:\n{state['question']}\n\n"
                 f"Division: {division}\n\n"
                 f"Extracted facts:\n{facts}"
@@ -341,27 +421,65 @@ class RAGService:
             "source_chunk_ids": [item["chunk_id"] for item in mapped_items],
             "chunks_retrieved": chunks_retrieved,
         }
+        self._debug_log(
+            "reduce query_id=%s division=%s model=%s mapped_items=%s input_chars=%s duration=%.2fs answer_chars=%s",
+            state.get("query_id", "unknown"),
+            state["division_acronym"],  # type: ignore[typeddict-item]
+            format_model_spec(reduce_model),
+            len(mapped_items),
+            len(facts),
+            time.time() - start_time,
+            len(answer),
+        )
         return {"division_answers": [division_answer]}
 
     def _synthesize_final(self, state: RAGState) -> dict[str, Any]:
+        start_time = time.time()
         division_answers = state.get("division_answers", [])
         if not division_answers:
             return {"final_answer": "No answers found."}
 
-        model = state["model_used"]
-        llm = create_chat_model(model, "synthesize")
+        if len(division_answers) == 1:
+            answer = division_answers[0]["answer"]
+            self._debug_log(
+                "synthesize_skip query_id=%s reason=single_division answer_chars=%s",
+                state.get("query_id", "unknown"),
+                len(answer),
+            )
+            return {"final_answer": answer}
+
+        synthesize_model = resolve_model(
+            state.get("thinking_speed", "normal"),
+            "synthesize",
+            state.get("model_override"),
+        )
+        llm = create_chat_model(
+            synthesize_model.model,
+            "synthesize",
+            synthesize_model.reasoning_effort,
+        )
         context = "\n\n".join(
             f"## {item['division']} [{item['division_acronym']}]\n{item['answer']}"
             for item in division_answers
         )
         prompt = (
             "Create the final answer from the division-level answers. "
-            "Keep it concise, policy-brief style, numerically precise, and preserve citation markers. "
+            "Use clear language, clear numbers, and no filler. Preserve citation markers. "
             "When mentioning figures, keep the citation marker immediately after the figure or clause.\n\n"
             f"Question:\n{state['question']}\n\n"
             f"Division answers:\n{context}"
         )
-        return {"final_answer": self._invoke_text(llm, prompt)}
+        final_answer = self._invoke_text(llm, prompt)
+        self._debug_log(
+            "synthesize query_id=%s model=%s division_answers=%s input_chars=%s duration=%.2fs answer_chars=%s",
+            state.get("query_id", "unknown"),
+            format_model_spec(synthesize_model),
+            len(division_answers),
+            len(context),
+            time.time() - start_time,
+            len(final_answer),
+        )
+        return {"final_answer": final_answer}
 
     def _invoke_text(self, llm: Any, prompt: str) -> str:
         response = llm.invoke(prompt)
@@ -369,6 +487,11 @@ class RAGService:
         if isinstance(content, list):
             return "\n".join(str(block) for block in content)
         return str(content).strip()
+
+    def _debug_log(self, message: str, *args: Any) -> None:
+        """Emit concise RAG timing traces only when DEBUG=true."""
+        if getattr(getattr(self, "settings", None), "debug", False):
+            logger.info("RAG_DEBUG " + message, *args)
 
     def _to_response(self, result: RAGState, processing_time: float, query_id: str) -> QueryResponse:
         mapped_by_chunk = {chunk["chunk_id"]: chunk for chunk in result.get("mapped_chunks", [])}
@@ -436,6 +559,7 @@ class RAGService:
     async def ingest_data(
         self,
         embedding_model: str,
+        chunk_size: int | None = None,
         clear_existing: bool = True,
         ingest_id: Optional[str] = None,
     ) -> tuple[IngestResponse, str]:
@@ -445,9 +569,11 @@ class RAGService:
 
         try:
             self.vectorstores.clear_cached_stores()
-            divisions_processed = self.ingestion.ingest(embedding_model, clear_existing)
+            divisions_processed = self.ingestion.ingest(embedding_model, clear_existing, chunk_size)
             self.vectorstores.reset_embedding_model(embedding_model)
             self.settings.embedding_model = embedding_model
+            if chunk_size:
+                self.settings.chunk_size = chunk_size
         except Exception as exc:
             elapsed = time.time() - start_time
             logger.error("Ingestion %s failed after %.2fs: %s", ingest_id, elapsed, exc, exc_info=True)
@@ -460,6 +586,7 @@ class RAGService:
                 message=f"Successfully ingested {divisions_processed} divisions using {embedding_model}",
                 embedding_model=embedding_model,
                 divisions_processed=divisions_processed,
+                chunk_size=chunk_size or self.settings.chunk_size,
                 processing_time=processing_time,
             ),
             embedding_model,

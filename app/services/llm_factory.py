@@ -2,42 +2,91 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from functools import lru_cache
 
 from langchain_openai import ChatOpenAI
 
 
-DEFAULT_MODELS = {
-    "quick": "gpt-4o-mini",
-    "normal": "gpt-4o",
-    "long": "gpt-5",
+@dataclass(frozen=True)
+class ModelSpec:
+    model: str
+    reasoning_effort: str | None = None
+
+
+def format_model_spec(spec: ModelSpec) -> str:
+    """Format model labels with reasoning when relevant."""
+    if spec.reasoning_effort:
+        return f"{spec.model}(reasoning={spec.reasoning_effort})"
+    return spec.model
+
+
+ROUTING_MODEL = ModelSpec("gpt-5.4-nano")
+
+MODEL_STRATEGIES = {
+    "quick": {
+        "map": ModelSpec("gpt-5.4-nano"),
+        "summary": ModelSpec("gpt-5.4-nano"),
+        "reduce": ModelSpec("gpt-5.4-nano"),
+        "synthesize": ModelSpec("gpt-5.4-mini"),
+    },
+    "normal": {
+        "map": ModelSpec("gpt-5.4-mini"),
+        "summary": ModelSpec("gpt-5.4-mini"),
+        "reduce": ModelSpec("gpt-5.4", reasoning_effort="low"),
+        "synthesize": ModelSpec("gpt-5.4", reasoning_effort="low"),
+    },
+    "long": {
+        "map": ModelSpec("gpt-5.4-mini"),
+        "summary": ModelSpec("gpt-5.4-mini"),
+        "reduce": ModelSpec("gpt-5.4", reasoning_effort="medium"),
+        "synthesize": ModelSpec("gpt-5.4", reasoning_effort="medium"),
+    },
 }
 
-ROUTING_MODEL = "gpt-4o-mini"
+SPEED_ALIASES = {
+    "medium": "normal",
+    "thinking": "long",
+}
 
 
-def model_for_speed(thinking_speed: str) -> str:
-    """Return the default generation model for a thinking-speed preset."""
-    return DEFAULT_MODELS.get(thinking_speed, DEFAULT_MODELS["normal"])
+def normalize_speed(thinking_speed: str) -> str:
+    """Normalize UI/user aliases to internal speed keys."""
+    return SPEED_ALIASES.get(thinking_speed, thinking_speed)
 
 
-def resolve_model(thinking_speed: str, model_override: str | None = None) -> str:
-    """Resolve the effective OpenAI model for a request."""
-    return model_override or model_for_speed(thinking_speed)
-
-
-@lru_cache(maxsize=32)
-def create_chat_model(model: str, task: str) -> ChatOpenAI:
-    """Create and cache ChatOpenAI clients by model/task."""
+def resolve_model(thinking_speed: str, task: str, model_override: str | None = None) -> ModelSpec:
+    """Resolve the effective OpenAI model for a speed/task pair."""
     if task == "routing":
-        return ChatOpenAI(model=ROUTING_MODEL, temperature=0)
+        return ROUTING_MODEL
 
-    if model == "gpt-5":
-        reasoning_effort = "high" if task in {"reduce", "synthesize"} else "medium"
+    if model_override:
+        return ModelSpec(model_override)
+
+    speed = normalize_speed(thinking_speed)
+    strategy = MODEL_STRATEGIES.get(speed, MODEL_STRATEGIES["normal"])
+    return strategy.get(task, strategy["synthesize"])
+
+
+def describe_model_strategy(thinking_speed: str, model_override: str | None = None) -> str:
+    """Return a compact response label for the active model strategy."""
+    if model_override:
+        return model_override
+
+    speed = normalize_speed(thinking_speed)
+    strategy = MODEL_STRATEGIES.get(speed, MODEL_STRATEGIES["normal"])
+    ordered_tasks = ("map", "reduce", "synthesize")
+    return ", ".join(f"{task}:{format_model_spec(strategy[task])}" for task in ordered_tasks)
+
+
+@lru_cache(maxsize=64)
+def create_chat_model(model: str, task: str, reasoning_effort: str | None = None) -> ChatOpenAI:
+    """Create and cache ChatOpenAI clients by model/task."""
+    if reasoning_effort:
         return ChatOpenAI(
             model=model,
             reasoning_effort=reasoning_effort,
-            model_kwargs={"verbosity": "medium"},
+            verbosity="medium",
         )
 
     return ChatOpenAI(model=model, temperature=0)
