@@ -20,7 +20,7 @@ Core backend modules:
 
 ## Query Flow
 
-1. API receives a question plus controls like `max_results`, `divisions_filter`, `include_sources`, `debug_chunks`, `thinking_speed`, and optional model override.
+1. API receives a question plus controls like `max_results`, `divisions_filter`, `include_sources`, `debug_chunks`, and `thinking_speed`.
 2. Router selects relevant appropriations divisions unless the user provides a filter.
 3. Retriever pulls matching chunks from each selected division collection in Chroma.
 4. Map step runs per chunk, extracting facts and generating a short chunk summary for the UI.

@@ -10,7 +10,6 @@ export interface QueryRequest {
   divisions_filter?: string[];
   debug_chunks?: boolean;
   thinking_speed?: 'quick' | 'normal' | 'long';
-  model_override?: string;
 }
 
 export interface SourceDocument {
@@ -33,6 +32,12 @@ export interface DebugChunk {
   metadata?: Record<string, unknown>;
 }
 
+export interface DebugDivisionQuery {
+  division: string;
+  division_acronym: string;
+  query: string;
+}
+
 export interface DivisionResult {
   division: string;
   division_acronym: string;
@@ -48,10 +53,19 @@ export interface QueryResponse {
   division_results: DivisionResult[];
   sources?: SourceDocument[];
   debug_chunks?: DebugChunk[];
+  debug_division_queries?: DebugDivisionQuery[];
   timestamp: string;
   query_id?: string;
   thinking_speed?: 'quick' | 'normal' | 'long';
   model_used?: string;
+}
+
+export interface QueryProgressEvent {
+  query_id: string;
+  stage: string;
+  message: string;
+  details?: Record<string, unknown>;
+  timestamp: string;
 }
 
 export interface HealthResponse {

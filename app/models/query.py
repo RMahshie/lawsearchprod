@@ -56,13 +56,6 @@ class QueryRequest(BaseModel):
         example="normal"
     )
 
-    model_override: Optional[str] = Field(
-        default=None,
-        max_length=100,
-        description="Optional OpenAI chat model override. If omitted, thinking_speed controls model selection.",
-        example="gpt-4o"
-    )
-
     @field_validator('question')
     @classmethod
     def validate_question(cls, v):
@@ -109,23 +102,6 @@ class QueryRequest(BaseModel):
 
         return v
 
-    @field_validator('model_override')
-    @classmethod
-    def validate_model_override(cls, v):
-        """Allow explicit OpenAI model names without opening multi-provider support."""
-        if v is None:
-            return v
-
-        value = v.strip()
-        if not value:
-            return None
-
-        allowed_prefixes = ("gpt-", "o1", "o3", "o4")
-        if not value.startswith(allowed_prefixes):
-            raise ValueError("model_override must be an OpenAI chat model name")
-
-        return value
-
     @field_validator('thinking_speed')
     @classmethod
     def validate_thinking_speed(cls, v):
@@ -146,8 +122,7 @@ class QueryRequest(BaseModel):
                 "max_results": 8,
                 "include_sources": True,
                 "divisions_filter": None,
-                "thinking_speed": "normal",
-                "model_override": None
+                "thinking_speed": "normal"
             }
         }
     )
@@ -212,6 +187,13 @@ class DebugChunk(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
+class DebugDivisionQuery(BaseModel):
+    """Per-division retrieval query returned when debug_chunks is enabled."""
+    division: str
+    division_acronym: str
+    query: str
+
+
 class DivisionResult(BaseModel):
     """Per-division reduction output."""
     division: str
@@ -273,6 +255,12 @@ class QueryResponse(BaseModel):
     debug_chunks: Optional[List[DebugChunk]] = Field(
         default=None,
         description="Retrieved document chunks for debugging (only if requested)",
+        example=None
+    )
+
+    debug_division_queries: Optional[List[DebugDivisionQuery]] = Field(
+        default=None,
+        description="Refined per-division retrieval questions for debugging (only if requested)",
         example=None
     )
 

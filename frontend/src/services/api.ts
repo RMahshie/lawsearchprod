@@ -3,6 +3,7 @@ import type { AxiosResponse } from 'axios';
 import type {
   QueryRequest,
   QueryResponse,
+  QueryProgressEvent,
   HealthResponse,
   StatusResponse,
   IngestRequest,
@@ -109,6 +110,79 @@ export const submitQuery = async (queryRequest: QueryRequest): Promise<QueryResp
     console.error('Query submission failed:', error);
     throw error;
   }
+};
+
+/**
+ * Submit a query and receive live Server-Sent Events progress updates.
+ */
+export const submitQueryStream = async (
+  queryRequest: QueryRequest,
+  onProgress: (progress: QueryProgressEvent) => void
+): Promise<QueryResponse> => {
+  const response = await fetch(`${API_BASE_URL}/api/query/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(queryRequest),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || 'Query stream failed');
+  }
+
+  if (!response.body) {
+    throw new Error('Query stream did not return a response body');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let result: QueryResponse | null = null;
+
+  const handleEvent = (rawEvent: string) => {
+    const lines = rawEvent.split('\n');
+    let eventName = 'message';
+    const dataLines: string[] = [];
+
+    for (const line of lines) {
+      if (line.startsWith('event:')) {
+        eventName = line.slice('event:'.length).trim();
+      } else if (line.startsWith('data:')) {
+        dataLines.push(line.slice('data:'.length).trimStart());
+      }
+    }
+
+    if (dataLines.length === 0) return;
+
+    const payload = JSON.parse(dataLines.join('\n'));
+    if (eventName === 'progress') {
+      onProgress(payload as QueryProgressEvent);
+    } else if (eventName === 'result') {
+      result = payload as QueryResponse;
+    } else if (eventName === 'error') {
+      throw new Error(payload.message || 'Query stream failed');
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+
+    const events = buffer.split('\n\n');
+    buffer = events.pop() ?? '';
+    for (const event of events) {
+      if (event.trim()) handleEvent(event);
+    }
+
+    if (done) break;
+  }
+
+  if (buffer.trim()) handleEvent(buffer);
+  if (!result) throw new Error('Query stream ended without a result');
+
+  return result;
 };
 
 /**

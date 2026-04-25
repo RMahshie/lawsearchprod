@@ -84,6 +84,28 @@ export default function QueryResults({ result, question }: QueryResultsProps) {
         </Card>
       )}
 
+      {result.debug_division_queries && result.debug_division_queries.length > 0 && (
+        <Card className="rounded-sm">
+          <CardHeader>
+            <CardTitle>Debug Division Queries</CardTitle>
+            <CardDescription>Refined retrieval questions sent to each division.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-3">
+              {result.debug_division_queries.map((item) => (
+                <div key={item.division} className="border bg-muted/30 p-3">
+                  <div className="mb-2 flex items-center gap-2 text-xs">
+                    <Badge variant="outline" className="rounded-sm">{item.division_acronym}</Badge>
+                    <span className="text-muted-foreground">{item.division}</span>
+                  </div>
+                  <p className="text-sm leading-relaxed">{item.query}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {result.debug_chunks && result.debug_chunks.length > 0 && (
         <Card className="rounded-sm">
           <CardHeader>

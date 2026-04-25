@@ -10,7 +10,7 @@ The project is built as a service-oriented FastAPI backend with a shadcn React/T
 
 - Natural-language search across federal appropriations laws.
 - LangGraph map-reduce pipeline with division routing, parallel chunk analysis, division-level reduction, and final synthesis.
-- Configurable thinking speed, model override, `max_results`, division filters, source inclusion, and debug chunks.
+- Configurable thinking speed, `max_results`, division filters, source inclusion, and debug chunks.
 - Source-aware UI that highlights dollar figures and shows matching retrieved chunks with generated summaries.
 - Runtime ingestion controls for embedding model and chunk size.
 - Dockerized FastAPI + React stack with health and status endpoints.

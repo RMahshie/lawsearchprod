@@ -10,9 +10,25 @@ class FakeMessage:
 
 class FakeLLM:
     def invoke(self, prompt):
-        if "one concise sentence" in str(prompt):
+        if "UI hover summary" in str(prompt):
             return FakeMessage("Chunk summarizes DHS cybersecurity funding.")
         return FakeMessage("Extracted $10,000,000 for cybersecurity [DHS].")
+
+
+class FakeStructuredLLM:
+    def __init__(self, response):
+        self.response = response
+
+    def invoke(self, prompt):
+        return self.response
+
+
+class FakeRewriteLLM:
+    def __init__(self, response):
+        self.response = response
+
+    def with_structured_output(self, schema):
+        return FakeStructuredLLM(self.response)
 
 
 def test_division_acronym_and_chunk_id_are_stable():
@@ -61,6 +77,13 @@ def test_response_includes_sources_debug_chunks_and_division_results():
         "debug_chunks": True,
         "thinking_speed": "normal",
         "model_used": "gpt-4o",
+        "division_queries": [
+            {
+                "division": "DEPARTMENT OF HOMELAND SECURITY",
+                "division_acronym": "DHS",
+                "query": "How much funding is provided for DHS cybersecurity?",
+            }
+        ],
         "retrieved_chunks": [
             {
                 "chunk_id": "DHS-1-test",
@@ -101,14 +124,34 @@ def test_response_includes_sources_debug_chunks_and_division_results():
     assert response.sources[0].chunk_summary == "Chunk summarizes DHS cybersecurity funding."
     assert response.debug_chunks is not None
     assert response.debug_chunks[0].division_acronym == "DHS"
+    assert response.debug_division_queries is not None
+    assert response.debug_division_queries[0].query == "How much funding is provided for DHS cybersecurity?"
     assert response.division_results[0].source_chunk_ids == ["DHS-1-test"]
 
 
 def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: FakeLLM())
+    from app.services.rag_service import DivisionQueryDecision, DivisionQueryPlan
+
+    def fake_create_chat_model(model, task, reasoning_effort=None):
+        if task == "division_query_rewrite":
+            return FakeRewriteLLM(
+                DivisionQueryPlan(
+                    division_queries=[
+                        DivisionQueryDecision(division="AAA", query="AAA-specific funding"),
+                        DivisionQueryDecision(division="BBB", query="BBB-specific funding"),
+                    ]
+                )
+            )
+        return FakeLLM()
+
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", fake_create_chat_model)
 
     class FakeVectorStore:
+        def __init__(self):
+            self.calls = []
+
         def retrieve(self, question, division, k):
+            self.calls.append((question, division, k))
             return [
                 {
                     "chunk_id": f"{division}-{index}",
@@ -123,7 +166,8 @@ def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
             ]
 
     service = RAGService.__new__(RAGService)
-    service.vectorstores = FakeVectorStore()
+    vectorstores = FakeVectorStore()
+    service.vectorstores = vectorstores
     service._graph = service._build_graph()
 
     result = service._graph.invoke(
@@ -134,7 +178,6 @@ def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
             "include_sources": True,
             "debug_chunks": False,
             "divisions_filter": ["AAA", "BBB"],
-            "model_override": None,
             "model_used": "gpt-4o",
             "selected_divisions": [],
             "retrieved_chunks": [],
@@ -149,6 +192,39 @@ def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
     assert len(result["mapped_chunks"]) == 2
     assert len(result["division_answers"]) == 2
     assert {chunk["division"] for chunk in result["mapped_chunks"]} == {"AAA", "BBB"}
+    assert vectorstores.calls == [
+        ("AAA-specific funding", "AAA", 1),
+        ("BBB-specific funding", "BBB", 1),
+    ]
+
+
+def test_rewrite_division_queries_falls_back_for_missing_division(monkeypatch):
+    from app.services.rag_service import DivisionQueryDecision, DivisionQueryPlan
+
+    monkeypatch.setattr(
+        "app.services.rag_service.create_chat_model",
+        lambda model, task, reasoning_effort=None: FakeRewriteLLM(
+            DivisionQueryPlan(
+                division_queries=[
+                    DivisionQueryDecision(division="AAA", query="AAA-specific funding"),
+                ]
+            )
+        ),
+    )
+    service = RAGService.__new__(RAGService)
+
+    result = service._rewrite_division_queries(
+        {
+            "query_id": "query-test",
+            "question": "How much funding for AAA and BBB?",
+            "selected_divisions": ["AAA", "BBB"],
+        }
+    )
+
+    assert result["division_queries"] == [
+        {"division": "AAA", "division_acronym": "A", "query": "AAA-specific funding"},
+        {"division": "BBB", "division_acronym": "B", "query": "How much funding for AAA and BBB?"},
+    ]
 
 
 def test_reduce_fanout_sends_one_job_per_selected_division():

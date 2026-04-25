@@ -2,15 +2,16 @@ import { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import QueryResults from '@/components/QueryResults';
-import { useApiStatus, useHealthCheck, useSubmitQuery } from './hooks/useApi';
+import { useApiStatus, useHealthCheck } from './hooks/useApi';
 import { useSessionState } from './hooks/useSessionState';
-import { submitIngest } from './services/api';
+import { submitIngest, submitQueryStream } from './services/api';
 import {
   AVAILABLE_DIVISIONS,
   AVAILABLE_EMBEDDING_MODELS,
   type DivisionName,
   type IngestRequest,
   type IngestResponse,
+  type QueryProgressEvent,
   type QueryRequest,
   type QueryResponse,
 } from './types/api';
@@ -52,14 +53,15 @@ function AppContent() {
   const [debugChunks, setDebugChunks] = useState(false);
   const [autoRoute, setAutoRoute] = useState(true);
   const [selectedDivisions, setSelectedDivisions] = useState<DivisionName[]>([]);
-  const [modelOverride, setModelOverride] = useState('');
   const [embeddingModel, setEmbeddingModel] = useState<string>(AVAILABLE_EMBEDDING_MODELS[0].value);
   const [ingestChunkSize, setIngestChunkSize] = useState('1500');
   const [ingestStatus, setIngestStatus] = useState<string | null>(null);
   const [ingestPending, setIngestPending] = useState(false);
+  const [queryPending, setQueryPending] = useState(false);
+  const [queryError, setQueryError] = useState<string | null>(null);
+  const [queryProgress, setQueryProgress] = useState<QueryProgressEvent | null>(null);
 
   const { query, updateQuery } = useSessionState();
-  const submitQueryMutation = useSubmitQuery();
   const { data: healthData, isError: healthError } = useHealthCheck();
   const { data: statusData, refetch: refetchStatus } = useApiStatus();
 
@@ -71,8 +73,18 @@ function AppContent() {
 
   const handleQuery = async (queryRequest: QueryRequest) => {
     setLastQuestion(queryRequest.question);
-    const response = await submitQueryMutation.mutateAsync(queryRequest);
-    setResult(response);
+    setQueryPending(true);
+    setQueryError(null);
+    setQueryProgress(null);
+
+    try {
+      const response = await submitQueryStream(queryRequest, setQueryProgress);
+      setResult(response);
+    } catch (error) {
+      setQueryError(error instanceof Error ? error.message : 'Query failed');
+    } finally {
+      setQueryPending(false);
+    }
   };
 
   const handleIngest = async (ingestRequest: IngestRequest): Promise<IngestResponse> => {
@@ -101,7 +113,7 @@ function AppContent() {
 
   const submitCurrentQuery = () => {
     const trimmed = query.trim();
-    if (!trimmed || submitQueryMutation.isPending) return;
+    if (!trimmed || queryPending) return;
 
     void handleQuery({
       question: trimmed,
@@ -110,7 +122,6 @@ function AppContent() {
       include_sources: includeSources,
       debug_chunks: debugChunks,
       divisions_filter: autoRoute ? undefined : selectedDivisions,
-      model_override: modelOverride.trim() || undefined,
     });
   };
 
@@ -155,7 +166,10 @@ function AppContent() {
               <ControlRow label="Chunk size">
                 <Select value={ingestChunkSize} onValueChange={setIngestChunkSize}>
                   <SelectTrigger className="w-32 rounded-sm">
-                    <SelectValue />
+                    <SelectValue>
+                      {AVAILABLE_CHUNK_SIZES.find((s) => s.value === ingestChunkSize)?.label ??
+                        ingestChunkSize}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
@@ -214,16 +228,6 @@ function AppContent() {
               <ControlRow label="Debug chunks">
                 <Switch checked={debugChunks} onCheckedChange={setDebugChunks} />
               </ControlRow>
-            </ControlCard>
-
-            <ControlCard title="Model Override" description="Optional OpenAI model">
-              <input
-                value={modelOverride}
-                onChange={(event) => setModelOverride(event.target.value)}
-                placeholder="Use speed default"
-                className="h-9 w-full rounded-sm border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <p className="text-xs text-muted-foreground">Leave blank to use the selected thinking speed.</p>
             </ControlCard>
 
             <ControlCard title="Divisions" description="Auto route or target manually">
@@ -287,24 +291,30 @@ function AppContent() {
                     <Badge variant="outline" className="rounded-sm">{thinkingSpeed}</Badge>
                     <Badge variant="outline" className="rounded-sm">{maxResults} chunks/division</Badge>
                     <Badge variant="outline" className="rounded-sm">{autoRoute ? 'auto route' : `${selectedDivisions.length} divisions`}</Badge>
-                    {modelOverride.trim() && <Badge variant="outline" className="rounded-sm">{modelOverride.trim()}</Badge>}
                   </div>
-                  <Button className="rounded-sm" onClick={submitCurrentQuery} disabled={!query.trim() || submitQueryMutation.isPending}>
-                    {submitQueryMutation.isPending ? 'Running...' : 'Run Query'}
+                  <Button className="rounded-sm" onClick={submitCurrentQuery} disabled={!query.trim() || queryPending}>
+                    {queryPending ? 'Running...' : 'Run Query'}
                   </Button>
                 </div>
-                {submitQueryMutation.isError && (
+                {queryError && (
                   <div className="border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {submitQueryMutation.error?.message || 'An unknown error occurred'}
+                    {queryError}
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {submitQueryMutation.isPending && (
+            {queryPending && (
               <Card className="rounded-sm">
                 <CardContent className="flex items-center justify-between py-5 text-sm text-muted-foreground">
-                  <span>Graph is routing divisions, retrieving chunks, and reducing answers.</span>
+                  <div className="flex flex-col gap-1">
+                    <span className="font-medium text-foreground">{queryProgress?.message ?? 'Starting query'}</span>
+                    <span className="text-xs">
+                      {queryProgress?.stage ?? 'queued'}
+                      {typeof queryProgress?.details?.model === 'string' ? ` · ${queryProgress.details.model}` : ''}
+                      {formatProgressDivisions(queryProgress)}
+                    </span>
+                  </div>
                   <span className="h-2 w-28 overflow-hidden bg-muted">
                     <span className="block h-full w-1/2 animate-pulse bg-primary" />
                   </span>
@@ -339,6 +349,17 @@ function ControlRow({ label, children }: { label: string; children: React.ReactN
       <div className="shrink-0">{children}</div>
     </div>
   );
+}
+
+function formatProgressDivisions(progress: QueryProgressEvent | null) {
+  const details = progress?.details;
+  if (!details) return '';
+
+  if (Array.isArray(details.divisions) && details.divisions.length > 0) {
+    return ` · ${details.divisions.join(', ')}`;
+  }
+
+  return typeof details.division === 'string' ? ` · ${details.division}` : '';
 }
 
 function App() {

@@ -5,13 +5,15 @@ Handles POST /api/query and GET /api/health endpoints with proper
 error handling, validation, and response formatting.
 """
 
+import asyncio
+import json
 import uuid
 import logging
 from datetime import datetime
 from typing import Dict, Any
 
-from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Depends, Request, status
+from fastapi.responses import StreamingResponse
 
 from app.models.query import (
     QueryRequest,
@@ -28,6 +30,11 @@ logger = logging.getLogger(__name__)
 
 # Create router for query endpoints
 router = APIRouter()
+
+
+def _sse_event(event: str, data: Dict[str, Any]) -> str:
+    """Format a Server-Sent Event payload."""
+    return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
 
 
 async def get_rag_service_dependency() -> RAGService:
@@ -117,6 +124,92 @@ async def process_query(
                 "query_id": query_id
             }
         )
+
+
+@router.post(
+    "/query/stream",
+    status_code=status.HTTP_200_OK,
+    summary="Process a legislative query with progress events",
+    description="Streams query progress via Server-Sent Events and returns the final QueryResponse as a result event.",
+)
+async def stream_query(
+    request: QueryRequest,
+    http_request: Request,
+    rag_service: RAGService = Depends(get_rag_service_dependency)
+) -> StreamingResponse:
+    """Process a query and stream live graph progress events."""
+    query_id = f"query_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
+    logger.info(f"Streaming query {query_id}: {request.question[:100]}...")
+
+    async def event_generator():
+        queue: asyncio.Queue[tuple[str, Dict[str, Any] | None]] = asyncio.Queue()
+        loop = asyncio.get_running_loop()
+
+        def enqueue(event: str, data: Dict[str, Any] | None = None) -> None:
+            try:
+                loop.call_soon_threadsafe(queue.put_nowait, (event, data))
+            except RuntimeError:
+                logger.debug("Dropped stream event for closed loop: %s", event)
+
+        def progress_callback(progress: Dict[str, Any]) -> None:
+            enqueue("progress", progress)
+
+        def run_query() -> None:
+            try:
+                response = asyncio.run(
+                    rag_service.process_query(
+                        request,
+                        query_id,
+                        progress_callback=progress_callback,
+                    )
+                )
+                payload = json.loads(response.model_dump_json())
+                enqueue("result", payload)
+            except Exception as exc:
+                logger.error("Streaming query %s failed: %s", query_id, exc, exc_info=True)
+                enqueue(
+                    "error",
+                    {
+                        "query_id": query_id,
+                        "message": "An unexpected error occurred while processing your query.",
+                    },
+                )
+            finally:
+                enqueue("close")
+
+        task = asyncio.create_task(asyncio.to_thread(run_query))
+        yield _sse_event(
+            "progress",
+            {
+                "query_id": query_id,
+                "stage": "queued",
+                "message": "Queued query",
+                "details": {},
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+
+        try:
+            while True:
+                if await http_request.is_disconnected():
+                    break
+
+                event, data = await queue.get()
+                if event == "close":
+                    break
+                yield _sse_event(event, data or {})
+        finally:
+            if not task.done():
+                task.cancel()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @router.post(

@@ -55,24 +55,18 @@ def normalize_speed(thinking_speed: str) -> str:
     return SPEED_ALIASES.get(thinking_speed, thinking_speed)
 
 
-def resolve_model(thinking_speed: str, task: str, model_override: str | None = None) -> ModelSpec:
+def resolve_model(thinking_speed: str, task: str) -> ModelSpec:
     """Resolve the effective OpenAI model for a speed/task pair."""
     if task == "routing":
         return ROUTING_MODEL
-
-    if model_override:
-        return ModelSpec(model_override)
 
     speed = normalize_speed(thinking_speed)
     strategy = MODEL_STRATEGIES.get(speed, MODEL_STRATEGIES["normal"])
     return strategy.get(task, strategy["synthesize"])
 
 
-def describe_model_strategy(thinking_speed: str, model_override: str | None = None) -> str:
+def describe_model_strategy(thinking_speed: str) -> str:
     """Return a compact response label for the active model strategy."""
-    if model_override:
-        return model_override
-
     speed = normalize_speed(thinking_speed)
     strategy = MODEL_STRATEGIES.get(speed, MODEL_STRATEGIES["normal"])
     ordered_tasks = ("map", "reduce", "synthesize")
