@@ -28,7 +28,6 @@ __pycache__/
 .idea/
 
 # Local AI assistant instructions
-CLAUDE.md
 AGENTS.md
 
 # Database files (generated locally)
@@ -37,5 +36,4 @@ AGENTS.md
 # Log files
 *.log
 
-.agents/
 .claude/

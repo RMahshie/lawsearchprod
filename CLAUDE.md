@@ -13,7 +13,20 @@ npm run build:frontend      # frontend typecheck + build
 docker-compose up --build   # full stack containers
 ```
 
-Use `python3`, not bare `python`, in this environment. Required env: `OPENAI_API_KEY`. Optional env: `DEBUG`.
+Use `python3`, not bare `python`, in this environment. Required env: `OPENAI_API_KEY`. Optional: `EMBEDDING_MODEL`, `API_HOST`, `API_PORT`, `LOG_LEVEL`, `ENVIRONMENT`.
+
+## Key Files
+
+- `app/main.py`: FastAPI app and router registration.
+- `app/api/endpoints/query.py`: `/api/query`, `/api/query/stream`, `/api/health`, `/api/status`.
+- `app/api/endpoints/storage.py`: storage manager and saved question history endpoints.
+- `app/models/query.py`: Pydantic API contract.
+- `app/services/rag_service.py`: LangGraph query orchestration.
+- `app/services/vector_store_service.py`: Chroma access and chunk IDs/acronyms.
+- `app/services/llm_factory.py`: thinking-speed and OpenAI model selection.
+- `app/services/ingestion_service.py`: rebuilds Chroma stores from bill HTML.
+- `app/core/config.py`: settings and 14-division store mapping.
+- `frontend/src/types/api.ts`: frontend mirror of backend API models.
 
 ## Current RAG Flow
 
@@ -24,7 +37,7 @@ Important invariants:
 - `max_results` means chunks per selected division.
 - Every retrieved chunk, mapped chunk, and division answer carries `division` and `division_acronym`.
 - State reducers append flat lists; grouping by division happens inside fan-out/reduce nodes.
-- `map_chunk` extracts chunk-level facts and source hover metadata; keep source provenance attached to persisted `chunk_id`s.
+- `map_chunk` makes two LLM calls per chunk: extracted facts and one-line `chunk_summary`.
 - Sources are first-class response fields for citation hover UI.
 - Saved history stores source `chunk_id`, `rank`, `chunk_summary`, and `chunk_snapshot`, not source text.
 - Saved history rehydrates source text from Chroma using `vector_store_id + chunk_id`; missing chunks are skipped.
@@ -35,21 +48,9 @@ Important invariants:
 
 `QueryResponse` includes final answer, selected divisions, per-division results, sources, timing, query id, thinking speed, and model used.
 
-## Execution Plans
+## Frontend Direction
 
-For complex features, refactors, migrations, or ambiguous multi-file changes, create an Execution Plan using `.agents/PLANS.md`.
-
-Create task-specific plans under `.agents/plans/`.
-
-Do not implement until the plan is written and approved.
-
-While implementing, keep the plan updated with progress, decisions, discoveries, validation, and remaining work.
-
-## Commit Workflow
-
-As sections of work are completed, create small, logical commits that bundle the related file changes together so the history is easy to review.
-
-Do not add assistant attribution, generated-by tags, or co-author trailers to commits.
+Frontend is still simple. Planned redesign uses shadcn/ui with low-radius, blocky components, restrained black/white/neutral semantic colors, richer query controls, source drilldowns, and figure hover citations backed by returned chunks.
 
 ## Gotchas
 
@@ -57,4 +58,3 @@ Do not add assistant attribution, generated-by tags, or co-author trailers to co
 - Do not rely on a `src/ingest.py`; ingestion now lives in `app/services/ingestion_service.py`.
 - Existing Chroma stores live under `db/chroma/`; source bills live under `data/bills/`.
 - Tests intentionally mock LLM/vector behavior; real query smoke tests require `OPENAI_API_KEY` and populated Chroma stores.
-- Do not add silent fallbacks for required runtime state. Fallbacks are useful only when the substitute preserves the same contract; otherwise fail loudly with a clear error and debug context. Example: retrieval must use the active `vector_store_root` and persisted `chunk_id`s. Falling back to the legacy root Chroma store or inventing fallback chunk IDs can make live results appear to work while saved-history rehydration and citation popovers break later.
