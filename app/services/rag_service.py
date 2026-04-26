@@ -132,7 +132,14 @@ class RAGState(TypedDict, total=False):
 
 
 def retrieval_k_for_request(request: QueryRequest) -> int:
-    """Request max_results means chunks per division."""
+    """Return the number of chunks to retrieve per selected division.
+
+    Args:
+        request: Validated query request containing an optional max_results value.
+
+    Returns:
+        Chunk count per division, falling back to the configured default.
+    """
     return request.max_results or get_settings().default_results_per_division
 
 
@@ -140,6 +147,14 @@ class RAGService:
     """Coordinates routing, retrieval, mapping, reduction, and ingestion."""
 
     def __init__(self):
+        """Initialize RAG dependencies, progress callback storage, and the compiled graph.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+        """
         self.settings = get_settings()
         ensure_storage_ready()
         self.vectorstores = VectorStoreService()
@@ -150,6 +165,14 @@ class RAGService:
         self._graph = self._build_graph()
 
     def _build_graph(self):
+        """Build and compile the LangGraph workflow used for every query.
+
+        Args:
+            None.
+
+        Returns:
+            A compiled LangGraph application that transforms RAGState into final query state.
+        """
         builder = StateGraph(RAGState)
         builder.add_node("route_divisions", self._route_divisions)
         builder.add_node("rewrite_division_queries", self._rewrite_division_queries)
@@ -189,6 +212,16 @@ class RAGService:
         query_id: Optional[str] = None,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> QueryResponse:
+        """Process one query through routing, retrieval, mapping, reduction, and response persistence.
+
+        Args:
+            request: Validated query request from the API layer.
+            query_id: Optional externally generated query identifier.
+            progress_callback: Optional callback that receives streaming progress events.
+
+        Returns:
+            Structured query response with answer, divisions, sources, timing, and metadata.
+        """
         start_time = time.time()
         query_id = query_id or f"query_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
         thinking_speed = request.thinking_speed or "normal"
@@ -281,6 +314,14 @@ class RAGService:
         return response
 
     def _route_divisions(self, state: RAGState) -> dict[str, Any]:
+        """Select which appropriations divisions should be searched for the query.
+
+        Args:
+            state: Current graph state containing the question and optional division filter.
+
+        Returns:
+            Partial state update with selected_divisions.
+        """
         start_time = time.time()
         self._emit_progress(state, "routing", "Finding relevant divisions")
         requested_filter = state.get("divisions_filter")
@@ -335,6 +376,14 @@ class RAGService:
         return {"selected_divisions": selected}
 
     def _rewrite_division_queries(self, state: RAGState) -> dict[str, Any]:
+        """Rewrite the original question into division-specific retrieval queries.
+
+        Args:
+            state: Current graph state containing the original question and selected divisions.
+
+        Returns:
+            Partial state update with per-division retrieval query decisions.
+        """
         start_time = time.time()
         selected_divisions = state.get("selected_divisions", [])
         fallback_queries = [
@@ -419,6 +468,14 @@ class RAGService:
             return {"division_queries": fallback_queries}
 
     def _fan_out_divisions(self, state: RAGState) -> list[Send]:
+        """Create LangGraph send events that retrieve chunks for each selected division.
+
+        Args:
+            state: Current graph state containing selected divisions and rewritten queries.
+
+        Returns:
+            Send commands targeting the retrieve_division node.
+        """
         division_queries = state.get("division_queries") or [
             {
                 "division": division,
@@ -442,6 +499,14 @@ class RAGService:
         ]
 
     def _retrieve_division(self, state: RAGState) -> dict[str, Any]:
+        """Retrieve relevant source chunks for one division from the active vector store.
+
+        Args:
+            state: Per-division graph state containing division, query, vector store, and k.
+
+        Returns:
+            Partial state update containing retrieved_chunks.
+        """
         start_time = time.time()
         division = state["division"]  # type: ignore[typeddict-item]
         self._emit_progress(
@@ -473,9 +538,25 @@ class RAGService:
         return {"retrieved_chunks": chunks}
 
     def _fan_out_chunks(self, state: RAGState) -> dict[str, Any]:
+        """Provide a graph synchronization point before chunk mapping.
+
+        Args:
+            state: Current graph state after retrieval.
+
+        Returns:
+            Empty state update because fan-out is handled by _send_chunks_to_map.
+        """
         return {}
 
     def _send_chunks_to_map(self, state: RAGState) -> list[Send]:
+        """Create LangGraph send events that map every retrieved chunk independently.
+
+        Args:
+            state: Current graph state containing retrieved chunks.
+
+        Returns:
+            Send commands targeting the map_chunk node.
+        """
         return [
             Send(
                 "map_chunk",
@@ -490,6 +571,14 @@ class RAGService:
         ]
 
     def _map_chunk(self, state: RAGState) -> dict[str, Any]:
+        """Extract relevant facts and UI summaries from one retrieved chunk.
+
+        Args:
+            state: Per-chunk graph state containing question, chunk, and thinking speed.
+
+        Returns:
+            Partial state update containing one mapped chunk.
+        """
         start_time = time.time()
         chunk: RetrievedChunkState = state["chunk"]  # type: ignore[typeddict-item]
         thinking_speed = state.get("thinking_speed", "normal")
@@ -587,9 +676,25 @@ class RAGService:
         return {"mapped_chunks": [mapped]}
 
     def _fan_out_reduce_divisions(self, state: RAGState) -> dict[str, Any]:
+        """Provide a graph synchronization point before division reduction.
+
+        Args:
+            state: Current graph state after chunk mapping.
+
+        Returns:
+            Empty state update because fan-out is handled by _send_divisions_to_reduce.
+        """
         return {}
 
     def _send_divisions_to_reduce(self, state: RAGState) -> list[Send]:
+        """Group mapped chunks by division and create reduction send events.
+
+        Args:
+            state: Current graph state containing retrieved and mapped chunks.
+
+        Returns:
+            Send commands targeting the reduce_division node.
+        """
         by_division: dict[str, list[MappedChunkState]] = {}
         retrieved_counts: dict[str, int] = {}
 
@@ -624,6 +729,14 @@ class RAGService:
         ]
 
     def _reduce_division(self, state: RAGState) -> dict[str, Any]:
+        """Synthesize mapped chunk facts into one division-level answer.
+
+        Args:
+            state: Per-division graph state containing mapped items and retrieval counts.
+
+        Returns:
+            Partial state update containing one division answer.
+        """
         start_time = time.time()
         division = state["division"]  # type: ignore[typeddict-item]
         mapped_items: list[MappedChunkState] = state.get("mapped_items", [])  # type: ignore[assignment]
@@ -700,6 +813,14 @@ class RAGService:
         return {"division_answers": [division_answer]}
 
     def _synthesize_final(self, state: RAGState) -> dict[str, Any]:
+        """Combine division-level answers into the final response text.
+
+        Args:
+            state: Current graph state containing all division answers.
+
+        Returns:
+            Partial state update containing final_answer.
+        """
         start_time = time.time()
         division_answers = state.get("division_answers", [])
         if not division_answers:
@@ -787,6 +908,17 @@ class RAGService:
         return {"final_answer": final_answer}
 
     def _invoke_text(self, llm: Any, prompt: str, *, stage: str, query_id: str) -> str:
+        """Invoke an LLM and normalize its response content to plain text.
+
+        Args:
+            llm: Chat model or compatible object with an invoke method.
+            prompt: Prompt string to send to the model.
+            stage: Pipeline stage name used for retry/debug logging.
+            query_id: Query identifier used for retry/debug logging.
+
+        Returns:
+            Stripped text content from the model response.
+        """
         response = self._invoke_with_retry(
             lambda: llm.invoke(prompt),
             stage=stage,
@@ -798,6 +930,16 @@ class RAGService:
         return str(content).strip()
 
     def _invoke_with_retry(self, invoke_fn: Callable[[], Any], *, stage: str, query_id: str) -> Any:
+        """Invoke a callable once and retry once for retryable LLM failures.
+
+        Args:
+            invoke_fn: Zero-argument callable that performs the model request.
+            stage: Pipeline stage name used for debug logging.
+            query_id: Query identifier used for debug logging.
+
+        Returns:
+            Result returned by invoke_fn.
+        """
         try:
             return invoke_fn()
         except Exception as exc:
@@ -815,9 +957,25 @@ class RAGService:
             return invoke_fn()
 
     def _is_retryable_llm_error(self, exc: Exception) -> bool:
+        """Determine whether an LLM exception should be retried.
+
+        Args:
+            exc: Exception raised by an LLM invocation.
+
+        Returns:
+            True when the exception status code is transient, otherwise False.
+        """
         return self._llm_error_status(exc) in {429, 500, 502, 503, 504}
 
     def _llm_error_status(self, exc: Exception) -> int | None:
+        """Extract an HTTP status code from an LLM exception when present.
+
+        Args:
+            exc: Exception raised by an LLM client.
+
+        Returns:
+            Integer HTTP status code if found, otherwise None.
+        """
         status_code = getattr(exc, "status_code", None)
         if isinstance(status_code, int):
             return status_code
@@ -830,12 +988,30 @@ class RAGService:
         return None
 
     def _debug_log(self, message: str, *args: Any) -> None:
-        """Emit concise RAG timing traces only when DEBUG=true."""
+        """Emit concise RAG timing traces only when DEBUG=true.
+
+        Args:
+            message: Logging format string.
+            *args: Values interpolated into the logging format string.
+
+        Returns:
+            None.
+        """
         if getattr(getattr(self, "settings", None), "debug", False):
             logger.info("RAG_DEBUG " + message, *args)
 
     def _emit_progress(self, state_or_query_id: RAGState | str, stage: str, message: str, **details: Any) -> None:
-        """Emit query progress to an optional streaming callback."""
+        """Emit query progress to an optional streaming callback.
+
+        Args:
+            state_or_query_id: Graph state or query id used to find the callback.
+            stage: Machine-readable progress stage.
+            message: Human-readable progress message.
+            **details: Additional structured details included in the progress event.
+
+        Returns:
+            None.
+        """
         query_id = state_or_query_id if isinstance(state_or_query_id, str) else state_or_query_id.get("query_id")
         if not query_id:
             return
@@ -861,6 +1037,16 @@ class RAGService:
         )
 
     def _to_response(self, result: RAGState, processing_time: float, query_id: str) -> QueryResponse:
+        """Convert final graph state into the public QueryResponse model.
+
+        Args:
+            result: Final graph state returned by LangGraph.
+            processing_time: Total query processing time in seconds.
+            query_id: Query identifier to expose in the API response.
+
+        Returns:
+            QueryResponse containing the final answer, divisions, sources, and metadata.
+        """
         mapped_by_chunk = {chunk["chunk_id"]: chunk for chunk in result.get("mapped_chunks", [])}
         sources = self._source_documents(result, mapped_by_chunk) if result.get("include_sources") else None
         debug_chunks = self._debug_chunks(result, mapped_by_chunk) if result.get("debug_chunks") else None
@@ -894,6 +1080,15 @@ class RAGService:
         result: RAGState,
         mapped_by_chunk: dict[str, MappedChunkState],
     ) -> list[SourceDocument]:
+        """Build source document records from retrieved and mapped chunks.
+
+        Args:
+            result: Final graph state containing retrieved chunks.
+            mapped_by_chunk: Mapped chunks keyed by stable chunk id.
+
+        Returns:
+            SourceDocument records for API and saved-result display.
+        """
         return [
             SourceDocument(
                 division=chunk["division"],
@@ -909,6 +1104,14 @@ class RAGService:
         ]
 
     def _debug_division_queries(self, result: RAGState) -> list[DebugDivisionQuery]:
+        """Build debug records showing the retrieval query used for each division.
+
+        Args:
+            result: Final graph state containing division query decisions.
+
+        Returns:
+            DebugDivisionQuery records for optional debug output.
+        """
         return [
             DebugDivisionQuery(
                 division=item["division"],
@@ -923,6 +1126,15 @@ class RAGService:
         result: RAGState,
         mapped_by_chunk: dict[str, MappedChunkState],
     ) -> list[DebugChunk]:
+        """Build debug chunk payloads with full source content and map summaries.
+
+        Args:
+            result: Final graph state containing retrieved chunks.
+            mapped_by_chunk: Mapped chunks keyed by stable chunk id.
+
+        Returns:
+            DebugChunk records for optional debug output.
+        """
         return [
             DebugChunk(
                 chunk_id=chunk["chunk_id"],
@@ -946,6 +1158,19 @@ class RAGService:
         name: str | None = None,
         activate: bool = True,
     ) -> tuple[IngestResponse, str]:
+        """Create a versioned vector store by ingesting all configured bill divisions.
+
+        Args:
+            embedding_model: Embedding model used to vectorize source chunks.
+            chunk_size: Optional character count per chunk.
+            clear_existing: Whether to clear the target vector-store directory first.
+            ingest_id: Optional external ingestion identifier for logging.
+            name: Optional display name for the vector store registry row.
+            activate: Whether to make the new vector store active after success.
+
+        Returns:
+            Tuple of ingestion API response and embedding model used.
+        """
         start_time = time.time()
         ingest_id = ingest_id or f"ingest_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
         logger.info("Starting ingestion %s with embedding model %s", ingest_id, embedding_model)
@@ -1011,6 +1236,14 @@ class RAGService:
         )
 
     async def health_check(self) -> dict[str, str]:
+        """Report whether retrieval and optional history storage are available.
+
+        Args:
+            None.
+
+        Returns:
+            Dictionary with health status, database status, history availability, and model metadata.
+        """
         try:
             if database_available() and SessionLocal is not None:
                 try:
@@ -1051,7 +1284,14 @@ _rag_service: Optional[RAGService] = None
 
 
 def get_rag_service() -> RAGService:
-    """Get or create the process-wide RAG service instance."""
+    """Get or create the process-wide RAG service instance.
+
+    Args:
+        None.
+
+    Returns:
+        Singleton RAGService used by API endpoints.
+    """
     global _rag_service
     if _rag_service is None:
         _rag_service = RAGService()

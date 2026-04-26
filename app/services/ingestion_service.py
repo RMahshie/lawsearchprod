@@ -31,6 +31,14 @@ class IngestionService:
     """Build persisted Chroma stores from the source bill HTML files."""
 
     def __init__(self):
+        """Initialize ingestion service settings.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+        """
         self.settings = get_settings()
 
     def ingest(
@@ -41,7 +49,18 @@ class IngestionService:
         vectorstore_dir: str | Path | None = None,
         vector_store_id: str | None = None,
     ) -> tuple[int, dict[str, int], int]:
-        """Rebuild per-division Chroma stores and return processed count."""
+        """Rebuild per-division Chroma stores from source bill HTML.
+
+        Args:
+            embedding_model: Embedding model used to vectorize chunks.
+            clear_existing: Whether to delete the target vector store directory first.
+            chunk_size: Optional character count per chunk.
+            vectorstore_dir: Optional target Chroma root directory.
+            vector_store_id: Optional registry id stored in chunk metadata.
+
+        Returns:
+            Tuple of processed division count, per-division chunk counts, and total chunks.
+        """
         vectorstore_dir = Path(vectorstore_dir or self.settings.vectorstore_dir)
         clear_chroma_system_cache()
         if clear_existing and vectorstore_dir.exists():
@@ -77,17 +96,42 @@ class IngestionService:
         return divisions_processed, partition_counts, total_chunks
 
     def _bill_path_for_store(self, store_name: str) -> Path:
+        """Resolve the source bill file for a configured division store.
+
+        Args:
+            store_name: Configured Chroma store directory name for a division.
+
+        Returns:
+            Path to the source bill HTML file.
+        """
         if store_name.startswith("Consolidated_Appropriations"):
             return Path(self.settings.data_dir) / "Consolidated_Appropriations_Act_2024_Public_Law.html"
         return Path(self.settings.data_dir) / "Further_Consolidated_Appropriations_Act_2024_Public_Law.html"
 
     def _division_letter(self, store_name: str) -> str:
+        """Extract the division letter from a configured store name.
+
+        Args:
+            store_name: Configured Chroma store directory name for a division.
+
+        Returns:
+            Single-letter division marker.
+        """
         match = re.search(r"_Division_([A-G])_", store_name)
         if not match:
             raise ValueError(f"Could not determine division letter from store name: {store_name}")
         return match.group(1)
 
     def _extract_division_text(self, bill_path: Path, letter: str) -> str:
+        """Extract the text for one division from a bill HTML file.
+
+        Args:
+            bill_path: Path to a source bill HTML file.
+            letter: Division letter to extract.
+
+        Returns:
+            Cleaned text for the matching division, or full bill text if no match is found.
+        """
         html = bill_path.read_text(encoding="utf-8", errors="ignore")
         text = BeautifulSoup(html, "html.parser").get_text("\n")
         text = re.sub(r"<<NOTE:[^>]+>>", "", text)
@@ -114,6 +158,18 @@ class IngestionService:
         chunk_size: int | None = None,
         vector_store_id: str | None = None,
     ) -> list[Document]:
+        """Split division text into LangChain documents with stable metadata.
+
+        Args:
+            text: Source division text to chunk.
+            division: Full division name for metadata and citations.
+            source_file: Source HTML filename for metadata.
+            chunk_size: Optional character count per chunk.
+            vector_store_id: Optional vector store registry id for metadata.
+
+        Returns:
+            List of LangChain Document objects ready for Chroma ingestion.
+        """
         chunk_size = chunk_size or self.settings.chunk_size
         overlap = min(self.settings.chunk_overlap, max(chunk_size // 8, 1))
         docs: list[Document] = []

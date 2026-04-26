@@ -65,7 +65,14 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    """Root endpoint with API information."""
+    """Return basic API information for the root endpoint.
+
+    Args:
+        None.
+
+    Returns:
+        Dictionary containing service name, version, docs path, and health path.
+    """
     return {
         "message": "LawSearch AI API",
         "version": "1.0.0",

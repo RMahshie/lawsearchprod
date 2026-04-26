@@ -32,6 +32,14 @@ DEFAULT_EMBEDDINGS = [
 
 
 def ensure_storage_ready() -> bool:
+    """Initialize storage metadata tables and seed required registry rows.
+
+    Args:
+        None.
+
+    Returns:
+        True when the registry is available and initialized, otherwise False.
+    """
     if not database_available() or SessionLocal is None:
         return False
 
@@ -48,6 +56,14 @@ def ensure_storage_ready() -> bool:
 
 
 def seed_embedding_models(db: Session) -> None:
+    """Insert or update the default embedding model records.
+
+    Args:
+        db: Open SQLAlchemy session used for registry writes.
+
+    Returns:
+        None.
+    """
     for name, dimensions in DEFAULT_EMBEDDINGS:
         db.merge(
             EmbeddingModel(
@@ -60,6 +76,14 @@ def seed_embedding_models(db: Session) -> None:
 
 
 def ensure_legacy_vector_store(db: Session) -> VectorStore:
+    """Create a registry row for the pre-existing local Chroma store when needed.
+
+    Args:
+        db: Open SQLAlchemy session used for registry reads and writes.
+
+    Returns:
+        Active or newly created VectorStore registry row.
+    """
     settings = get_settings()
     active = get_active_vector_store(db)
     if active:
@@ -101,6 +125,14 @@ def ensure_legacy_vector_store(db: Session) -> VectorStore:
 
 
 def get_active_vector_store(db: Session) -> VectorStore | None:
+    """Load the active ready vector store with related metadata.
+
+    Args:
+        db: Open SQLAlchemy session used for registry reads.
+
+    Returns:
+        Active VectorStore when configured, otherwise None.
+    """
     return db.execute(
         select(VectorStore)
         .options(selectinload(VectorStore.embedding_model), selectinload(VectorStore.partitions))
@@ -109,6 +141,14 @@ def get_active_vector_store(db: Session) -> VectorStore | None:
 
 
 def vector_store_path(vector_store: VectorStore) -> Path:
+    """Resolve a vector store registry row to its Chroma root path.
+
+    Args:
+        vector_store: Vector store registry row containing a relative storage path.
+
+    Returns:
+        Absolute filesystem path to that vector store root.
+    """
     settings = get_settings()
     relative = vector_store.relative_path
     if relative in ("", "."):
@@ -125,6 +165,19 @@ def create_vector_store_record(
     chunk_overlap: int,
     activate: bool,
 ) -> VectorStore:
+    """Create a building vector store registry row before ingestion starts.
+
+    Args:
+        db: Open SQLAlchemy session used for registry writes.
+        name: User-facing vector store name.
+        embedding_model: Embedding model identifier used for ingestion.
+        chunk_size: Character size used for source chunking.
+        chunk_overlap: Character overlap used between adjacent chunks.
+        activate: Whether the store should become active after successful ingestion.
+
+    Returns:
+        Newly created VectorStore row in building status.
+    """
     if not db.get(EmbeddingModel, embedding_model):
         db.add(EmbeddingModel(id=embedding_model, name=embedding_model, is_enabled=True))
 
@@ -151,6 +204,18 @@ def mark_vector_store_ready(
     chunk_count: int,
     activate: bool = False,
 ) -> None:
+    """Mark a vector store ready and record per-division chunk counts.
+
+    Args:
+        db: Open SQLAlchemy session used for registry writes.
+        store: VectorStore row to update.
+        partitions: Mapping of division names to ingested chunk counts.
+        chunk_count: Total chunks ingested across all divisions.
+        activate: Whether to make this store the active ready store.
+
+    Returns:
+        None.
+    """
     store.status = "ready"
     store.chunk_count = chunk_count
     store.last_ingested_at = datetime.utcnow()
@@ -173,12 +238,31 @@ def mark_vector_store_ready(
 
 
 def mark_vector_store_failed(db: Session, store: VectorStore, error: str) -> None:
+    """Mark a vector store ingestion as failed and save the error message.
+
+    Args:
+        db: Open SQLAlchemy session used for registry writes.
+        store: VectorStore row to update.
+        error: Human-readable failure message.
+
+    Returns:
+        None.
+    """
     store.status = "failed"
     store.error_message = error
     store.is_active = False
 
 
 def activate_vector_store(db: Session, store_id: str) -> VectorStore:
+    """Make one ready vector store active and deactivate any previous active store.
+
+    Args:
+        db: Open SQLAlchemy session used for registry reads and writes.
+        store_id: Identifier of the vector store to activate.
+
+    Returns:
+        Activated VectorStore row.
+    """
     store = db.get(VectorStore, store_id)
     if not store or store.status != "ready":
         raise ValueError("Vector store is not ready or does not exist")
@@ -189,6 +273,15 @@ def activate_vector_store(db: Session, store_id: str) -> VectorStore:
 
 
 def query_reference_count(db: Session, store_id: str) -> int:
+    """Count saved query runs that reference a vector store.
+
+    Args:
+        db: Open SQLAlchemy session used for history reads.
+        store_id: Identifier of the vector store to check.
+
+    Returns:
+        Number of saved query runs linked to the vector store.
+    """
     return db.scalar(select(func.count()).select_from(QueryRun).where(QueryRun.vector_store_id == store_id)) or 0
 
 
@@ -199,6 +292,17 @@ def save_query_response(
     question: str,
     vector_store: VectorStore | None,
 ) -> None:
+    """Persist a successful query response as a saved question result snapshot.
+
+    Args:
+        db: Open SQLAlchemy session used for history writes.
+        response: Completed query response to persist.
+        question: Original user question text.
+        vector_store: Vector store used for the query, if available.
+
+    Returns:
+        None.
+    """
     run = QueryRun(
         id=response.query_id or "",
         question=question,
@@ -249,6 +353,15 @@ def save_query_response(
 
 
 def list_conversations(db: Session, limit: int = 50) -> list[dict[str, Any]]:
+    """List recent saved question summaries.
+
+    Args:
+        db: Open SQLAlchemy session used for history reads.
+        limit: Maximum number of saved questions to return.
+
+    Returns:
+        List of dictionaries containing saved question summary fields.
+    """
     rows = db.execute(select(QueryRun).order_by(QueryRun.created_at.desc()).limit(limit)).scalars().all()
     return [
         {
@@ -264,6 +377,16 @@ def list_conversations(db: Session, limit: int = 50) -> list[dict[str, Any]]:
 
 
 def load_conversation(db: Session, query_id: str, chunk_loader) -> QueryResponse:
+    """Load a saved question and hydrate it into the normal query response shape.
+
+    Args:
+        db: Open SQLAlchemy session used for history reads.
+        query_id: Saved query identifier to load.
+        chunk_loader: Callable that resolves vector-store chunks by store, division, and chunk id.
+
+    Returns:
+        QueryResponse suitable for rendering in the existing results UI.
+    """
     run = db.execute(
         select(QueryRun)
         .options(

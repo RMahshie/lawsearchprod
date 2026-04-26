@@ -59,7 +59,14 @@ class QueryRequest(BaseModel):
     @field_validator('question')
     @classmethod
     def validate_question(cls, v):
-        """Validate that question contains meaningful content."""
+        """Validate that question contains meaningful content.
+
+        Args:
+            v: Raw question value supplied to the request model.
+
+        Returns:
+            Stripped question text.
+        """
         if not v.strip():
             raise ValueError('Question cannot be empty or whitespace only')
         
@@ -74,7 +81,14 @@ class QueryRequest(BaseModel):
     @field_validator('divisions_filter')
     @classmethod
     def validate_divisions(cls, v):
-        """Validate that division names are from the allowed list."""
+        """Validate that division names are from the allowed list.
+
+        Args:
+            v: Optional list of requested division names.
+
+        Returns:
+            Original list when valid, or None when no filter was supplied.
+        """
         if v is None:
             return v
 
@@ -105,7 +119,14 @@ class QueryRequest(BaseModel):
     @field_validator('thinking_speed')
     @classmethod
     def validate_thinking_speed(cls, v):
-        """Validate that thinking speed is one of the allowed values."""
+        """Validate that thinking speed is one of the allowed values.
+
+        Args:
+            v: Optional thinking speed string supplied to the request model.
+
+        Returns:
+            Validated thinking speed string.
+        """
         if v is None:
             return "normal"  # Default value
 

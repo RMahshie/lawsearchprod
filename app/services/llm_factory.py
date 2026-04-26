@@ -15,7 +15,14 @@ class ModelSpec:
 
 
 def format_model_spec(spec: ModelSpec) -> str:
-    """Format model labels with reasoning when relevant."""
+    """Format model labels with reasoning when relevant.
+
+    Args:
+        spec: Model specification containing model name and optional reasoning effort.
+
+    Returns:
+        Human-readable model label.
+    """
     if spec.reasoning_effort:
         return f"{spec.model}(reasoning={spec.reasoning_effort})"
     return spec.model
@@ -51,12 +58,27 @@ SPEED_ALIASES = {
 
 
 def normalize_speed(thinking_speed: str) -> str:
-    """Normalize UI/user aliases to internal speed keys."""
+    """Normalize UI/user aliases to internal speed keys.
+
+    Args:
+        thinking_speed: Thinking speed string from the API or UI.
+
+    Returns:
+        Canonical speed key used for model strategy lookup.
+    """
     return SPEED_ALIASES.get(thinking_speed, thinking_speed)
 
 
 def resolve_model(thinking_speed: str, task: str) -> ModelSpec:
-    """Resolve the effective OpenAI model for a speed/task pair."""
+    """Resolve the effective OpenAI model for a speed/task pair.
+
+    Args:
+        thinking_speed: Canonical or aliased speed key.
+        task: RAG task name such as routing, map, reduce, or synthesize.
+
+    Returns:
+        ModelSpec for the requested task.
+    """
     if task == "routing":
         return ROUTING_MODEL
 
@@ -66,7 +88,14 @@ def resolve_model(thinking_speed: str, task: str) -> ModelSpec:
 
 
 def describe_model_strategy(thinking_speed: str) -> str:
-    """Return a compact response label for the active model strategy."""
+    """Return a compact response label for the active model strategy.
+
+    Args:
+        thinking_speed: Canonical or aliased speed key.
+
+    Returns:
+        Comma-separated summary of model choices for the main RAG stages.
+    """
     speed = normalize_speed(thinking_speed)
     strategy = MODEL_STRATEGIES.get(speed, MODEL_STRATEGIES["normal"])
     ordered_tasks = ("map", "reduce", "synthesize")
@@ -75,7 +104,16 @@ def describe_model_strategy(thinking_speed: str) -> str:
 
 @lru_cache(maxsize=64)
 def create_chat_model(model: str, task: str, reasoning_effort: str | None = None) -> ChatOpenAI:
-    """Create and cache ChatOpenAI clients by model/task."""
+    """Create and cache ChatOpenAI clients by model/task.
+
+    Args:
+        model: OpenAI chat model name.
+        task: RAG task name included in the cache key.
+        reasoning_effort: Optional reasoning effort for reasoning-capable models.
+
+    Returns:
+        Cached ChatOpenAI client configured for the requested model.
+    """
     if reasoning_effort:
         return ChatOpenAI(
             model=model,

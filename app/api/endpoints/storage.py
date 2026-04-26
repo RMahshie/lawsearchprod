@@ -35,6 +35,15 @@ router = APIRouter()
 
 
 def _store_info(db, store: VectorStore) -> VectorStoreInfo:
+    """Convert a vector store database row into an API response model.
+
+    Args:
+        db: Open SQLAlchemy session used to count saved query references.
+        store: VectorStore row to serialize.
+
+    Returns:
+        VectorStoreInfo response model for the storage manager UI.
+    """
     return VectorStoreInfo(
         id=store.id,
         name=store.name,
@@ -54,6 +63,14 @@ def _store_info(db, store: VectorStore) -> VectorStoreInfo:
 
 @router.get("/storage/vector-stores", response_model=list[VectorStoreInfo])
 async def list_vector_stores() -> list[VectorStoreInfo]:
+    """Return all registered vector stores for the storage manager.
+
+    Args:
+        None.
+
+    Returns:
+        List of vector store records, or an empty list when metadata storage is unavailable.
+    """
     if not database_available() or SessionLocal is None:
         return []
 
@@ -71,6 +88,14 @@ async def list_vector_stores() -> list[VectorStoreInfo]:
 
 @router.post("/storage/vector-stores", response_model=VectorStoreInfo)
 async def create_vector_store(request: CreateVectorStoreRequest) -> VectorStoreInfo:
+    """Create a new versioned vector store by running ingestion.
+
+    Args:
+        request: Storage manager request containing name, embedding model, chunk size, and activation preference.
+
+    Returns:
+        VectorStoreInfo for the newly registered vector store.
+    """
     if not database_available() or SessionLocal is None:
         raise HTTPException(status_code=503, detail="Storage metadata is unavailable")
 
@@ -98,6 +123,14 @@ async def create_vector_store(request: CreateVectorStoreRequest) -> VectorStoreI
 
 @router.post("/storage/vector-stores/{store_id}/activate", response_model=VectorStoreInfo)
 async def activate_store(store_id: str) -> VectorStoreInfo:
+    """Set a ready vector store as the active retrieval store.
+
+    Args:
+        store_id: Identifier of the vector store to activate.
+
+    Returns:
+        VectorStoreInfo for the activated store.
+    """
     if not database_available() or SessionLocal is None:
         raise HTTPException(status_code=503, detail="Storage metadata is unavailable")
 
@@ -114,6 +147,15 @@ async def activate_store(store_id: str) -> VectorStoreInfo:
 
 @router.delete("/storage/vector-stores/{store_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_store(store_id: str, force: bool = False) -> None:
+    """Delete an inactive vector store registry row and its Chroma files.
+
+    Args:
+        store_id: Identifier of the vector store to delete.
+        force: Whether to allow deleting stores referenced by saved questions.
+
+    Returns:
+        None.
+    """
     if not database_available() or SessionLocal is None:
         raise HTTPException(status_code=503, detail="Storage metadata is unavailable")
 
@@ -137,6 +179,14 @@ async def delete_store(store_id: str, force: bool = False) -> None:
 
 @router.get("/storage/embedding-models", response_model=list[EmbeddingModelInfo])
 async def list_embedding_models() -> list[EmbeddingModelInfo]:
+    """Return embedding models available to the storage manager.
+
+    Args:
+        None.
+
+    Returns:
+        List of embedding model records, or an empty list when metadata storage is unavailable.
+    """
     if not database_available() or SessionLocal is None:
         return []
 
@@ -159,6 +209,14 @@ async def list_embedding_models() -> list[EmbeddingModelInfo]:
 
 @router.post("/storage/embedding-models", response_model=EmbeddingModelInfo)
 async def create_embedding_model(request: CreateEmbeddingModelRequest) -> EmbeddingModelInfo:
+    """Register or re-enable an embedding model option.
+
+    Args:
+        request: Embedding model creation request with provider and optional dimensions.
+
+    Returns:
+        EmbeddingModelInfo for the created or re-enabled model.
+    """
     if not database_available() or SessionLocal is None:
         raise HTTPException(status_code=503, detail="Storage metadata is unavailable")
 
@@ -189,6 +247,14 @@ async def create_embedding_model(request: CreateEmbeddingModelRequest) -> Embedd
 
 @router.get("/conversations", response_model=ConversationListResponse)
 async def conversations() -> ConversationListResponse:
+    """Return saved question summaries for the history rail.
+
+    Args:
+        None.
+
+    Returns:
+        ConversationListResponse containing recent saved question summaries.
+    """
     if not database_available() or SessionLocal is None:
         return ConversationListResponse(conversations=[])
 
@@ -201,12 +267,30 @@ async def conversations() -> ConversationListResponse:
 
 @router.get("/conversations/{query_id}", response_model=ConversationDetail)
 async def conversation_detail(query_id: str) -> ConversationDetail:
+    """Return one saved question hydrated into the normal query response shape.
+
+    Args:
+        query_id: Saved query identifier to load.
+
+    Returns:
+        ConversationDetail containing the rendered QueryResponse.
+    """
     if not database_available() or SessionLocal is None:
         raise HTTPException(status_code=503, detail="Question history is unavailable")
 
     rag_service = get_rag_service()
 
     def load_chunk(store: VectorStore | None, division: str, chunk_id: str):
+        """Load a saved source chunk from the vector store when still available.
+
+        Args:
+            store: Vector store row associated with the saved query.
+            division: Division key for the saved source.
+            chunk_id: Stable source chunk identifier.
+
+        Returns:
+            Chunk dictionary when found in Chroma, otherwise None.
+        """
         if not store:
             return None
         return rag_service.vectorstores.get_chunk(

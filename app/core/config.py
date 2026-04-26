@@ -51,6 +51,15 @@ class Settings(BaseSettings):
     @field_validator('data_dir', mode='before')
     @classmethod
     def set_data_dir(cls, v, info):
+        """Resolve the source data directory setting.
+
+        Args:
+            v: Explicit directory value from environment or settings input.
+            info: Pydantic validation context containing already parsed fields.
+
+        Returns:
+            Path to the bill data directory.
+        """
         if v is None:
             return info.data['base_dir'] / "data" / "bills"
         return Path(v)
@@ -58,6 +67,15 @@ class Settings(BaseSettings):
     @field_validator('vectorstore_dir', mode='before')
     @classmethod
     def set_vectorstore_dir(cls, v, info):
+        """Resolve the vector store directory setting.
+
+        Args:
+            v: Explicit directory value from environment or settings input.
+            info: Pydantic validation context containing already parsed fields.
+
+        Returns:
+            Path to the Chroma vector store directory.
+        """
         if v is None:
             return info.data['base_dir'] / "db" / "chroma"
         return Path(v)
@@ -148,6 +166,14 @@ class Settings(BaseSettings):
     @field_validator('environment')
     @classmethod
     def validate_environment(cls, v):
+        """Validate that the configured runtime environment is supported.
+
+        Args:
+            v: Environment string supplied by settings input.
+
+        Returns:
+            Validated environment string.
+        """
         if v not in ["development", "production", "testing"]:
             raise ValueError("Environment must be development, production, or testing")
         return v
@@ -155,6 +181,15 @@ class Settings(BaseSettings):
     @field_validator('debug', mode='before')
     @classmethod
     def set_debug_from_env(cls, v, info):
+        """Resolve debug mode from explicit input or environment defaults.
+
+        Args:
+            v: Explicit debug value from environment or settings input.
+            info: Pydantic validation context containing the environment value.
+
+        Returns:
+            Boolean debug setting.
+        """
         # Auto-set debug based on environment if not explicitly set
         if v is None:
             return info.data.get('environment', 'development') == 'development'
@@ -163,17 +198,38 @@ class Settings(BaseSettings):
     # === Computed Properties ===
     @property
     def is_development(self) -> bool:
-        """Check if running in development mode."""
+        """Check if running in development mode.
+
+        Args:
+            None.
+
+        Returns:
+            True when environment is development, otherwise False.
+        """
         return self.environment == "development"
     
     @property
     def is_production(self) -> bool:
-        """Check if running in production mode."""
+        """Check if running in production mode.
+
+        Args:
+            None.
+
+        Returns:
+            True when environment is production, otherwise False.
+        """
         return self.environment == "production"
     
     @property
     def server_host_port(self) -> str:
-        """Get formatted host:port string."""
+        """Get formatted host and port string.
+
+        Args:
+            None.
+
+        Returns:
+            Host and port formatted as host:port.
+        """
         return f"{self.api_host}:{self.api_port}"
     
     model_config = ConfigDict(
@@ -189,11 +245,13 @@ class Settings(BaseSettings):
 _settings: Optional[Settings] = None
 
 def get_settings() -> Settings:
-    """
-    Get or create the global settings instance.
-    
-    This uses a singleton pattern to ensure settings are loaded once
-    and reused throughout the application.
+    """Get or create the global settings instance.
+
+    Args:
+        None.
+
+    Returns:
+        Singleton Settings object loaded from environment and defaults.
     """
     global _settings
     if _settings is None:
@@ -203,19 +261,47 @@ def get_settings() -> Settings:
 
 # Convenience functions for backwards compatibility with src/config.py
 def get_vectorstore_dir() -> Path:
-    """Get vectorstore directory path."""
+    """Get vector store directory path.
+
+    Args:
+        None.
+
+    Returns:
+        Path to the configured Chroma vector store directory.
+    """
     return get_settings().vectorstore_dir
 
 def get_data_dir() -> Path:
-    """Get data directory path.""" 
+    """Get bill data directory path.
+
+    Args:
+        None.
+
+    Returns:
+        Path to the configured source bill data directory.
+    """
     return get_settings().data_dir
 
 def get_subcommittee_stores() -> Dict[str, str]:
-    """Get subcommittee to database mapping."""
+    """Get division-to-vector-store mapping.
+
+    Args:
+        None.
+
+    Returns:
+        Mapping of division names to Chroma store directory names.
+    """
     return get_settings().subcommittee_stores
 
 def get_routing_prompt() -> str:
-    """Get routing prompt template."""
+    """Get routing prompt template.
+
+    Args:
+        None.
+
+    Returns:
+        Prompt template used by legacy routing code.
+    """
     return get_settings().routing_prompt
 
 

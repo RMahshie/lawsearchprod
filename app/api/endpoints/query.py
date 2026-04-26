@@ -31,12 +31,27 @@ router = APIRouter()
 
 
 def _sse_event(event: str, data: Dict[str, Any]) -> str:
-    """Format a Server-Sent Event payload."""
+    """Format a Server-Sent Event payload.
+
+    Args:
+        event: SSE event name.
+        data: JSON-serializable event payload.
+
+    Returns:
+        Formatted SSE event string.
+    """
     return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
 
 
 async def get_rag_service_dependency() -> RAGService:
-    """Dependency to get RAG service instance."""
+    """Return the shared RAG service for FastAPI dependency injection.
+
+    Args:
+        None.
+
+    Returns:
+        Process-wide RAGService instance.
+    """
     return get_rag_service()
 
 
@@ -135,24 +150,66 @@ async def stream_query(
     http_request: Request,
     rag_service: RAGService = Depends(get_rag_service_dependency)
 ) -> StreamingResponse:
-    """Process a query and stream live graph progress events."""
+    """Process a query and stream live graph progress events.
+
+    Args:
+        request: Validated query request with question and options.
+        http_request: FastAPI request used to detect client disconnects.
+        rag_service: Injected RAG service instance.
+
+    Returns:
+        StreamingResponse containing server-sent query progress and final result events.
+    """
     query_id = f"query_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
     logger.info(f"Streaming query {query_id}: {request.question[:100]}...")
 
     async def event_generator():
+        """Generate server-sent events for query progress and final result.
+
+        Args:
+            None.
+
+        Yields:
+            Formatted SSE strings for queued, progress, result, error, and close events.
+        """
         queue: asyncio.Queue[tuple[str, Dict[str, Any] | None]] = asyncio.Queue()
         loop = asyncio.get_running_loop()
 
         def enqueue(event: str, data: Dict[str, Any] | None = None) -> None:
+            """Add a query stream event to the async queue from any thread.
+
+            Args:
+                event: SSE event name.
+                data: Optional JSON-serializable event payload.
+
+            Returns:
+                None.
+            """
             try:
                 loop.call_soon_threadsafe(queue.put_nowait, (event, data))
             except RuntimeError:
                 logger.debug("Dropped stream event for closed loop: %s", event)
 
         def progress_callback(progress: Dict[str, Any]) -> None:
+            """Forward a RAG progress callback into the SSE queue.
+
+            Args:
+                progress: Structured progress event emitted by RAGService.
+
+            Returns:
+                None.
+            """
             enqueue("progress", progress)
 
         def run_query() -> None:
+            """Execute the blocking RAG query in a worker thread.
+
+            Args:
+                None.
+
+            Returns:
+                None.
+            """
             try:
                 response = asyncio.run(
                     rag_service.process_query(
