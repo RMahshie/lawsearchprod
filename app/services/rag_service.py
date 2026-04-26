@@ -60,6 +60,40 @@ from app.services.vector_store_service import VectorStoreService, division_acron
 logger = logging.getLogger(__name__)
 
 
+ACCOUNTING_SCOPE_POLICY = """Accounting scope policy:
+- Prefer scoped buckets over a grand total for broad agency, program, or policy-area questions.
+- For broad questions like "how much for FEMA?", report separate buckets such as top-level accounts, Federal Assistance, Disaster Relief Fund, National Flood Insurance Fund, grants/subprograms, and transfers when present.
+- For immigration questions, report CBP, ICE, and USCIS separately by default. Do not include CBP in an "immigration" total unless the user explicitly asks for CBP, border, border security, or all immigration/border enforcement.
+- Only calculate a total when the user explicitly asks for a total over clearly comparable, source-backed buckets.
+- Every calculated total must state exactly what is included and what is excluded.
+- Do not add subprograms, transfers, component amounts, caps, or availability notes into a parent total unless the facts clearly show they are separate additive appropriations.
+- If a broader parent account and one of its components both appear, include the parent account and explain that the component was not added separately."""
+
+
+ACCOUNTING_FEW_SHOT_EXAMPLES = """Accounting examples:
+Example 1 - FEMA scoped buckets:
+Question: how much for FEMA?
+Facts include FEMA operations and support $1,483,990,000, FEMA procurement/construction/improvements $99,528,000, FEMA Federal Assistance $3,497,019,369, Disaster Relief Fund $20,261,000,000, National Flood Insurance Fund $239,983,000, and a $33,000,000 transfer to FEMA Federal Assistance.
+Good answer pattern: Do not give one default FEMA grand total. Say the facts show multiple FEMA-related buckets: operations/support $1,483,990,000; procurement/construction/improvements $99,528,000; Federal Assistance $3,497,019,369; Disaster Relief Fund $20,261,000,000; National Flood Insurance Fund $239,983,000. Note that the $33,000,000 transfer is not added on top of Federal Assistance unless the facts show it is separate from that account.
+
+Example 2 - Immigration buckets:
+Question: how much for FEMA and immigration combined?
+Facts include FEMA Federal Assistance $3,497,019,369, ICE operations and support $9,501,542,000, ICE enforcement/detention/removal $5,082,218,000, USCIS operations and support $271,140,000, USCIS Citizenship and Integration grants $10,000,000, and CBP operations and support $18,426,870,000.
+Good answer pattern: If the user did not ask for CBP or border security, keep CBP separate and do not include it in an immigration total. A narrow explicit immigration subtotal can add FEMA Federal Assistance + ICE operations/support + USCIS operations/support + USCIS grants. Do not add the ICE enforcement/detention/removal component separately when the broader ICE operations/support amount is included.
+
+Example 3 - Non-FEMA component handling:
+Question: how much for Army Corps construction?
+Facts include Army Corps Construction $1,850,000,000, Mississippi River and Tributaries $368,037,000, and Investigations $142,000,000.
+Good answer pattern: Report Construction as $1,850,000,000. Keep Mississippi River and Tributaries and Investigations as separate accounts unless the user asks for all Army Corps civil works accounts together. Do not add them into Construction just because they are related to water infrastructure."""
+
+
+SYNTHESIS_ACCOUNTING_POLICY = """Accounting synthesis policy:
+- Preserve division-level scoped buckets and caveats; do not collapse them into a grand total unless the division answers already provide compatible scoped totals.
+- If combining division totals, state exactly which scoped totals are included.
+- Preserve notes about excluded transfers, component amounts, caps, and non-comparable accounts.
+- If the division answers separate CBP, ICE, and USCIS, keep those buckets separate unless the user explicitly asked to combine all immigration/border enforcement."""
+
+
 class RouteDecision(BaseModel):
     """Structured routing response."""
 
@@ -885,13 +919,18 @@ class RAGService:
                 "  - <account/program/agency and exact dollar figure, preserving citation marker>\n"
                 "- **Notes:**\n"
                 "  - <short caveat, limitation, transfer detail, or availability note; use 'None identified.' if none>\n\n"
+                f"{ACCOUNTING_SCOPE_POLICY}\n\n"
+                f"{ACCOUNTING_FEW_SHOT_EXAMPLES}\n\n"
                 "Rules:\n"
                 "- Preserve all relevant dollar figures from the extracted facts.\n"
                 "- Preserve existing [[num:...]] markers immediately after their visible source figures.\n"
                 "- If you repeat or restate a marked dollar figure in the bottom line, accounts/programs, or notes, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.\n"
                 "- Do not write a source-backed dollar figure without its existing marker when that figure appears in the extracted facts with a marker.\n"
                 "- Keep citation markers immediately after the figure or clause they support.\n"
+                "- Apply the accounting scope policy before proposing any calculated total.\n"
+                "- The bottom line must say whether the answer is separate buckets, a scoped subtotal, a clearly supported total, or not safely totalable.\n"
                 "- Do not invent totals unless the extracted facts explicitly support the arithmetic.\n"
+                "- Do not create a grand total from related but non-comparable buckets just because they answer the same general topic.\n"
                 "- For any calculated total, add a new marker like [[num:drv_dhs_1]] immediately after the visible total and add a matching derived annotation.\n"
                 "- Derived annotation input_ids must reference existing source or derived marker ids from the available annotations.\n"
                 "- Do not omit relevant accounts or programs just to be concise.\n"
@@ -1040,6 +1079,7 @@ class RAGService:
             "  - <caveat/limitation/transfer/availability note or 'None identified.'>\n\n"
             "## Caveats\n"
             "- <only include important caveats about totals, transfers, offsets, or incomplete comparability.>\n\n"
+            f"{SYNTHESIS_ACCOUNTING_POLICY}\n\n"
             "Rules:\n"
             "- Include every division answer provided below; do not drop a division.\n"
             "- Preserve relevant dollar figures and citation markers from division answers.\n"
@@ -1048,6 +1088,7 @@ class RAGService:
             "- Do not write a source-backed or derived dollar figure without its existing marker when that figure appears in the division answers with a marker.\n"
             "- Keep citation markers immediately after the figure or clause they support.\n"
             "- Combine figures only when they are clearly comparable and supported by the division answers.\n"
+            "- Do not create a new grand total from scoped division buckets unless the question asks for that exact combined scope.\n"
             "- For any new calculated total, add a new marker like [[num:drv_final_1]] immediately after the visible total and add a matching derived annotation.\n"
             "- Derived annotation input_ids must reference existing source or derived marker ids from the available annotations.\n"
             "- If no caveats are needed, write '- None identified.'\n"

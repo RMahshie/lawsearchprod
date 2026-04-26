@@ -51,6 +51,19 @@ class FakeRewriteLLM:
         return FakeStructuredLLM(self.response)
 
 
+class CapturingStructuredLLM:
+    def __init__(self, response):
+        self.response = response
+        self.prompts = []
+
+    def with_structured_output(self, schema):
+        return self
+
+    def invoke(self, prompt):
+        self.prompts.append(prompt)
+        return self.response
+
+
 def test_division_acronym_is_stable():
     assert division_acronym("DEPARTMENT OF HOMELAND SECURITY") == "DHS"
 
@@ -861,6 +874,106 @@ def test_reduce_fanout_sends_one_job_per_selected_division():
     assert [send.node for send in sends] == ["reduce_division", "reduce_division"]
     assert [send.arg["division"] for send in sends] == ["AAA", "BBB"]
     assert [len(send.arg["mapped_items"]) for send in sends] == [1, 1]
+
+
+def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
+    from app.services.rag_service import MarkedAnswer
+
+    llm = CapturingStructuredLLM(MarkedAnswer(answer="Answer"))
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+
+    service._reduce_division(
+        {
+            "question": "how much for fema and immigration combined",
+            "query_id": "query-test",
+            "division": "DEPARTMENT OF HOMELAND SECURITY",
+            "division_acronym": "DHS",
+            "mapped_items": [
+                {
+                    "chunk_id": "chunk-1",
+                    "division": "DEPARTMENT OF HOMELAND SECURITY",
+                    "division_acronym": "DHS",
+                    "extracted_facts": (
+                        "- FEMA Federal Assistance $3,497,019,369 [[num:src_fema]] [DHS]\n"
+                        "- CBP operations and support $18,426,870,000 [[num:src_cbp]] [DHS]\n"
+                        "- ICE operations and support $9,501,542,000 [[num:src_ice]] [DHS]\n"
+                        "- USCIS operations and support $271,140,000 [[num:src_uscis]] [DHS]"
+                    ),
+                    "chunk_summary": "summary",
+                    "chunk_snapshot": "snapshot",
+                    "source_content": "content",
+                    "score": 0.1,
+                    "metadata": {},
+                    "number_annotations": [],
+                }
+            ],
+            "chunks_retrieved": 1,
+            "thinking_speed": "normal",
+        }
+    )
+
+    prompt = llm.prompts[0]
+    assert "Accounting scope policy:" in prompt
+    assert "Prefer scoped buckets over a grand total" in prompt
+    assert "Example 1 - FEMA scoped buckets:" in prompt
+    assert "$20,261,000,000" in prompt
+    assert "Example 2 - Immigration buckets:" in prompt
+    assert "Do not include CBP in an \"immigration\" total" in prompt
+    assert "Do not add the ICE enforcement/detention/removal component separately" in prompt
+    assert "Example 3 - Non-FEMA component handling:" in prompt
+    assert "Army Corps Construction" in prompt
+    assert "The bottom line must say whether the answer is separate buckets" in prompt
+
+
+def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
+    from app.services.rag_service import MarkedAnswer
+
+    llm = CapturingStructuredLLM(MarkedAnswer(answer="Final answer"))
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+
+    service._synthesize_final(
+        {
+            "question": "how much for fema and immigration combined",
+            "query_id": "query-test",
+            "thinking_speed": "normal",
+            "number_annotations": [],
+            "division_answers": [
+                {
+                    "division": "DEPARTMENT OF HOMELAND SECURITY",
+                    "division_acronym": "DHS",
+                    "answer": (
+                        "### [DHS] DEPARTMENT OF HOMELAND SECURITY\n"
+                        "- **Bottom line:** Separate buckets are safer than a grand total.\n"
+                        "- **Notes:** CBP is kept separate."
+                    ),
+                    "source_chunk_ids": ["chunk-1"],
+                    "chunks_retrieved": 1,
+                    "number_annotations": [],
+                },
+                {
+                    "division": "DEPARTMENT OF DEFENSE",
+                    "division_acronym": "DOD",
+                    "answer": (
+                        "### [DOD] DEPARTMENT OF DEFENSE\n"
+                        "- **Bottom line:** No comparable immigration bucket identified."
+                    ),
+                    "source_chunk_ids": ["chunk-2"],
+                    "chunks_retrieved": 1,
+                    "number_annotations": [],
+                },
+            ],
+        }
+    )
+
+    prompt = llm.prompts[0]
+    assert "Accounting synthesis policy:" in prompt
+    assert "Preserve division-level scoped buckets and caveats" in prompt
+    assert "do not collapse them into a grand total" in prompt
+    assert "Preserve notes about excluded transfers, component amounts" in prompt
+    assert "If the division answers separate CBP, ICE, and USCIS" in prompt
+    assert "Do not create a new grand total from scoped division buckets" in prompt
 
 
 def test_division_fanout_preserves_vector_store_context():
