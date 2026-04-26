@@ -22,43 +22,40 @@ export interface SourceDocument {
   metadata?: Record<string, unknown>;
 }
 
-export interface NumberAnnotationInput {
-  annotation_id: string;
-  figure: string;
-  normalized_value: number;
-  label: string;
-  division: string;
-  division_acronym: string;
-  chunk_id: string;
-  chunk_summary?: string;
-  chunk_snapshot?: string;
-  source_quote?: string;
-}
-
 export interface NumberAnnotationTarget {
   scope: 'answer' | 'division';
   division?: string;
-  division_acronym?: string;
 }
 
-export interface NumberAnnotation {
-  id: string;
-  kind: 'source' | 'derived';
-  figure: string;
-  normalized_value: number;
-  label: string;
-  targets: NumberAnnotationTarget[];
-  division?: string;
-  division_acronym?: string;
-  chunk_id?: string;
-  chunk_summary?: string;
-  chunk_snapshot?: string;
-  source_quote?: string;
-  equation?: string;
+export interface SourceNumberReference {
+  chunk_id: string;
+}
+
+export interface DerivedNumberReference {
+  equation: string;
   rationale?: string;
   input_ids: string[];
-  inputs: NumberAnnotationInput[];
+  source_input_ids: string[];
 }
+
+export type NumberAnnotation = {
+  id: string;
+  figure: string;
+  value: number;
+  label: string;
+  targets: NumberAnnotationTarget[];
+} & (
+  | {
+      kind: 'source';
+      source: SourceNumberReference;
+      derived?: never;
+    }
+  | {
+      kind: 'derived';
+      source?: never;
+      derived: DerivedNumberReference;
+    }
+);
 
 export interface DebugDivisionQuery {
   division: string;

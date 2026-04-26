@@ -8,8 +8,9 @@ from .query import (
     QueryRequest,
     QueryResponse,
     NumberAnnotation,
-    NumberAnnotationInput,
     NumberAnnotationTarget,
+    SourceNumberReference,
+    DerivedNumberReference,
     SourceDocument,
     HealthResponse,
     ErrorResponse
@@ -19,8 +20,9 @@ __all__ = [
     "QueryRequest",
     "QueryResponse", 
     "NumberAnnotation",
-    "NumberAnnotationInput",
     "NumberAnnotationTarget",
+    "SourceNumberReference",
+    "DerivedNumberReference",
     "SourceDocument",
     "HealthResponse",
     "ErrorResponse"

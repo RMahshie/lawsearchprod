@@ -77,6 +77,7 @@ No public README change is required for v1. Update inline schema descriptions an
 ## Progress
 - 2026-04-26: Plan created from pipeline/history review and product decisions.
 - 2026-04-26: Implemented backend annotation models, marker propagation, derived validation, saved-history JSON snapshots, annotation-first frontend rendering, and focused backend/frontend validation.
+- 2026-04-26: Simplified annotation models so source annotations only store chunk references, derived annotations store equation/input ids, and source text remains in hydrated `sources`.
 
 ## Decisions
 - Keep markdown answers and add structured `number_annotations` instead of replacing the answer with structured blocks.
@@ -86,6 +87,7 @@ No public README change is required for v1. Update inline schema descriptions an
 - Persist annotations as a JSON snapshot with saved query history.
 - Omit derived hovers when source backing or deterministic arithmetic validation fails.
 - Flatten nested derived inputs to original source-backed numbers for hover display.
+- Treat `number_annotations` as provenance metadata, not mini source documents; do not store source quotes or source summaries there.
 
 ## Discoveries
 - Current figure popovers are inferred in `frontend/src/components/QueryResults.tsx` by scanning answer text and source snippets.

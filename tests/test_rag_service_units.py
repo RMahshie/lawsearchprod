@@ -63,6 +63,25 @@ def test_query_source_model_does_not_persist_source_text_or_scores():
     assert not hasattr(QuerySource, "score")
 
 
+def test_number_annotation_model_does_not_persist_source_text_or_summaries():
+    from app.models.query import NumberAnnotation
+
+    annotation = NumberAnnotation(
+        id="src_a",
+        kind="source",
+        figure="$10",
+        value=10,
+        label="A",
+        source={"chunk_id": "chunk-a"},
+    )
+    dumped = annotation.model_dump(mode="json", exclude_none=True)
+
+    assert dumped["source"] == {"chunk_id": "chunk-a"}
+    assert "source_quote" not in dumped
+    assert "chunk_summary" not in dumped
+    assert "chunk_snapshot" not in dumped
+
+
 def test_load_conversation_hydrates_sources_from_chroma_only():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
@@ -185,6 +204,36 @@ def test_load_conversation_returns_saved_number_annotations():
 
     assert response.number_annotations[0].id == "src_dhs_1"
     assert response.number_annotations[0].targets[0].scope == "answer"
+    assert response.number_annotations[0].value == 10
+    assert response.number_annotations[0].source.chunk_id == "chunk-1"
+
+
+def test_list_conversations_strips_hidden_number_markers_from_preview():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.db.models import QueryRun
+    from app.db.session import Base
+    from app.services.storage_registry import list_conversations
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    db.add(
+        QueryRun(
+            id="query",
+            question="How much funding?",
+            answer="Answer $10 [[num:src_dhs_1]] for DHS",
+            processing_time=1.0,
+        )
+    )
+    db.commit()
+
+    summaries = list_conversations(db)
+
+    assert summaries[0]["answer_preview"] == "Answer $10 for DHS"
 
 
 def test_map_chunk_returns_facts_and_summary(monkeypatch):
@@ -332,17 +381,10 @@ def test_response_includes_source_number_annotations_when_markers_are_used():
                         "id": "src_dhs_dhs_1_test_1",
                         "kind": "source",
                         "figure": "$10,000,000",
-                        "normalized_value": 10_000_000,
+                        "value": 10_000_000,
                         "label": "DHS cybersecurity funding",
                         "targets": [],
-                        "division": "DEPARTMENT OF HOMELAND SECURITY",
-                        "division_acronym": "DHS",
-                        "chunk_id": "DHS-1-test",
-                        "chunk_summary": "Chunk summarizes DHS cybersecurity funding.",
-                        "chunk_snapshot": "DHS cybersecurity funding",
-                        "source_quote": "For cybersecurity, $10,000,000 shall be available.",
-                        "input_ids": [],
-                        "inputs": [],
+                        "source": {"chunk_id": "DHS-1-test"},
                     }
                 ],
             }
@@ -362,17 +404,10 @@ def test_response_includes_source_number_annotations_when_markers_are_used():
                 "id": "src_dhs_dhs_1_test_1",
                 "kind": "source",
                 "figure": "$10,000,000",
-                "normalized_value": 10_000_000,
+                "value": 10_000_000,
                 "label": "DHS cybersecurity funding",
                 "targets": [],
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
-                "chunk_id": "DHS-1-test",
-                "chunk_summary": "Chunk summarizes DHS cybersecurity funding.",
-                "chunk_snapshot": "DHS cybersecurity funding",
-                "source_quote": "For cybersecurity, $10,000,000 shall be available.",
-                "input_ids": [],
-                "inputs": [],
+                "source": {"chunk_id": "DHS-1-test"},
             }
         ],
     }
@@ -392,21 +427,17 @@ def test_derived_number_validation_requires_source_backing_and_matching_total():
         id="src_a",
         kind="source",
         figure="$10",
-        normalized_value=10,
+        value=10,
         label="A",
-        division="AAA",
-        division_acronym="AAA",
-        chunk_id="a",
+        source={"chunk_id": "a"},
     )
     source_b = NumberAnnotation(
         id="src_b",
         kind="source",
         figure="$5",
-        normalized_value=5,
+        value=5,
         label="B",
-        division="BBB",
-        division_acronym="BBB",
-        chunk_id="b",
+        source={"chunk_id": "b"},
     )
 
     accepted = service._validate_derived_annotations(
@@ -414,7 +445,7 @@ def test_derived_number_validation_requires_source_backing_and_matching_total():
             ProposedDerivedAnnotation(
                 id="drv_total",
                 figure="$15",
-                normalized_value=15,
+                value=15,
                 label="Total",
                 equation="$10 + $5 = $15",
                 rationale="Both inputs are source-backed.",
@@ -431,7 +462,7 @@ def test_derived_number_validation_requires_source_backing_and_matching_total():
             ProposedDerivedAnnotation(
                 id="drv_bad",
                 figure="$20",
-                normalized_value=20,
+                value=20,
                 label="Bad total",
                 equation="$10 + $5 = $20",
                 input_ids=["src_a", "src_b"],
@@ -442,8 +473,236 @@ def test_derived_number_validation_requires_source_backing_and_matching_total():
         target=NumberAnnotationTarget(scope="answer"),
     )
 
-    assert accepted[0].inputs[0].annotation_id == "src_a"
+    assert accepted[0].derived.source_input_ids == ["src_a", "src_b"]
     assert [item.id for item in rejected] == []
+
+
+def test_derived_number_validation_accepts_bare_comma_formatted_figure():
+    from app.models.query import NumberAnnotation, NumberAnnotationTarget
+    from app.services.rag_service import ProposedDerivedAnnotation
+
+    service = RAGService.__new__(RAGService)
+    source_a = NumberAnnotation(
+        id="src_fema",
+        kind="source",
+        figure="$20,261,000,000",
+        value=20_261_000_000,
+        label="FEMA Disaster Relief Fund",
+        source={"chunk_id": "dhs"},
+    )
+    source_b = NumberAnnotation(
+        id="src_river",
+        kind="source",
+        figure="$368,037,000",
+        value=368_037_000,
+        label="Mississippi River and Tributaries",
+        source={"chunk_id": "ewd"},
+    )
+
+    accepted = service._validate_derived_annotations(
+        proposed=[
+            ProposedDerivedAnnotation(
+                id="drv_combined",
+                figure="20,629,037,000",
+                value=20_629_037_000,
+                label="Combined FEMA and river total",
+                equation="$20,261,000,000 + $368,037,000 = $20,629,037,000",
+                input_ids=["src_fema", "src_river"],
+            )
+        ],
+        target_answer="The combined total is $20,629,037,000 [[num:drv_combined]].",
+        available=[source_a, source_b],
+        target=NumberAnnotationTarget(scope="answer"),
+    )
+
+    assert accepted[0].id == "drv_combined"
+    assert accepted[0].value == 20_629_037_000
+
+
+def test_derived_number_validation_uses_visible_marker_figure_when_structured_figure_is_label():
+    from app.models.query import NumberAnnotation, NumberAnnotationTarget
+    from app.services.rag_service import ProposedDerivedAnnotation
+
+    service = RAGService.__new__(RAGService)
+    source_a = NumberAnnotation(
+        id="src_operations",
+        kind="source",
+        figure="$1,483,990,000",
+        value=1_483_990_000,
+        label="FEMA operations and support",
+        source={"chunk_id": "ops"},
+    )
+    source_b = NumberAnnotation(
+        id="src_pci",
+        kind="source",
+        figure="$99,528,000",
+        value=99_528_000,
+        label="FEMA procurement, construction, and improvements",
+        source={"chunk_id": "pci"},
+    )
+    source_c = NumberAnnotation(
+        id="src_assistance",
+        kind="source",
+        figure="$3,497,019,369",
+        value=3_497_019_369,
+        label="FEMA federal assistance",
+        source={"chunk_id": "assistance"},
+    )
+
+    accepted = service._validate_derived_annotations(
+        proposed=[
+            ProposedDerivedAnnotation(
+                id="drv_dhs_1",
+                figure="FEMA total",
+                value=5_080_537_369,
+                label="FEMA total",
+                equation="$1,483,990,000 + $99,528,000 + $3,497,019,369 = $5,080,537,369",
+                input_ids=["src_operations", "src_pci", "src_assistance"],
+            )
+        ],
+        target_answer="**FEMA total:** **$5,080,537,369** [[num:drv_dhs_1]]",
+        available=[source_a, source_b, source_c],
+        target=NumberAnnotationTarget(scope="division", division="DHS"),
+    )
+
+    assert accepted[0].id == "drv_dhs_1"
+    assert accepted[0].figure == "$5,080,537,369"
+    assert accepted[0].value == 5_080_537_369
+
+
+def test_derived_number_validation_logs_unparseable_figures():
+    from app.models.query import NumberAnnotation, NumberAnnotationTarget
+    from app.services.rag_service import ProposedDerivedAnnotation
+
+    service = RAGService.__new__(RAGService)
+    logs = []
+    service._debug_log = lambda message, *args: logs.append(message % args)
+    source = NumberAnnotation(
+        id="src_a",
+        kind="source",
+        figure="$10",
+        value=10,
+        label="A",
+        source={"chunk_id": "a"},
+    )
+
+    rejected = service._validate_derived_annotations(
+        proposed=[
+            ProposedDerivedAnnotation(
+                id="drv_bad",
+                figure="combined total",
+                value=10,
+                label="Bad total",
+                equation="$10 = $10",
+                input_ids=["src_a"],
+            )
+        ],
+        target_answer="The combined total is not numeric [[num:drv_bad]].",
+        available=[source],
+        target=NumberAnnotationTarget(scope="answer"),
+    )
+
+    assert rejected == []
+    assert "missing_or_unparseable_displayed_marker_figure" in logs[0]
+    assert "combined total" in logs[0]
+
+
+def test_dollar_parser_handles_scaled_figures():
+    service = RAGService.__new__(RAGService)
+
+    assert service.parse_dollar_figure("$10") == 10
+    assert service.parse_dollar_figure("$1,234,000") == 1_234_000
+    assert service.parse_dollar_figure("$10.2 million") == 10_200_000
+    assert service.parse_dollar_figure("$3 billion") == 3_000_000_000
+    assert service.parse_dollar_figure("20,629,037,000") == 20_629_037_000
+    assert service.parse_dollar_figure("10.2 million") == 10_200_000
+    assert service.parse_dollar_figure("2024") is None
+
+
+def test_source_number_annotations_allow_repeated_equal_amounts_with_different_labels():
+    from app.services.rag_service import SourceNumberCandidate
+
+    service = RAGService.__new__(RAGService)
+    chunk = {
+        "chunk_id": "chunk-a",
+        "division": "AAA",
+        "division_acronym": "AAA",
+        "content": "Program A receives $5,000,000. Program B receives $5,000,000.",
+        "chunk_summary": None,
+        "score": 0.1,
+        "metadata": {},
+    }
+
+    annotations = service._source_number_annotations(
+        chunk,
+        "Program A receives $5,000,000.\nProgram B receives $5,000,000.",
+        [
+            SourceNumberCandidate(figure="$5,000,000", value=5_000_000, label="Program A"),
+            SourceNumberCandidate(figure="$5,000,000", value=5_000_000, label="Program B"),
+        ],
+    )
+
+    assert [annotation.label for annotation in annotations] == ["Program A", "Program B"]
+
+
+def test_source_marker_insertion_repeats_single_annotation_for_reused_number():
+    from app.models.query import NumberAnnotation
+
+    service = RAGService.__new__(RAGService)
+    annotation = NumberAnnotation(
+        id="src_a",
+        kind="source",
+        figure="$103,189,080",
+        value=103_189_080,
+        label="Emergency operations center grants",
+        source={"chunk_id": "chunk-a"},
+    )
+
+    marked = service._mark_text_with_source_annotations(
+        "Emergency operations center grants receive $103,189,080, and the repeated amount is $103,189,080.",
+        [annotation],
+    )
+
+    assert marked.count("[[num:src_a]]") == 2
+    assert service._unmarked_figures(marked) == []
+
+
+def test_source_marker_insertion_uses_distinct_annotations_before_reuse():
+    from app.models.query import NumberAnnotation
+
+    service = RAGService.__new__(RAGService)
+    annotations = [
+        NumberAnnotation(
+            id="src_program_a",
+            kind="source",
+            figure="$5,000,000",
+            value=5_000_000,
+            label="Program A",
+            source={"chunk_id": "chunk-a"},
+        ),
+        NumberAnnotation(
+            id="src_program_b",
+            kind="source",
+            figure="$5,000,000",
+            value=5_000_000,
+            label="Program B",
+            source={"chunk_id": "chunk-a"},
+        ),
+    ]
+
+    marked = service._mark_text_with_source_annotations(
+        "Program A receives $5,000,000. Program B receives $5,000,000. Total repeats $5,000,000.",
+        annotations,
+    )
+
+    assert "[[num:src_program_a]]" in marked
+    assert marked.count("[[num:src_program_b]]") == 2
+
+
+def test_unmarked_figures_allows_markdown_closer_before_marker():
+    service = RAGService.__new__(RAGService)
+
+    assert service._unmarked_figures("**$20,629,037,000** [[num:drv_final_1]]") == []
 
 
 def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):

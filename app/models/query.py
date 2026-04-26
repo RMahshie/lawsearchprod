@@ -6,7 +6,7 @@ documentation, and examples for the LawSearch AI API.
 """
 
 from typing import List, Optional, Dict, Any, Literal
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 from datetime import datetime
 
 
@@ -197,27 +197,29 @@ class SourceDocument(BaseModel):
     )
 
 
-class NumberAnnotationInput(BaseModel):
-    """One source-backed input used to explain a displayed number."""
-
-    annotation_id: str = Field(..., description="Source annotation id backing this input")
-    figure: str = Field(..., description="Displayed input figure")
-    normalized_value: float = Field(..., description="Input value normalized to dollars")
-    label: str = Field(..., description="Account, program, or short description for the input")
-    division: str = Field(..., description="Legislative division containing the source input")
-    division_acronym: str = Field(..., description="Compact division marker for the source input")
-    chunk_id: str = Field(..., description="Stable chunk id containing the source input")
-    chunk_summary: Optional[str] = Field(default=None, description="Short source hover summary")
-    chunk_snapshot: Optional[str] = Field(default=None, description="Short source list label")
-    source_quote: Optional[str] = Field(default=None, description="Brief source excerpt containing the input")
-
-
 class NumberAnnotationTarget(BaseModel):
     """Where a number marker appears in returned markdown."""
 
     scope: Literal["answer", "division"] = Field(..., description="Markdown field containing the marker")
     division: Optional[str] = Field(default=None, description="Division name for division-scoped targets")
-    division_acronym: Optional[str] = Field(default=None, description="Division acronym for division-scoped targets")
+
+
+class SourceNumberReference(BaseModel):
+    """Minimal reference to a source chunk backing an atomic figure."""
+
+    chunk_id: str = Field(..., description="Stable chunk id containing the source-backed figure")
+
+
+class DerivedNumberReference(BaseModel):
+    """Readable calculation metadata for a derived figure."""
+
+    equation: str = Field(..., description="Readable equation for derived figures")
+    rationale: Optional[str] = Field(default=None, description="Concise non-chain-of-thought rationale")
+    input_ids: List[str] = Field(default_factory=list, description="Immediate source or derived annotation inputs")
+    source_input_ids: List[str] = Field(
+        default_factory=list,
+        description="Flattened source annotation ids used for source rows in derived hovers",
+    )
 
 
 class NumberAnnotation(BaseModel):
@@ -226,25 +228,78 @@ class NumberAnnotation(BaseModel):
     id: str = Field(..., description="Unique hidden marker id, without the [[num:...]] wrapper")
     kind: Literal["source", "derived"] = Field(..., description="Source-backed atomic figure or validated derived figure")
     figure: str = Field(..., description="Visible figure text in the answer")
-    normalized_value: float = Field(..., description="Figure value normalized to dollars")
+    value: float = Field(..., description="Figure value normalized to dollars")
     label: str = Field(..., description="Short human-readable description of the figure")
     targets: List[NumberAnnotationTarget] = Field(
         default_factory=list,
         description="Answer or division markdown locations containing this marker",
     )
-    division: Optional[str] = Field(default=None, description="Primary division for source annotations")
-    division_acronym: Optional[str] = Field(default=None, description="Primary division acronym for source annotations")
-    chunk_id: Optional[str] = Field(default=None, description="Source chunk id for source annotations")
-    chunk_summary: Optional[str] = Field(default=None, description="Source hover summary")
-    chunk_snapshot: Optional[str] = Field(default=None, description="Short source list label")
-    source_quote: Optional[str] = Field(default=None, description="Brief source excerpt containing the figure")
-    equation: Optional[str] = Field(default=None, description="Readable equation for derived figures")
-    rationale: Optional[str] = Field(default=None, description="Concise non-chain-of-thought rationale")
-    input_ids: List[str] = Field(default_factory=list, description="Annotation ids proposed as inputs")
-    inputs: List[NumberAnnotationInput] = Field(
-        default_factory=list,
-        description="Flattened source-backed inputs used for derived figures",
-    )
+    source: Optional[SourceNumberReference] = Field(default=None, description="Source chunk reference for source figures")
+    derived: Optional[DerivedNumberReference] = Field(default=None, description="Calculation metadata for derived figures")
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_shape(cls, data):
+        """Accept current/older annotation JSON while returning the lean schema."""
+        if not isinstance(data, dict):
+            return data
+
+        normalized = dict(data)
+        if "value" not in normalized and "normalized_value" in normalized:
+            normalized["value"] = normalized.get("normalized_value")
+
+        if normalized.get("kind") == "source" and not normalized.get("source"):
+            chunk_id = normalized.get("chunk_id")
+            if chunk_id:
+                normalized["source"] = {"chunk_id": chunk_id}
+
+        if normalized.get("kind") == "derived" and not normalized.get("derived"):
+            inputs = normalized.get("inputs") or []
+            source_input_ids = [
+                item.get("annotation_id")
+                for item in inputs
+                if isinstance(item, dict) and item.get("annotation_id")
+            ]
+            normalized["derived"] = {
+                "equation": normalized.get("equation") or normalized.get("label") or normalized.get("figure") or "",
+                "rationale": normalized.get("rationale") or None,
+                "input_ids": normalized.get("input_ids") or [],
+                "source_input_ids": source_input_ids,
+            }
+
+        for legacy_field in (
+            "normalized_value",
+            "division",
+            "division_acronym",
+            "chunk_id",
+            "chunk_summary",
+            "chunk_snapshot",
+            "source_quote",
+            "equation",
+            "rationale",
+            "input_ids",
+            "inputs",
+        ):
+            normalized.pop(legacy_field, None)
+
+        if "targets" in normalized:
+            normalized["targets"] = [
+                {key: value for key, value in target.items() if key in {"scope", "division"}}
+                if isinstance(target, dict)
+                else target
+                for target in normalized.get("targets") or []
+            ]
+
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_kind_payload(self):
+        """Ensure annotation kind and payload stay aligned."""
+        if self.kind == "source" and self.source is None:
+            raise ValueError("source annotations require source.chunk_id")
+        if self.kind == "derived" and self.derived is None:
+            raise ValueError("derived annotations require derived metadata")
+        return self
 
 
 class DebugDivisionQuery(BaseModel):

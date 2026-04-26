@@ -1,10 +1,35 @@
 # LawSearch AI
 
-![LawSearch AI screenshot](docs/images/app-screenshot-shadcn.png)
-
 LawSearch AI is a RAG application for querying U.S. federal appropriations bills in plain English. It routes questions across 14 appropriations divisions, retrieves relevant legislative text from ChromaDB, and uses OpenAI models to produce cited answers with source-backed dollar figures.
 
 The project is built as a service-oriented FastAPI backend with a shadcn React/TypeScript frontend. It is designed to show a practical, inspectable AI system rather than a toy chatbot: ingestion, retrieval, model routing, source display, saved history, and storage management are all first-class parts of the app.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td valign="top" width="66%">
+      <img src="docs/images/main_screen.png" alt="LawSearch AI main screen" width="100%" />
+    </td>
+    <td valign="top" width="34%">
+      <p>
+        <img src="docs/images/history_screen.png" alt="LawSearch AI history screen" width="100%" />
+        <br />
+        <strong>Saved history</strong>
+      </p>
+      <p>
+        <img src="docs/images/static_modal.png" alt="Static number popup" width="100%" />
+        <br />
+        <strong>Static number detail</strong>
+      </p>
+      <p>
+        <img src="docs/images/synthesized_modal.png" alt="Synthesized result popup" width="100%" />
+        <br />
+        <strong>Synthesized result detail</strong>
+      </p>
+    </td>
+  </tr>
+</table>
 
 ## Key Features
 

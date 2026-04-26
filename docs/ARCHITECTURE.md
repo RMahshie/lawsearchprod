@@ -24,10 +24,10 @@ Core backend modules:
 1. API receives a question plus controls like `max_results`, `divisions_filter`, `include_sources`, and `thinking_speed`.
 2. Router selects relevant appropriations divisions unless the user provides a filter.
 3. Retriever pulls matching chunks from each selected division collection in Chroma.
-4. Map step runs per chunk, extracting facts and generating a short chunk summary for the UI.
-5. Reduce step combines mapped facts into one answer per division.
-6. Synthesize step combines division answers only when more than one division answered.
-7. API returns the final answer, selected divisions, division reductions, sources, model label, timing, and query ID.
+4. Map step runs per chunk, extracting facts, source-backed dollar figures, and a short chunk summary for the UI.
+5. Reduce step combines mapped facts into one answer per division and may propose derived dollar totals.
+6. Synthesize step combines division answers only when more than one division answered and may propose final derived totals.
+7. API validates derived annotations, merges number provenance, and returns the final answer, selected divisions, division reductions, sources, model label, timing, query ID, and `number_annotations`.
 
 ## LangGraph Flow
 
@@ -63,15 +63,20 @@ PostgreSQL stores metadata for embedding models, versioned vector stores, saved 
 
 Saved question replay uses `vector_store_id + chunk_id` to hydrate source text from Chroma. If the Chroma chunk is missing, that source is skipped entirely, including its stored summary/snapshot labels.
 
+Saved query runs also store `number_annotations` as a JSON snapshot. Source annotations point to persisted chunk ids; derived annotations store equation text and input ids. Saved history does not recompute derivations.
+
+See [Number Provenance](NUMBER_PROVENANCE.md) for the marker and annotation contract.
+
 ## Frontend Behavior
 
 The frontend uses a left control rail and right answer workspace. Users can select thinking speed, max results, divisions, and source display. Storage Manager opens a large modal for vector-store ingestion and activation, while Question History switches the left rail into saved-question browsing.
 
-Answers render as markdown. Literal dollar figures are highlighted when they match retrieved source snippets. Hovering a figure shows all matching chunks with the original text and generated chunk summaries.
+Answers render as markdown. Hidden `[[num:id]]` markers bind visible dollar figures to `number_annotations`. Source figures show source chunk popovers. Derived figures show calculation popovers with readable equations and source-backed input rows. Legacy responses without annotations can still use source-snippet matching as a fallback.
 
 ## Operational Notes
 
 - `DEBUG=true` enables concise `RAG_DEBUG` stage logs.
+- Use the `.agents/skills/lawsearch-rag-debugging` skill for low-noise logs to paste when diagnosing retrieval, provenance, or history issues.
 - Chroma data persists in `db/chroma/`.
 - Storage registry records which versioned vector store is active.
 - History/storage features are disabled when PostgreSQL is unavailable; live queries can still run against Chroma.

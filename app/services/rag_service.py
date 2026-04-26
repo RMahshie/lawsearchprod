@@ -26,7 +26,7 @@ if os.getenv("ENVIRONMENT") != "production" and not os.path.exists("/.dockerenv"
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import TypedDict
 
 from app.core.config import get_settings
@@ -34,13 +34,14 @@ from app.db.models import VectorStore
 from app.db.session import SessionLocal, database_available
 from app.models.query import (
     DebugDivisionQuery,
+    DerivedNumberReference,
     DivisionResult,
     IngestResponse,
     NumberAnnotation,
-    NumberAnnotationInput,
     NumberAnnotationTarget,
     QueryRequest,
     QueryResponse,
+    SourceNumberReference,
     SourceDocument,
 )
 from app.services.ingestion_service import IngestionService
@@ -81,13 +82,27 @@ class DivisionQueryPlan(BaseModel):
 class ProposedDerivedAnnotation(BaseModel):
     """LLM-proposed derived figure provenance before deterministic validation."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
-    figure: str
-    normalized_value: float
+    proposed_figure: str = Field(
+        alias="figure",
+        description="Model-proposed figure text. The displayed figure is read from the answer marker context.",
+    )
+    value: float
     label: str
     equation: str
     rationale: str = ""
     input_ids: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_value(cls, data):
+        """Accept current annotation proposals that still use normalized_value."""
+        if isinstance(data, dict) and "value" not in data and "normalized_value" in data:
+            data = dict(data)
+            data["value"] = data.get("normalized_value")
+        return data
 
 
 class MarkedAnswer(BaseModel):
@@ -95,6 +110,21 @@ class MarkedAnswer(BaseModel):
 
     answer: str
     derived_annotations: list[ProposedDerivedAnnotation] = Field(default_factory=list)
+
+
+class SourceNumberCandidate(BaseModel):
+    """LLM-proposed source-backed figure extracted from one mapped chunk."""
+
+    figure: str
+    value: float | None = None
+    label: str
+
+
+class MappedFacts(BaseModel):
+    """Structured map output with facts and relevant source-backed numbers."""
+
+    extracted_facts: str
+    source_numbers: list[SourceNumberCandidate] = Field(default_factory=list)
 
 
 class DivisionQueryState(TypedDict):
@@ -155,7 +185,10 @@ class RAGState(TypedDict, total=False):
     final_answer: str
 
 
-FIGURE_PATTERN = re.compile(r"\$[\d,]+(?:\.\d+)?(?:\s*(?:thousand|million|billion|trillion))?", re.IGNORECASE)
+FIGURE_PATTERN = re.compile(
+    r"\$(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:\s*(?:thousand|million|billion|trillion))?",
+    re.IGNORECASE,
+)
 NUMBER_MARKER_PATTERN = re.compile(r"\[\[num:([A-Za-z0-9_-]+)\]\]")
 
 
@@ -626,7 +659,8 @@ class RAGService:
 
         extraction_prompt = (
             "You are a legislative financial analyst extracting evidence from one source chunk.\n\n"
-            "Return only markdown bullets using this format:\n"
+            "Return structured output with `extracted_facts` markdown bullets and `source_numbers` for the dollar figures used in those facts.\n\n"
+            "Use this markdown bullet format in extracted_facts:\n"
             "- <specific fact with exact dollar figure/account/program/agency/fiscal year if present> "
             f"[{chunk['division_acronym']}]\n\n"
             "Rules:\n"
@@ -634,6 +668,8 @@ class RAGService:
             "- Preserve exact dollar figures, account names, agencies, fiscal years, and section references.\n"
             "- One fact per bullet; no paragraphs.\n"
             "- End every substantive bullet with the citation marker.\n"
+            "- Add one source_numbers item for each relevant dollar figure used in extracted_facts.\n"
+            "- Each source_numbers item must include the exact displayed figure, normalized dollar value, and a short account/program label.\n"
             "- If the chunk has no relevant evidence, return exactly: - No relevant facts found.\n\n"
             f"Question:\n{question}\n\n"
             f"Source chunk:\n{chunk['content']}"
@@ -656,7 +692,7 @@ class RAGService:
         with ThreadPoolExecutor(max_workers=3) as executor:
             query_id = state.get("query_id", "unknown")
             facts_future = executor.submit(
-                self._invoke_text,
+                self._invoke_mapped_facts,
                 map_llm,
                 extraction_prompt,
                 stage="map",
@@ -676,12 +712,15 @@ class RAGService:
                 stage="summary",
                 query_id=query_id,
             )
-            extracted_facts = facts_future.result()
+            mapped_facts = facts_future.result()
+            extracted_facts = mapped_facts.extracted_facts
             chunk_summary = summary_future.result()
             chunk_snapshot = snapshot_future.result()
 
-        number_annotations = self._source_number_annotations(chunk, chunk_summary, chunk_snapshot)
+        number_annotations = self._source_number_annotations(chunk, extracted_facts, mapped_facts.source_numbers)
         extracted_facts = self._mark_text_with_source_annotations(extracted_facts, number_annotations)
+        marker_count = self._count_number_markers(extracted_facts)
+        unmarked_figures = self._unmarked_figures(extracted_facts)
 
         mapped: MappedChunkState = {
             "chunk_id": chunk["chunk_id"],
@@ -693,7 +732,7 @@ class RAGService:
             "source_content": chunk["content"],
             "score": chunk.get("score"),
             "metadata": chunk.get("metadata", {}),
-            "number_annotations": [annotation.model_dump(mode="json") for annotation in number_annotations],
+            "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in number_annotations],
         }
         self._debug_log(
             "map query_id=%s chunk_id=%s division=%s map_model=%s summary_model=%s duration=%.2fs facts_chars=%s summary_chars=%s snapshot_chars=%s",
@@ -707,9 +746,22 @@ class RAGService:
             len(chunk_summary),
             len(chunk_snapshot),
         )
+        if unmarked_figures:
+            self._debug_log(
+                "map_annotation_gaps query_id=%s chunk_id=%s division=%s structured_candidates=%s "
+                "source_annotations=%s markers_in_facts=%s unmarked_figures=%s annotation_figures=%s",
+                state.get("query_id", "unknown"),
+                chunk["chunk_id"],
+                chunk["division_acronym"],
+                len(mapped_facts.source_numbers),
+                len(number_annotations),
+                marker_count,
+                unmarked_figures,
+                [annotation.figure for annotation in number_annotations[:8]],
+            )
         return {
             "mapped_chunks": [mapped],
-            "number_annotations": [annotation.model_dump(mode="json") for annotation in number_annotations],
+            "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in number_annotations],
         }
 
     def _fan_out_reduce_divisions(self, state: RAGState) -> dict[str, Any]:
@@ -806,9 +858,22 @@ class RAGService:
             for item in mapped_items
             for annotation in item.get("number_annotations", [])
         )
+        unmarked_fact_figures = self._unmarked_figures(facts)
+        if unmarked_fact_figures:
+            self._debug_log(
+                "reduce_annotation_input_gaps query_id=%s division=%s mapped_items=%s source_annotations=%s "
+                "source_markers_in_facts=%s unmarked_fact_figures=%s",
+                state.get("query_id", "unknown"),
+                state["division_acronym"],  # type: ignore[typeddict-item]
+                len(mapped_items),
+                len(source_annotations),
+                self._count_number_markers(facts),
+                unmarked_fact_figures,
+            )
         if not facts.strip():
             answer = "No relevant facts found for this division."
             derived_annotations: list[NumberAnnotation] = []
+            proposed_derived_count = 0
         else:
             prompt = (
                 "Synthesize the extracted facts into a division-level answer with a fixed structure. "
@@ -823,6 +888,8 @@ class RAGService:
                 "Rules:\n"
                 "- Preserve all relevant dollar figures from the extracted facts.\n"
                 "- Preserve existing [[num:...]] markers immediately after their visible source figures.\n"
+                "- If you repeat or restate a marked dollar figure in the bottom line, accounts/programs, or notes, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.\n"
+                "- Do not write a source-backed dollar figure without its existing marker when that figure appears in the extracted facts with a marker.\n"
                 "- Keep citation markers immediately after the figure or clause they support.\n"
                 "- Do not invent totals unless the extracted facts explicitly support the arithmetic.\n"
                 "- For any calculated total, add a new marker like [[num:drv_dhs_1]] immediately after the visible total and add a matching derived annotation.\n"
@@ -841,6 +908,7 @@ class RAGService:
                 query_id=state.get("query_id", "unknown"),
             )
             answer = marked.answer
+            proposed_derived_count = len(marked.derived_annotations)
             derived_annotations = self._validate_derived_annotations(
                 proposed=marked.derived_annotations,
                 target_answer=answer,
@@ -848,8 +916,10 @@ class RAGService:
                 target=NumberAnnotationTarget(
                     scope="division",
                     division=division,
-                    division_acronym=state["division_acronym"],  # type: ignore[typeddict-item]
                 ),
+                query_id=state.get("query_id", "unknown"),
+                stage="reduce",
+                target_label=state["division_acronym"],  # type: ignore[typeddict-item]
             )
 
         division_answer: DivisionAnswerState = {
@@ -858,7 +928,7 @@ class RAGService:
             "answer": answer,
             "source_chunk_ids": [item["chunk_id"] for item in mapped_items if item["chunk_id"]],
             "chunks_retrieved": chunks_retrieved,
-            "number_annotations": [annotation.model_dump(mode="json") for annotation in derived_annotations],
+            "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in derived_annotations],
         }
         self._debug_log(
             "reduce_done query_id=%s division=%s model=%s mapped_items=%s input_chars=%s duration=%.2fs answer_chars=%s",
@@ -870,9 +940,23 @@ class RAGService:
             time.time() - start_time,
             len(answer),
         )
+        unmarked_answer_figures = self._unmarked_figures(answer)
+        if unmarked_answer_figures or proposed_derived_count or derived_annotations:
+            self._debug_log(
+                "reduce_annotations_output query_id=%s division=%s proposed_derived=%s accepted_derived=%s "
+                "answer_markers=%s unmarked_answer_figures=%s accepted_ids=%s accepted_figures=%s",
+                state.get("query_id", "unknown"),
+                state["division_acronym"],  # type: ignore[typeddict-item]
+                proposed_derived_count,
+                len(derived_annotations),
+                self._count_number_markers(answer),
+                unmarked_answer_figures,
+                [annotation.id for annotation in derived_annotations],
+                [annotation.figure for annotation in derived_annotations],
+            )
         return {
             "division_answers": [division_answer],
-            "number_annotations": [annotation.model_dump(mode="json") for annotation in derived_annotations],
+            "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in derived_annotations],
         }
 
     def _synthesize_final(self, state: RAGState) -> dict[str, Any]:
@@ -930,6 +1014,17 @@ class RAGService:
             for item in division_answers
         )
         available_annotations = self._annotations_from_dicts(state.get("number_annotations", []))
+        self._debug_log(
+            "synthesize_annotations_input query_id=%s available_annotations=%s available_source=%s available_derived=%s "
+            "division_answer_markers=%s division_unmarked_figures=%s annotation_ids=%s",
+            state.get("query_id", "unknown"),
+            len(available_annotations),
+            sum(1 for annotation in available_annotations if annotation.kind == "source"),
+            sum(1 for annotation in available_annotations if annotation.kind == "derived"),
+            self._count_number_markers(context),
+            self._unmarked_figures(context),
+            [annotation.id for annotation in available_annotations[:16]],
+        )
         prompt = (
             "Create the final answer from the division-level answers using a stable structure. "
             "Return structured output with `answer` markdown and `derived_annotations`.\n\n"
@@ -949,6 +1044,8 @@ class RAGService:
             "- Include every division answer provided below; do not drop a division.\n"
             "- Preserve relevant dollar figures and citation markers from division answers.\n"
             "- Preserve existing [[num:...]] markers immediately after their visible source or derived figures.\n"
+            "- If you repeat or restate a marked dollar figure in the answer, by-division section, or caveats, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.\n"
+            "- Do not write a source-backed or derived dollar figure without its existing marker when that figure appears in the division answers with a marker.\n"
             "- Keep citation markers immediately after the figure or clause they support.\n"
             "- Combine figures only when they are clearly comparable and supported by the division answers.\n"
             "- For any new calculated total, add a new marker like [[num:drv_final_1]] immediately after the visible total and add a matching derived annotation.\n"
@@ -971,6 +1068,9 @@ class RAGService:
             target_answer=final_answer,
             available=available_annotations,
             target=NumberAnnotationTarget(scope="answer"),
+            query_id=state.get("query_id", "unknown"),
+            stage="synthesize",
+            target_label="answer",
         )
         self._debug_log(
             "synthesize_done query_id=%s model=%s division_answers=%s input_chars=%s duration=%.2fs answer_chars=%s",
@@ -981,9 +1081,22 @@ class RAGService:
             time.time() - start_time,
             len(final_answer),
         )
+        unmarked_answer_figures = self._unmarked_figures(final_answer)
+        if unmarked_answer_figures or marked.derived_annotations or derived_annotations:
+            self._debug_log(
+                "synthesize_annotations_output query_id=%s proposed_derived=%s accepted_derived=%s "
+                "answer_markers=%s unmarked_answer_figures=%s accepted_ids=%s accepted_figures=%s",
+                state.get("query_id", "unknown"),
+                len(marked.derived_annotations),
+                len(derived_annotations),
+                self._count_number_markers(final_answer),
+                unmarked_answer_figures,
+                [annotation.id for annotation in derived_annotations],
+                [annotation.figure for annotation in derived_annotations],
+            )
         return {
             "final_answer": final_answer,
-            "number_annotations": [annotation.model_dump(mode="json") for annotation in derived_annotations],
+            "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in derived_annotations],
         }
 
     def _invoke_text(self, llm: Any, prompt: str, *, stage: str, query_id: str) -> str:
@@ -1079,6 +1192,26 @@ class RAGService:
         if getattr(getattr(self, "settings", None), "debug", False):
             logger.info("RAG_DEBUG " + message, *args)
 
+    def _count_number_markers(self, text: str) -> int:
+        """Count hidden number markers in markdown text."""
+        return len(NUMBER_MARKER_PATTERN.findall(text or ""))
+
+    def _unmarked_figures(self, text: str, limit: int = 12) -> list[str]:
+        """Return displayed dollar figures that are not immediately followed by a marker."""
+        figures: list[str] = []
+        for match in FIGURE_PATTERN.finditer(text or ""):
+            if self._immediate_number_marker(text, match.end()):
+                continue
+            figures.append(match.group(0))
+            if len(figures) >= limit:
+                break
+        return figures
+
+    def _immediate_number_marker(self, text: str, figure_end: int) -> re.Match[str] | None:
+        """Return a marker only when it belongs to the figure that just ended."""
+        suffix = (text or "")[figure_end : figure_end + 80]
+        return re.match(r"^[\s,.;:)\*_~`]*\[\[num:([A-Za-z0-9_-]+)\]\]", suffix)
+
     def _emit_progress(self, state_or_query_id: RAGState | str, stage: str, message: str, **details: Any) -> None:
         """Emit query progress to an optional streaming callback.
 
@@ -1169,7 +1302,6 @@ class RAGService:
                         NumberAnnotationTarget(
                             scope="division",
                             division=division["division"],
-                            division_acronym=division["division_acronym"],
                         )
                     )
 
@@ -1177,6 +1309,25 @@ class RAGService:
                 updated = annotation.model_copy(update={"targets": targets})
                 final.append(updated)
 
+        answer = result.get("final_answer", "")
+        division_answers = "\n\n".join(division.get("answer", "") for division in result.get("division_answers", []))
+        self._debug_log(
+            "response_annotations query_id=%s raw_annotations=%s unique_annotations=%s returned_annotations=%s "
+            "returned_source=%s returned_derived=%s answer_markers=%s division_markers=%s "
+            "unmarked_answer_figures=%s unmarked_division_figures=%s returned_ids=%s returned_figures=%s",
+            result.get("query_id", "unknown"),
+            len(annotations),
+            len(by_id),
+            len(final),
+            sum(1 for annotation in final if annotation.kind == "source"),
+            sum(1 for annotation in final if annotation.kind == "derived"),
+            self._count_number_markers(answer),
+            self._count_number_markers(division_answers),
+            self._unmarked_figures(answer),
+            self._unmarked_figures(division_answers),
+            [annotation.id for annotation in final[:20]],
+            [annotation.figure for annotation in final[:20]],
+        )
         return final
 
     def _source_documents(
@@ -1211,69 +1362,105 @@ class RAGService:
     def _source_number_annotations(
         self,
         chunk: RetrievedChunkState,
-        chunk_summary: str | None,
-        chunk_snapshot: str | None,
+        extracted_facts: str,
+        candidates: list[SourceNumberCandidate],
     ) -> list[NumberAnnotation]:
-        """Extract source-backed dollar figures from one retrieved chunk."""
+        """Build source-backed annotations from relevant mapped facts."""
         if not chunk["chunk_id"]:
             return []
 
         annotations: list[NumberAnnotation] = []
-        seen_values: set[tuple[str, float]] = set()
-        for index, match in enumerate(FIGURE_PATTERN.finditer(chunk["content"]), start=1):
-            figure = match.group(0)
-            normalized_value = self._normalize_figure(figure)
-            if normalized_value is None:
+        seen_keys: set[tuple[str, str]] = set()
+        source_candidates = candidates or self._fallback_source_number_candidates(extracted_facts)
+        for index, candidate in enumerate(source_candidates, start=1):
+            figure = candidate.figure.strip()
+            value = candidate.value if candidate.value is not None else self._normalize_figure(figure)
+            if value is None:
+                continue
+            if figure not in extracted_facts or figure not in chunk["content"]:
                 continue
 
-            seen_key = (figure.lower(), normalized_value)
-            if seen_key in seen_values:
+            label = candidate.label.strip() or self._source_label(extracted_facts, figure)
+            seen_key = (figure.lower(), label.lower())
+            if seen_key in seen_keys:
                 continue
-            seen_values.add(seen_key)
+            seen_keys.add(seen_key)
 
             marker_id = self._annotation_id("src", chunk["division_acronym"], chunk["chunk_id"], str(index))
-            source_quote = self._source_quote(chunk["content"], match.start(), match.end())
             annotations.append(
                 NumberAnnotation(
                     id=marker_id,
                     kind="source",
                     figure=figure,
-                    normalized_value=normalized_value,
-                    label=self._source_label(source_quote, chunk_snapshot),
-                    division=chunk["division"],
-                    division_acronym=chunk["division_acronym"],
-                    chunk_id=chunk["chunk_id"],
-                    chunk_summary=chunk_summary,
-                    chunk_snapshot=chunk_snapshot,
-                    source_quote=source_quote,
+                    value=value,
+                    label=label,
+                    source=SourceNumberReference(chunk_id=chunk["chunk_id"]),
                 )
             )
         return annotations
 
     def _mark_text_with_source_annotations(self, text: str, annotations: list[NumberAnnotation]) -> str:
         """Add hidden source markers to extracted fact text when figures match chunk evidence."""
-        by_value: dict[int, list[NumberAnnotation]] = {}
+        by_figure: dict[str, list[NumberAnnotation]] = {}
         for annotation in annotations:
-            by_value.setdefault(round(annotation.normalized_value), []).append(annotation)
+            by_figure.setdefault(annotation.figure.lower(), []).append(annotation)
 
-        used: set[str] = set()
+        used_by_figure: dict[str, int] = {}
 
         def replace(match: re.Match[str]) -> str:
             figure = match.group(0)
-            if text[match.end() : match.end() + 8].startswith(" [[num:"):
+            if self._immediate_number_marker(text, match.end()):
                 return figure
-            normalized = self._normalize_figure(figure)
-            if normalized is None:
-                return figure
-            candidates = by_value.get(round(normalized), [])
-            for annotation in candidates:
-                if annotation.id in used:
-                    continue
-                used.add(annotation.id)
-                return f"{figure} [[num:{annotation.id}]]"
+            candidates = by_figure.get(figure.lower(), [])
+            if candidates:
+                key = figure.lower()
+                candidate_index = min(used_by_figure.get(key, 0), len(candidates) - 1)
+                used_by_figure[key] = used_by_figure.get(key, 0) + 1
+                return f"{figure} [[num:{candidates[candidate_index].id}]]"
             return figure
 
         return FIGURE_PATTERN.sub(replace, text)
+
+    def _fallback_source_number_candidates(self, extracted_facts: str) -> list[SourceNumberCandidate]:
+        """Build source candidates from mapped facts when structured map output is unavailable."""
+        candidates: list[SourceNumberCandidate] = []
+        for match in FIGURE_PATTERN.finditer(extracted_facts):
+            figure = match.group(0)
+            value = self._normalize_figure(figure)
+            if value is None:
+                continue
+            candidates.append(
+                SourceNumberCandidate(
+                    figure=figure,
+                    value=value,
+                    label=self._source_label(extracted_facts, figure),
+                )
+            )
+        return candidates
+
+    def _invoke_mapped_facts(self, llm: Any, prompt: str, *, stage: str, query_id: str) -> MappedFacts:
+        """Invoke structured map output, falling back to plain extracted facts."""
+        try:
+            structured_llm = llm.with_structured_output(MappedFacts)
+        except AttributeError:
+            text = self._invoke_text(llm, prompt, stage=stage, query_id=query_id)
+            return MappedFacts(extracted_facts=text, source_numbers=self._fallback_source_number_candidates(text))
+
+        try:
+            response = self._invoke_with_retry(
+                lambda: structured_llm.invoke(prompt),
+                stage=stage,
+                query_id=query_id,
+            )
+        except Exception:
+            text = self._invoke_text(llm, prompt, stage=stage, query_id=query_id)
+            return MappedFacts(extracted_facts=text, source_numbers=self._fallback_source_number_candidates(text))
+
+        if isinstance(response, MappedFacts):
+            return response
+        if isinstance(response, dict):
+            return MappedFacts.model_validate(response)
+        return MappedFacts.model_validate(getattr(response, "model_dump", lambda: response)())
 
     def _invoke_marked_answer(self, llm: Any, prompt: str, *, stage: str, query_id: str) -> MarkedAnswer:
         """Invoke structured answer output, falling back to plain markdown for legacy models/tests."""
@@ -1304,56 +1491,120 @@ class RAGService:
         target_answer: str,
         available: list[NumberAnnotation],
         target: NumberAnnotationTarget,
+        query_id: str = "unknown",
+        stage: str = "unknown",
+        target_label: str = "unknown",
     ) -> list[NumberAnnotation]:
         """Validate derived annotation proposals against markers, inputs, and arithmetic."""
         available_by_id = {annotation.id: annotation for annotation in available}
         accepted: list[NumberAnnotation] = []
         used_ids = set(available_by_id)
+        rejection_counts: dict[str, int] = {}
+        rejection_details: dict[str, list[dict[str, Any]]] = {}
+
+        def reject(reason: str, proposal: ProposedDerivedAnnotation) -> None:
+            rejection_counts[reason] = rejection_counts.get(reason, 0) + 1
+            rejection_details.setdefault(reason, [])
+            if len(rejection_details[reason]) < 5:
+                rejection_details[reason].append(
+                    {
+                        "id": proposal.id,
+                        "proposed_figure": proposal.proposed_figure,
+                        "value": proposal.value,
+                        "input_ids": proposal.input_ids,
+                    }
+                )
 
         for proposal in proposed:
-            if proposal.id in used_ids or f"[[num:{proposal.id}]]" not in target_answer:
+            if proposal.id in used_ids:
+                reject("duplicate_id", proposal)
+                continue
+            if f"[[num:{proposal.id}]]" not in target_answer:
+                reject("missing_marker", proposal)
                 continue
 
-            displayed_value = self._normalize_figure(proposal.figure)
+            displayed_figure = self._displayed_figure_for_marker(target_answer, proposal.id)
+            displayed_value = self._normalize_figure(displayed_figure) if displayed_figure else None
             if displayed_value is None:
+                reject("missing_or_unparseable_displayed_marker_figure", proposal)
                 continue
 
-            flattened_inputs = self._flatten_source_inputs(proposal.input_ids, available_by_id)
-            if not flattened_inputs:
+            source_input_ids = self._flatten_source_input_ids(proposal.input_ids, available_by_id)
+            if not source_input_ids:
+                reject("no_source_backed_inputs", proposal)
                 continue
 
-            input_total = sum(item.normalized_value for item in flattened_inputs)
-            proposed_value = proposal.normalized_value
+            input_total = sum(available_by_id[source_id].value for source_id in source_input_ids)
+            proposed_value = proposal.value
             if not self._values_close(displayed_value, proposed_value):
+                reject("displayed_proposed_value_mismatch", proposal)
                 continue
             if not self._values_close(displayed_value, input_total):
+                reject("input_sum_mismatch", proposal)
                 continue
 
             accepted_annotation = NumberAnnotation(
                 id=proposal.id,
                 kind="derived",
-                figure=proposal.figure,
-                normalized_value=displayed_value,
+                figure=displayed_figure,
+                value=displayed_value,
                 label=proposal.label,
                 targets=[target],
-                equation=proposal.equation,
-                rationale=proposal.rationale,
-                input_ids=proposal.input_ids,
-                inputs=flattened_inputs,
+                derived=DerivedNumberReference(
+                    equation=proposal.equation,
+                    rationale=proposal.rationale or None,
+                    input_ids=proposal.input_ids,
+                    source_input_ids=source_input_ids,
+                ),
             )
             accepted.append(accepted_annotation)
             available_by_id[proposal.id] = accepted_annotation
             used_ids.add(proposal.id)
 
+        if proposed or accepted or rejection_counts:
+            self._debug_log(
+                "derived_validation query_id=%s stage=%s target=%s proposed=%s accepted=%s rejected=%s "
+                "rejected_details=%s available=%s available_source=%s available_derived=%s "
+                "accepted_ids=%s accepted_figures=%s",
+                query_id,
+                stage,
+                target_label,
+                len(proposed),
+                len(accepted),
+                rejection_counts,
+                rejection_details,
+                len(available),
+                sum(1 for annotation in available if annotation.kind == "source"),
+                sum(1 for annotation in available if annotation.kind == "derived"),
+                [annotation.id for annotation in accepted],
+                [annotation.figure for annotation in accepted],
+            )
         return accepted
 
-    def _flatten_source_inputs(
+    def _displayed_figure_for_marker(self, text: str, marker_id: str) -> str | None:
+        """Find the displayed dollar figure directly associated with a marker."""
+        marker_match = re.search(rf"\[\[num:{re.escape(marker_id)}\]\]", text or "")
+        if not marker_match:
+            return None
+
+        prefix = (text or "")[: marker_match.start()]
+        candidates = list(FIGURE_PATTERN.finditer(prefix))
+        if not candidates:
+            return None
+
+        last_match = candidates[-1]
+        between = prefix[last_match.end() :]
+        if re.fullmatch(r"[\s,.;:)\*_~]*", between):
+            return last_match.group(0)
+        return None
+
+    def _flatten_source_input_ids(
         self,
         input_ids: list[str],
         available_by_id: dict[str, NumberAnnotation],
-    ) -> list[NumberAnnotationInput]:
-        """Flatten source and nested derived inputs into source-backed hover rows."""
-        inputs: list[NumberAnnotationInput] = []
+    ) -> list[str]:
+        """Flatten source and nested derived inputs into source annotation ids."""
+        source_ids: list[str] = []
         seen_source_ids: set[str] = set()
 
         def visit(annotation_id: str, stack: set[str]) -> bool:
@@ -1364,36 +1615,30 @@ class RAGService:
                 return False
 
             if annotation.kind == "source":
-                if not annotation.chunk_id or not annotation.division or not annotation.division_acronym:
+                if not annotation.source or not annotation.source.chunk_id:
                     return False
                 if annotation.id not in seen_source_ids:
                     seen_source_ids.add(annotation.id)
-                    inputs.append(
-                        NumberAnnotationInput(
-                            annotation_id=annotation.id,
-                            figure=annotation.figure,
-                            normalized_value=annotation.normalized_value,
-                            label=annotation.label,
-                            division=annotation.division,
-                            division_acronym=annotation.division_acronym,
-                            chunk_id=annotation.chunk_id,
-                            chunk_summary=annotation.chunk_summary,
-                            chunk_snapshot=annotation.chunk_snapshot,
-                            source_quote=annotation.source_quote,
-                        )
-                    )
+                    source_ids.append(annotation.id)
                 return True
 
-            if annotation.kind == "derived" and annotation.inputs:
-                for source_input in annotation.inputs:
-                    if source_input.annotation_id not in seen_source_ids:
-                        seen_source_ids.add(source_input.annotation_id)
-                        inputs.append(source_input)
+            if annotation.kind == "derived" and annotation.derived and annotation.derived.source_input_ids:
+                for source_id in annotation.derived.source_input_ids:
+                    source_annotation = available_by_id.get(source_id)
+                    if (
+                        source_annotation
+                        and source_annotation.kind == "source"
+                        and source_annotation.source
+                        and source_id not in seen_source_ids
+                    ):
+                        seen_source_ids.add(source_id)
+                        source_ids.append(source_id)
                 return True
 
-            return all(visit(child_id, stack | {annotation_id}) for child_id in annotation.input_ids)
+            child_ids = annotation.derived.input_ids if annotation.kind == "derived" and annotation.derived else []
+            return all(visit(child_id, stack | {annotation_id}) for child_id in child_ids)
 
-        return inputs if all(visit(input_id, set()) for input_id in input_ids) else []
+        return source_ids if all(visit(input_id, set()) for input_id in input_ids) else []
 
     def _annotations_from_dicts(self, annotations: Any) -> list[NumberAnnotation]:
         """Normalize annotation dicts/models carried through LangGraph reducers."""
@@ -1415,29 +1660,53 @@ class RAGService:
         lines = []
         for annotation in annotations:
             if annotation.kind == "source":
+                chunk_id = annotation.source.chunk_id if annotation.source else "unknown"
                 lines.append(
-                    f"- {annotation.id}: {annotation.figure} ({annotation.normalized_value:.0f}) "
-                    f"{annotation.label} [{annotation.division_acronym}] chunk={annotation.chunk_id}"
+                    f"- {annotation.id}: {annotation.figure} ({annotation.value:.0f}) "
+                    f"{annotation.label} chunk={chunk_id}"
                 )
             else:
+                input_ids = annotation.derived.input_ids if annotation.derived else []
                 lines.append(
-                    f"- {annotation.id}: {annotation.figure} ({annotation.normalized_value:.0f}) "
-                    f"{annotation.label}; inputs={', '.join(annotation.input_ids)}"
+                    f"- {annotation.id}: {annotation.figure} ({annotation.value:.0f}) "
+                    f"{annotation.label}; inputs={', '.join(input_ids)}"
                 )
         return "\n".join(lines)
 
     def _normalize_figure(self, figure: str) -> float | None:
         """Normalize a displayed dollar figure to dollars."""
-        match = re.search(r"\$([\d,]+(?:\.\d+)?)(?:\s*(thousand|million|billion|trillion))?", figure, re.IGNORECASE)
+        return self.parse_dollar_figure(figure)
+
+    def parse_dollar_figure(self, text: str) -> float | None:
+        """Parse a displayed dollar figure into normalized dollars."""
+        scale_words = "thousand|million|billion|trillion"
+        match = re.search(
+            rf"\$\s*([\d,]+(?:\.\d+)?)(?:\s*({scale_words}))?",
+            text,
+            re.IGNORECASE,
+        )
+        if not match:
+            match = re.search(
+                rf"\b(\d{{1,3}}(?:,\d{{3}})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*({scale_words})\b",
+                text,
+                re.IGNORECASE,
+            )
+        if not match:
+            match = re.search(
+                r"\b(\d{1,3}(?:,\d{3})+(?:\.\d+)?)\b",
+                text,
+                re.IGNORECASE,
+            )
         if not match:
             return None
         value = float(match.group(1).replace(",", ""))
+        scale = match.group(2) if match.lastindex and match.lastindex >= 2 else ""
         multiplier = {
             "thousand": 1_000,
             "million": 1_000_000,
             "billion": 1_000_000_000,
             "trillion": 1_000_000_000_000,
-        }.get((match.group(2) or "").lower(), 1)
+        }.get((scale or "").lower(), 1)
         return value * multiplier
 
     def _values_close(self, left: float, right: float) -> bool:
@@ -1454,19 +1723,15 @@ class RAGService:
         suffix = uuid.uuid5(uuid.NAMESPACE_URL, raw).hex[:10]
         return f"{safe[:68].rstrip('_')}_{suffix}"
 
-    def _source_quote(self, content: str, start: int, end: int) -> str:
-        """Return a compact excerpt around a figure without exposing the whole chunk in annotations."""
-        quote_start = max(0, start - 140)
-        quote_end = min(len(content), end + 140)
-        return re.sub(r"\s+", " ", content[quote_start:quote_end]).strip()
-
-    def _source_label(self, source_quote: str | None, fallback: str | None) -> str:
-        """Build a short label for source-backed figure popovers."""
-        if fallback and fallback.strip():
-            return fallback.strip()
-        if not source_quote:
+    def _source_label(self, extracted_facts: str, figure: str) -> str:
+        """Build a short label for source-backed figure popovers from mapped facts."""
+        for line in extracted_facts.splitlines():
+            if figure in line:
+                label = re.sub(r"\s+", " ", line).strip(" -*")
+                return label[:117].rstrip() + "..." if len(label) > 120 else label
+        label = re.sub(r"\s+", " ", extracted_facts).strip(" -*")
+        if not label:
             return "Source-backed figure"
-        label = re.sub(r"\s+", " ", source_quote).strip()
         return label[:117].rstrip() + "..." if len(label) > 120 else label
 
     def _debug_division_queries(self, result: RAGState) -> list[DebugDivisionQuery]:

@@ -1,7 +1,8 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ReactNode } from 'react';
-import type { NumberAnnotation, NumberAnnotationInput, QueryResponse, SourceDocument } from '../types/api';
+import { useState } from 'react';
+import type { NumberAnnotation, QueryResponse, SourceDocument } from '../types/api';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -263,9 +264,10 @@ function FigurePopover({ citation, result }: { citation: FigureCitation; result:
 }
 
 function SourceAnnotationPopover({ annotation, result }: { annotation: NumberAnnotation; result: QueryResponse }) {
-  const source = (result.sources ?? []).find((item) => item.chunk_id === annotation.chunk_id);
-  const content = source?.content_snippet ?? annotation.source_quote ?? '';
-  const summary = source?.chunk_summary ?? annotation.chunk_summary;
+  if (annotation.kind !== 'source') return null;
+  const source = sourceForAnnotation(annotation, result);
+  const content = source?.content_snippet ?? '';
+  const summary = source?.chunk_summary;
 
   return (
     <Popover>
@@ -284,11 +286,11 @@ function SourceAnnotationPopover({ annotation, result }: { annotation: NumberAnn
           <Separator />
           <div className="border bg-background p-3">
             <div className="mb-2 flex items-center gap-2 text-xs">
-              <Badge variant="outline" className="rounded-sm">[{annotation.division_acronym}]</Badge>
-              {annotation.chunk_id && <span className="text-muted-foreground">{annotation.chunk_id}</span>}
+              <Badge variant="outline" className="rounded-sm">[{source?.division_acronym ?? 'SRC'}]</Badge>
+              <span className="text-muted-foreground">{annotation.source.chunk_id}</span>
             </div>
             <pre className="whitespace-pre-wrap text-xs leading-relaxed">
-              <HighlightedSourceSnippet content={content} figure={annotation.figure} />
+              {content ? <HighlightedSourceSnippet content={content} figure={annotation.figure} /> : 'Source chunk unavailable.'}
             </pre>
           </div>
         </div>
@@ -298,6 +300,12 @@ function SourceAnnotationPopover({ annotation, result }: { annotation: NumberAnn
 }
 
 function DerivedFigurePopover({ annotation, result }: { annotation: NumberAnnotation; result: QueryResponse }) {
+  if (annotation.kind !== 'derived') return null;
+  const annotationsById = new Map(result.number_annotations.map((item) => [item.id, item]));
+  const sourceInputs = annotation.derived.source_input_ids
+    .map((id) => annotationsById.get(id))
+    .filter((item): item is NumberAnnotation & { kind: 'source' } => item?.kind === 'source');
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -305,20 +313,33 @@ function DerivedFigurePopover({ annotation, result }: { annotation: NumberAnnota
           {annotation.figure}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[720px] rounded-sm">
-        <div className="flex flex-col gap-3">
+      <PopoverContent side="bottom" align="start" avoidCollisions={false} className="w-[720px] rounded-sm">
+        <div className="flex flex-col gap-4">
           <div>
             <div className="text-sm font-medium">{annotation.figure}</div>
-            <p className="mt-1 text-sm text-muted-foreground">{annotation.equation ?? annotation.label}</p>
-            {annotation.rationale && <p className="mt-1 text-xs text-muted-foreground">{annotation.rationale}</p>}
+            {annotation.derived.rationale && <p className="mt-1 text-xs text-muted-foreground">{annotation.derived.rationale}</p>}
           </div>
           <Separator />
-          <div className="max-h-96 overflow-y-auto">
-            <div className="flex flex-col gap-3 pr-2">
-              {annotation.inputs.map((input) => (
-                <DerivedInputRow key={input.annotation_id} input={input} result={result} />
-              ))}
+          <div>
+            <div className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Included line items
             </div>
+            <div>
+              <div className="flex flex-col gap-2">
+                {sourceInputs.map((input) => (
+                  <DerivedInputRow key={input.id} input={input} result={result} />
+                ))}
+              </div>
+            </div>
+          </div>
+          <Separator />
+          <div>
+            <div className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Calculation
+            </div>
+            <p className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+              {annotation.derived.equation}
+            </p>
           </div>
         </div>
       </PopoverContent>
@@ -326,25 +347,52 @@ function DerivedFigurePopover({ annotation, result }: { annotation: NumberAnnota
   );
 }
 
-function DerivedInputRow({ input, result }: { input: NumberAnnotationInput; result: QueryResponse }) {
-  const source = (result.sources ?? []).find((item) => item.chunk_id === input.chunk_id);
-  const content = source?.content_snippet ?? input.source_quote ?? '';
-  const summary = source?.chunk_summary ?? input.chunk_summary;
+function DerivedInputRow({ input, result }: { input: NumberAnnotation & { kind: 'source' }; result: QueryResponse }) {
+  const [expanded, setExpanded] = useState(false);
+  const source = sourceForAnnotation(input, result);
+  const content = source?.content_snippet ?? '';
+  const summary = source?.chunk_summary;
 
   return (
-    <div className="border bg-background p-3">
-      <div className="mb-2 flex items-center gap-2 text-xs">
-        <Badge variant="outline" className="rounded-sm">[{input.division_acronym}]</Badge>
-        <span className="font-medium">{input.figure}</span>
-        <span className="text-muted-foreground">{input.chunk_id}</span>
+    <div className="border bg-background">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        className="flex w-full cursor-pointer items-start gap-2 p-2.5 text-left transition-colors hover:bg-muted/60"
+        onClick={() => setExpanded((value) => !value)}
+      >
+        <span className="tabular-nums text-foreground">
+          {input.figure}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm leading-snug">{input.label}</span>
+          {source?.chunk_snapshot && (
+            <span className="mt-1 block text-xs text-muted-foreground">{source.chunk_snapshot}</span>
+          )}
+        </span>
+        <span className="flex shrink-0 items-center gap-2 text-xs">
+          <Badge variant="outline" className="rounded-sm">[{source?.division_acronym ?? 'SRC'}]</Badge>
+          <span className="text-muted-foreground">{expanded ? 'Hide' : 'Show'}</span>
+        </span>
+      </button>
+      {expanded && (
+        <div className="border-t bg-muted/20 p-3">
+          <div className="mb-2 flex items-center gap-2 text-xs">
+            <Badge variant="outline" className="rounded-sm">[{source?.division_acronym ?? 'SRC'}]</Badge>
+            <span className="text-muted-foreground">{input.source.chunk_id}</span>
+          </div>
+          {summary && <p className="mb-2 text-xs text-muted-foreground">{summary}</p>}
+          <pre className="whitespace-pre-wrap border bg-background p-3 text-xs leading-relaxed">
+            {content ? <HighlightedSourceSnippet content={content} figure={input.figure} /> : 'Source chunk unavailable.'}
+          </pre>
+        </div>
+      )}
       </div>
-      <p className="mb-2 text-sm text-muted-foreground">{input.label}</p>
-      {summary && <p className="mb-2 text-xs text-muted-foreground">{summary}</p>}
-      <pre className="whitespace-pre-wrap text-xs leading-relaxed">
-        <HighlightedSourceSnippet content={content} figure={input.figure} />
-      </pre>
-    </div>
   );
+}
+
+function sourceForAnnotation(annotation: NumberAnnotation & { kind: 'source' }, result: QueryResponse) {
+  return (result.sources ?? []).find((item) => item.chunk_id === annotation.source.chunk_id);
 }
 
 function linkMarkdownFigures(result: QueryResponse, sourceMarkdown: string, scope: AnnotationScope) {
@@ -362,16 +410,16 @@ function linkAnnotatedFigures(result: QueryResponse, sourceMarkdown: string, sco
   const annotationsById = new Map(result.number_annotations.map((annotation) => [annotation.id, annotation]));
 
   const markdown = sourceMarkdown.replace(
-    new RegExp(`(${FIGURE_PATTERN_SOURCE})\\s*\\[\\[num:([A-Za-z0-9_-]+)\\]\\]`, 'gi'),
-    (_fullMatch, figure, _value, _scale, annotationId) => {
+    new RegExp(`(${FIGURE_PATTERN_SOURCE})([\\*_~]*)\\s*\\[\\[num:([A-Za-z0-9_-]+)\\]\\]`, 'gi'),
+    (_fullMatch, figure, _value, _scale, markdownClose, annotationId) => {
       const annotation = annotationsById.get(annotationId);
       if (!annotation || !annotationTargetsScope(annotation, scope)) {
-        return figure;
+        return `${figure}${markdownClose}`;
       }
 
       const citationIndex = citations.length;
       citations.push({ figure, annotation });
-      return `[${figure}](#figure-${citationIndex})`;
+      return `[${figure}](#figure-${citationIndex})${markdownClose}`;
     },
   );
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,7 @@ from app.models.query import DivisionResult, NumberAnnotation, QueryResponse, So
 from app.services.vector_store_service import division_acronym
 
 logger = logging.getLogger(__name__)
+NUMBER_MARKER_PATTERN = re.compile(r"\s*\[\[num:[A-Za-z0-9_-]+\]\]")
 
 DEFAULT_EMBEDDINGS = [
     ("text-embedding-ada-002", None),
@@ -312,7 +314,7 @@ def save_query_response(
         status="completed",
         vector_store_id=vector_store.id if vector_store else None,
         processing_time=response.processing_time,
-        number_annotations=[annotation.model_dump(mode="json") for annotation in response.number_annotations],
+        number_annotations=[annotation.model_dump(mode="json", exclude_none=True) for annotation in response.number_annotations],
         created_at=response.timestamp,
         completed_at=datetime.utcnow(),
     )
@@ -364,7 +366,7 @@ def list_conversations(db: Session, limit: int = 50) -> list[dict[str, Any]]:
         {
             "id": row.id,
             "question": row.question,
-            "answer_preview": row.answer[:180],
+            "answer_preview": strip_number_markers(row.answer)[:180],
             "created_at": row.created_at,
             "processing_time": row.processing_time,
             "status": row.status,
@@ -470,3 +472,8 @@ def load_conversation(db: Session, query_id: str, chunk_loader) -> QueryResponse
             [source.chunk_id for source in sources[:5]],
         )
     return response
+
+
+def strip_number_markers(text: str) -> str:
+    """Remove hidden number markers from user-facing text previews."""
+    return NUMBER_MARKER_PATTERN.sub("", text)
