@@ -90,9 +90,9 @@ class VectorStoreService:
         self.embedder = OpenAIEmbeddings(model=self.embedding_model)
 
     @lru_cache(maxsize=None)
-    def get_store(self, store_name: str) -> Chroma:
+    def get_store(self, vectorstore_root: str, store_name: str) -> Chroma:
         """Lazily load one persisted Chroma store."""
-        path = os.path.join(str(self.settings.vectorstore_dir), store_name)
+        path = os.path.join(vectorstore_root, store_name)
         return Chroma(
             persist_directory=path,
             embedding_function=self.embedder,
@@ -110,10 +110,24 @@ class VectorStoreService:
         self.get_store.cache_clear()
         clear_chroma_system_cache()
 
-    def retrieve(self, question: str, division: str, k: int) -> list[dict[str, Any]]:
+    def use_embedding_model(self, embedding_model: str) -> None:
+        if embedding_model != self.embedding_model:
+            self.reset_embedding_model(embedding_model)
+
+    def retrieve(
+        self,
+        question: str,
+        division: str,
+        k: int,
+        vectorstore_root: str | Path | None = None,
+        embedding_model: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Retrieve k chunks for a division, preserving division metadata."""
+        if embedding_model:
+            self.use_embedding_model(embedding_model)
         store_name = self.settings.subcommittee_stores[division]
-        store = self.get_store(store_name)
+        root = str(vectorstore_root or self.settings.vectorstore_dir)
+        store = self.get_store(root, store_name)
         docs_with_scores = store.similarity_search_with_score(question, k=k)
 
         chunks: list[dict[str, Any]] = []
@@ -121,6 +135,32 @@ class VectorStoreService:
             doc, score = item
             chunks.append(self._chunk_from_document(division, index, doc, score))
         return chunks
+
+    def get_chunk(
+        self,
+        division: str,
+        chunk_id: str,
+        vectorstore_root: str | Path | None = None,
+        embedding_model: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Load one source chunk by persisted Chroma document id."""
+        if embedding_model:
+            self.use_embedding_model(embedding_model)
+        store_name = self.settings.subcommittee_stores[division]
+        root = str(vectorstore_root or self.settings.vectorstore_dir)
+        store = self.get_store(root, store_name)
+        result = store._collection.get(ids=[chunk_id], include=["documents", "metadatas"])  # noqa: SLF001
+        documents = result.get("documents") or []
+        if not documents:
+            return None
+        metadatas = result.get("metadatas") or [{}]
+        return {
+            "chunk_id": chunk_id,
+            "division": division,
+            "division_acronym": division_acronym(division),
+            "content": documents[0],
+            "metadata": dict(metadatas[0] or {}),
+        }
 
     def _chunk_from_document(
         self,
@@ -131,7 +171,7 @@ class VectorStoreService:
     ) -> dict[str, Any]:
         content = doc.page_content
         return {
-            "chunk_id": stable_chunk_id(division, index, content),
+            "chunk_id": str(doc.metadata.get("chunk_id") or stable_chunk_id(division, index, content)),
             "division": division,
             "division_acronym": division_acronym(division),
             "content": content,

@@ -13,8 +13,10 @@ import sys
 
 # Import API routers
 from app.api.endpoints.query import router as query_router
+from app.api.endpoints.storage import router as storage_router
 # Import configuration
 from app.core.config import get_settings
+from app.services.storage_registry import ensure_storage_ready
 
 # Get settings instance
 settings = get_settings()
@@ -39,6 +41,7 @@ logging.getLogger('httpcore').setLevel(logging.WARNING)
 # Test logging configuration
 logger = logging.getLogger(__name__)
 logger.info(f"LawSearch AI API starting with log level: {settings.log_level}")
+ensure_storage_ready()
 
 # Create FastAPI application instance
 app = FastAPI(
@@ -72,6 +75,7 @@ async def root():
 
 # Include API routers
 app.include_router(query_router, prefix="/api", tags=["query"])
+app.include_router(storage_router, prefix="/api", tags=["storage"])
 
 if __name__ == "__main__":
     uvicorn.run(

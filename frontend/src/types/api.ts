@@ -83,6 +83,7 @@ export interface StatusResponse {
   status: string;
   timestamp: string;
   database_status: string;
+  history_available?: boolean;
   available_divisions: string;
   current_embedding_model: string;
   endpoints: Record<string, string>;
@@ -95,20 +96,58 @@ export interface ErrorResponse {
   timestamp: string;
 }
 
-export interface IngestRequest {
+export interface VectorStoreInfo {
+  id: string;
+  name: string;
   embedding_model: string;
-  clear_existing?: boolean;
-  chunk_size?: number;
+  chunk_size: number;
+  chunk_overlap: number;
+  status: string;
+  is_active: boolean;
+  created_at: string;
+  last_ingested_at?: string;
+  last_used_at?: string;
+  chunk_count: number;
+  query_count: number;
+  error_message?: string;
 }
 
-export interface IngestResponse {
-  status: string;
-  message: string;
+export interface EmbeddingModelInfo {
+  id: string;
+  name: string;
+  provider: string;
+  dimensions?: number;
+  is_enabled: boolean;
+}
+
+export interface CreateVectorStoreRequest {
+  name: string;
   embedding_model: string;
-  divisions_processed: number;
-  chunk_size?: number;
+  chunk_size: number;
+  activate?: boolean;
+}
+
+export interface CreateEmbeddingModelRequest {
+  name: string;
+  provider?: string;
+  dimensions?: number;
+}
+
+export interface ConversationSummary {
+  id: string;
+  question: string;
+  answer_preview: string;
+  created_at: string;
   processing_time: number;
-  timestamp: string;
+  status: string;
+}
+
+export interface ConversationListResponse {
+  conversations: ConversationSummary[];
+}
+
+export interface ConversationDetail {
+  response: QueryResponse;
 }
 
 // API response wrapper

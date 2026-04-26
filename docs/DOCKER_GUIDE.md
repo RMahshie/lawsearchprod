@@ -92,7 +92,7 @@ curl http://localhost:8000/api/health
 - Creates 14 vector databases (one per bill division) from the HTML bill documents
 - Embeds all text chunks using the configured embedding model
 - Stores everything in the `/app/db/chroma/` directory (mounted volume)
-- Uses the API endpoint `/api/ingest` which calls the integrated ingestion service
+- Uses the Storage Manager endpoint `/api/storage/vector-stores` which calls the integrated ingestion service
 
 **Important Notes:**
 - **Web interface only**: No manual Docker commands needed - everything is handled through the frontend

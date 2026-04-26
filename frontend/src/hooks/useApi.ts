@@ -1,5 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { submitQuery, checkHealth, getStatus, queryKeys, queryOptions } from '../services/api';
+import {
+  submitQuery,
+  checkHealth,
+  getStatus,
+  queryKeys,
+  queryOptions,
+  listVectorStores,
+  listEmbeddingModels,
+  listConversations,
+} from '../services/api';
 import type { QueryRequest, QueryResponse, HealthResponse, StatusResponse } from '../types/api';
 
 /**
@@ -41,6 +50,30 @@ export const useApiStatus = (enabled: boolean = true) => {
     queryFn: getStatus,
     enabled,
     ...queryOptions.health, // Reuse the same options as health
+  });
+};
+
+export const useVectorStores = (enabled: boolean = true) => {
+  return useQuery({
+    queryKey: queryKeys.vectorStores,
+    queryFn: listVectorStores,
+    enabled,
+  });
+};
+
+export const useEmbeddingModels = (enabled: boolean = true) => {
+  return useQuery({
+    queryKey: queryKeys.embeddingModels,
+    queryFn: listEmbeddingModels,
+    enabled,
+  });
+};
+
+export const useConversations = (enabled: boolean = true) => {
+  return useQuery({
+    queryKey: queryKeys.conversations,
+    queryFn: listConversations,
+    enabled,
   });
 };
 

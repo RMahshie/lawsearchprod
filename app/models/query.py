@@ -357,59 +357,6 @@ class ErrorResponse(BaseModel):
     )
 
 
-class IngestRequest(BaseModel):
-    """
-    Request model for data ingestion.
-
-    Used for POST /api/ingest endpoint to re-ingest vector databases
-    with different embedding models.
-    """
-    embedding_model: str = Field(
-        ...,
-        description="OpenAI embedding model to use for vectorizing documents",
-        example="text-embedding-ada-002"
-    )
-
-    clear_existing: Optional[bool] = Field(
-        default=True,
-        description="Whether to clear existing vector databases before ingestion",
-        example=True
-    )
-
-    chunk_size: Optional[int] = Field(
-        default=1500,
-        ge=600,
-        le=3000,
-        description="Approximate characters per source chunk. Smaller chunks improve precision; larger chunks preserve more surrounding context.",
-        example=1500
-    )
-
-    @field_validator('embedding_model')
-    @classmethod
-    def validate_embedding_model(cls, v):
-        """Validate that embedding model is a supported OpenAI model."""
-        valid_models = [
-            "text-embedding-ada-002",
-            "text-embedding-3-small",
-            "text-embedding-3-large"
-        ]
-
-        if v not in valid_models:
-            raise ValueError(f'Unsupported embedding model: {v}. Valid options: {valid_models}')
-
-        return v
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "embedding_model": "text-embedding-ada-002",
-                "clear_existing": True,
-                "chunk_size": 1500
-            }
-        }
-    )
-
-
 class IngestResponse(BaseModel):
     """
     Response model for ingestion results.

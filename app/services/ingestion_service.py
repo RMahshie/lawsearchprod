@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import uuid
 from pathlib import Path
 
 from bs4 import BeautifulSoup
@@ -32,9 +33,16 @@ class IngestionService:
     def __init__(self):
         self.settings = get_settings()
 
-    def ingest(self, embedding_model: str, clear_existing: bool = True, chunk_size: int | None = None) -> int:
+    def ingest(
+        self,
+        embedding_model: str,
+        clear_existing: bool = True,
+        chunk_size: int | None = None,
+        vectorstore_dir: str | Path | None = None,
+        vector_store_id: str | None = None,
+    ) -> tuple[int, dict[str, int], int]:
         """Rebuild per-division Chroma stores and return processed count."""
-        vectorstore_dir = Path(self.settings.vectorstore_dir)
+        vectorstore_dir = Path(vectorstore_dir or self.settings.vectorstore_dir)
         clear_chroma_system_cache()
         if clear_existing and vectorstore_dir.exists():
             shutil.rmtree(vectorstore_dir)
@@ -42,25 +50,31 @@ class IngestionService:
 
         embeddings = OpenAIEmbeddings(model=embedding_model)
         divisions_processed = 0
+        partition_counts: dict[str, int] = {}
+        total_chunks = 0
 
         for division, store_name in self.settings.subcommittee_stores.items():
             bill_path = self._bill_path_for_store(store_name)
             text = self._extract_division_text(bill_path, self._division_letter(store_name))
-            documents = self._chunk_documents(text, division, bill_path.name, chunk_size)
+            documents = self._chunk_documents(text, division, bill_path.name, chunk_size, vector_store_id)
             if not documents:
                 continue
 
             persist_directory = vectorstore_dir / store_name
             persist_directory.mkdir(parents=True, exist_ok=True)
+            chunk_ids = [str(doc.metadata["chunk_id"]) for doc in documents]
             Chroma.from_documents(
                 documents=documents,
                 embedding=embeddings,
                 persist_directory=str(persist_directory),
+                ids=chunk_ids,
             )
             divisions_processed += 1
+            partition_counts[division] = len(documents)
+            total_chunks += len(documents)
 
         write_persisted_embedding_model(vectorstore_dir, embedding_model)
-        return divisions_processed
+        return divisions_processed, partition_counts, total_chunks
 
     def _bill_path_for_store(self, store_name: str) -> Path:
         if store_name.startswith("Consolidated_Appropriations"):
@@ -98,6 +112,7 @@ class IngestionService:
         division: str,
         source_file: str,
         chunk_size: int | None = None,
+        vector_store_id: str | None = None,
     ) -> list[Document]:
         chunk_size = chunk_size or self.settings.chunk_size
         overlap = min(self.settings.chunk_overlap, max(chunk_size // 8, 1))
@@ -111,6 +126,8 @@ class IngestionService:
                     Document(
                         page_content=chunk,
                         metadata={
+                            "chunk_id": str(uuid.uuid4()),
+                            "vector_store_id": vector_store_id,
                             "division": division,
                             "division_acronym": division_acronym(division),
                             "source_file": source_file,

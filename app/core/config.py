@@ -5,7 +5,6 @@ Uses Pydantic BaseSettings for environment-based configuration with .env file su
 Centralizes all configuration constants from the original src/config.py plus new API settings.
 """
 
-import os
 from typing import List, Dict, Optional
 from pathlib import Path
 from pydantic import Field, field_validator, ConfigDict
@@ -47,6 +46,7 @@ class Settings(BaseSettings):
     base_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent.parent)
     data_dir: Path = Field(default=None, description="Directory containing bill data")
     vectorstore_dir: Path = Field(default=None, description="Directory for vector databases")
+    database_url: Optional[str] = Field(default=None, description="Application database URL")
     
     @field_validator('data_dir', mode='before')
     @classmethod
@@ -61,7 +61,7 @@ class Settings(BaseSettings):
         if v is None:
             return info.data['base_dir'] / "db" / "chroma"
         return Path(v)
-    
+
     # === OpenAI Configuration ===
     openai_api_key: str = Field(..., description="OpenAI API key")
     

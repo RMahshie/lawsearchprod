@@ -6,8 +6,12 @@ import type {
   QueryProgressEvent,
   HealthResponse,
   StatusResponse,
-  IngestRequest,
-  IngestResponse
+  VectorStoreInfo,
+  EmbeddingModelInfo,
+  CreateVectorStoreRequest,
+  CreateEmbeddingModelRequest,
+  ConversationListResponse,
+  ConversationDetail
 } from '../types/api';
 
 // API configuration
@@ -186,19 +190,6 @@ export const submitQueryStream = async (
 };
 
 /**
- * Trigger data ingestion with a specific embedding model
- */
-export const submitIngest = async (ingestRequest: IngestRequest): Promise<IngestResponse> => {
-  try {
-    const response = await ingestionClient.post<IngestResponse>('/api/ingest', ingestRequest);
-    return response.data;
-  } catch (error) {
-    console.error('Ingestion failed:', error);
-    throw error;
-  }
-};
-
-/**
  * Check API health status
  */
 export const checkHealth = async (): Promise<HealthResponse> => {
@@ -224,12 +215,54 @@ export const getStatus = async (): Promise<StatusResponse> => {
   }
 };
 
+export const listVectorStores = async (): Promise<VectorStoreInfo[]> => {
+  const response = await apiClient.get<VectorStoreInfo[]>('/api/storage/vector-stores');
+  return response.data;
+};
+
+export const createVectorStore = async (request: CreateVectorStoreRequest): Promise<VectorStoreInfo> => {
+  const response = await ingestionClient.post<VectorStoreInfo>('/api/storage/vector-stores', request);
+  return response.data;
+};
+
+export const activateVectorStore = async (id: string): Promise<VectorStoreInfo> => {
+  const response = await apiClient.post<VectorStoreInfo>(`/api/storage/vector-stores/${id}/activate`);
+  return response.data;
+};
+
+export const deleteVectorStore = async (id: string): Promise<void> => {
+  await apiClient.delete(`/api/storage/vector-stores/${id}`);
+};
+
+export const listEmbeddingModels = async (): Promise<EmbeddingModelInfo[]> => {
+  const response = await apiClient.get<EmbeddingModelInfo[]>('/api/storage/embedding-models');
+  return response.data;
+};
+
+export const createEmbeddingModel = async (request: CreateEmbeddingModelRequest): Promise<EmbeddingModelInfo> => {
+  const response = await apiClient.post<EmbeddingModelInfo>('/api/storage/embedding-models', request);
+  return response.data;
+};
+
+export const listConversations = async (): Promise<ConversationListResponse> => {
+  const response = await apiClient.get<ConversationListResponse>('/api/conversations');
+  return response.data;
+};
+
+export const getConversation = async (id: string): Promise<ConversationDetail> => {
+  const response = await apiClient.get<ConversationDetail>(`/api/conversations/${id}`);
+  return response.data;
+};
+
 /**
  * React Query hook keys for consistent caching
  */
 export const queryKeys = {
   health: ['health'] as const,
   status: ['status'] as const,
+  vectorStores: ['vector-stores'] as const,
+  embeddingModels: ['embedding-models'] as const,
+  conversations: ['conversations'] as const,
   query: (request: QueryRequest) => ['query', request] as const,
 };
 

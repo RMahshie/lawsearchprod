@@ -1,19 +1,28 @@
 import { useEffect, useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { Database, History, Search } from 'lucide-react';
 import QueryResults from '@/components/QueryResults';
-import { useApiStatus, useHealthCheck } from './hooks/useApi';
+import { useApiStatus, useConversations, useEmbeddingModels, useHealthCheck, useVectorStores } from './hooks/useApi';
 import { useSessionState } from './hooks/useSessionState';
-import { submitIngest, submitQueryStream } from './services/api';
+import {
+  activateVectorStore,
+  createEmbeddingModel,
+  createVectorStore,
+  deleteVectorStore,
+  getConversation,
+  queryKeys,
+  submitQueryStream,
+} from './services/api';
 import {
   AVAILABLE_DIVISIONS,
   AVAILABLE_EMBEDDING_MODELS,
+  type ConversationSummary,
   type DivisionName,
-  type IngestRequest,
-  type IngestResponse,
   type QueryProgressEvent,
   type QueryRequest,
   type QueryResponse,
+  type VectorStoreInfo,
 } from './types/api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -45,15 +54,22 @@ const AVAILABLE_CHUNK_SIZES = [
 ] as const;
 
 function AppContent() {
+  const queryClient = useQueryClient();
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [lastQuestion, setLastQuestion] = useState('');
+  const [historyMode, setHistoryMode] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [storageOpen, setStorageOpen] = useState(false);
+  const [newIngestionOpen, setNewIngestionOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [thinkingSpeed, setThinkingSpeed] = useState<'quick' | 'normal' | 'long'>('normal');
   const [maxResults, setMaxResults] = useState('8');
-  const [includeSources, setIncludeSources] = useState(true);
   const [autoRoute, setAutoRoute] = useState(true);
   const [selectedDivisions, setSelectedDivisions] = useState<DivisionName[]>([]);
   const [embeddingModel, setEmbeddingModel] = useState<string>(AVAILABLE_EMBEDDING_MODELS[0].value);
   const [ingestChunkSize, setIngestChunkSize] = useState('1500');
+  const [ingestionName, setIngestionName] = useState('');
+  const [newEmbeddingName, setNewEmbeddingName] = useState('');
   const [ingestStatus, setIngestStatus] = useState<string | null>(null);
   const [ingestPending, setIngestPending] = useState(false);
   const [queryPending, setQueryPending] = useState(false);
@@ -63,6 +79,11 @@ function AppContent() {
   const { query, updateQuery } = useSessionState();
   const { data: healthData, isError: healthError } = useHealthCheck();
   const { data: statusData, refetch: refetchStatus } = useApiStatus();
+  const historyAvailable = Boolean(statusData?.history_available);
+  const { data: vectorStores = [] } = useVectorStores();
+  const { data: embeddingModels = [] } = useEmbeddingModels();
+  const { data: conversationsData } = useConversations(historyMode);
+  const conversations = conversationsData?.conversations ?? [];
 
   useEffect(() => {
     if (statusData?.current_embedding_model) {
@@ -86,28 +107,61 @@ function AppContent() {
     }
   };
 
-  const handleIngest = async (ingestRequest: IngestRequest): Promise<IngestResponse> => {
-    return await submitIngest(ingestRequest);
-  };
-
   const runIngestion = async () => {
     setIngestPending(true);
     setIngestStatus(null);
     try {
-      const response = await handleIngest({
+      const response = await createVectorStore({
+        name: ingestionName || `${embeddingModel} ${ingestChunkSize}`,
         embedding_model: embeddingModel,
-        clear_existing: true,
         chunk_size: Number(ingestChunkSize),
+        activate: true,
       });
       void refetchStatus();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.vectorStores });
       setIngestStatus(
-        `${response.divisions_processed} divisions rebuilt with ${response.chunk_size ?? ingestChunkSize}-char chunks in ${response.processing_time.toFixed(1)}s`
+        `${response.name} is ready with ${response.chunk_count.toLocaleString()} chunks`
       );
+      setNewIngestionOpen(false);
     } catch (error) {
       setIngestStatus(error instanceof Error ? error.message : 'Ingestion failed');
     } finally {
       setIngestPending(false);
     }
+  };
+
+  const handleLoadConversation = async (conversation: ConversationSummary) => {
+    setHistoryLoading(true);
+    setSelectedConversationId(conversation.id);
+    try {
+      const detail = await getConversation(conversation.id);
+      setResult(detail.response);
+      setLastQuestion(conversation.question);
+    } catch (error) {
+      setQueryError(error instanceof Error ? error.message : 'Could not load saved question');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleActivateStore = async (store: VectorStoreInfo) => {
+    await activateVectorStore(store.id);
+    await queryClient.invalidateQueries({ queryKey: queryKeys.vectorStores });
+    void refetchStatus();
+  };
+
+  const handleDeleteStore = async (store: VectorStoreInfo) => {
+    await deleteVectorStore(store.id);
+    await queryClient.invalidateQueries({ queryKey: queryKeys.vectorStores });
+  };
+
+  const handleAddEmbeddingModel = async () => {
+    const name = newEmbeddingName.trim();
+    if (!name) return;
+    await createEmbeddingModel({ name });
+    setEmbeddingModel(name);
+    setNewEmbeddingName('');
+    await queryClient.invalidateQueries({ queryKey: queryKeys.embeddingModels });
   };
 
   const submitCurrentQuery = () => {
@@ -118,7 +172,7 @@ function AppContent() {
       question: trimmed,
       thinking_speed: thinkingSpeed,
       max_results: Number(maxResults),
-      include_sources: includeSources,
+      include_sources: true,
       divisions_filter: autoRoute ? undefined : selectedDivisions,
     });
   };
@@ -152,111 +206,104 @@ function AppContent() {
               <div className="mt-1 text-xl font-semibold tracking-tight">Control Panel</div>
             </div>
 
-            <ControlCard title="Data" description="Embedding and ingestion">
-              <ControlRow label="Current model">
-                <Badge variant="secondary" className="max-w-52 truncate rounded-sm">
-                  {statusData?.current_embedding_model ?? 'unknown'}
-                </Badge>
-              </ControlRow>
-              <Select value={embeddingModel} onValueChange={setEmbeddingModel}>
-                <SelectTrigger className="w-full rounded-sm">
-                  <SelectValue placeholder="Embedding model" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {AVAILABLE_EMBEDDING_MODELS.map((model) => (
-                      <SelectItem key={model.value} value={model.value}>
-                        {model.label}
-                      </SelectItem>
+            <Button
+              className="h-12 w-full rounded-sm text-base font-semibold shadow-sm"
+              onClick={() => setStorageOpen(true)}
+            >
+              <Database className="mr-2 size-5" />
+              Storage Manager
+            </Button>
+            <Button
+              className="h-12 w-full rounded-sm text-base font-semibold shadow-sm"
+              disabled={!historyAvailable && !historyMode}
+              onClick={() => setHistoryMode((value) => !value)}
+            >
+              {historyMode ? <Search className="mr-2 size-5" /> : <History className="mr-2 size-5" />}
+              {historyMode ? 'Ask a Question' : 'Question History'}
+            </Button>
+            {!historyAvailable && (
+              <p className="px-1 text-xs text-muted-foreground">Question history unavailable.</p>
+            )}
+
+            {historyMode ? (
+              <ControlCard title="History" description={`${conversations.length} saved questions`}>
+                <div className="flex max-h-[calc(100vh-190px)] flex-col gap-2 overflow-y-auto">
+                  {conversations.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Saved questions will appear here after you run queries.</p>
+                  )}
+                  {conversations.map((conversation) => (
+                    <button
+                      key={conversation.id}
+                      className={`border bg-background p-3 text-left text-xs hover:bg-muted ${
+                        selectedConversationId === conversation.id ? 'border-primary' : 'border-border'
+                      }`}
+                      onClick={() => void handleLoadConversation(conversation)}
+                    >
+                      <div className="font-medium text-foreground">{conversation.question}</div>
+                      <div className="mt-1 text-muted-foreground">
+                        {new Date(conversation.created_at).toLocaleString()}
+                      </div>
+                      <div className="mt-2 line-clamp-2 text-muted-foreground">{conversation.answer_preview}</div>
+                    </button>
+                  ))}
+                </div>
+              </ControlCard>
+            ) : (
+              <>
+                <ControlCard title="Query Settings" description="Speed, retrieval">
+                  <div className="flex flex-col gap-2">
+                    <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Thinking speed</div>
+                    <ToggleGroup
+                      type="single"
+                      value={thinkingSpeed}
+                      onValueChange={(value) => value && setThinkingSpeed(value as 'quick' | 'normal' | 'long')}
+                      className="grid grid-cols-3 gap-1"
+                    >
+                      <ToggleGroupItem value="quick" className="rounded-sm">Quick</ToggleGroupItem>
+                      <ToggleGroupItem value="normal" className="rounded-sm">Normal</ToggleGroupItem>
+                      <ToggleGroupItem value="long" className="rounded-sm">Long</ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+
+                  <ControlRow label="Chunks per division">
+                    <Select value={maxResults} onValueChange={setMaxResults}>
+                      <SelectTrigger className="w-24 rounded-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {['4', '6', '8', '10', '12', '15', '20'].map((value) => (
+                            <SelectItem key={value} value={value}>{value}</SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </ControlRow>
+                </ControlCard>
+
+                <ControlCard title="Divisions" description="Auto route or target manually">
+                  <ControlRow label="Auto route">
+                    <Switch checked={autoRoute} onCheckedChange={handleAutoRouteChange} />
+                  </ControlRow>
+                  <div className="flex max-h-64 flex-col gap-1 overflow-y-auto border bg-background p-2">
+                    {AVAILABLE_DIVISIONS.map((division) => (
+                      <label
+                        key={division}
+                        className="flex cursor-pointer items-start gap-2 rounded-sm px-2 py-1 text-xs leading-snug hover:bg-muted"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedDivisions.includes(division)}
+                          onChange={() => toggleDivision(division)}
+                          className="mt-0.5"
+                        />
+                        <span>{division}</span>
+                      </label>
                     ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              <ControlRow label="Chunk size">
-                <Select value={ingestChunkSize} onValueChange={setIngestChunkSize}>
-                  <SelectTrigger className="w-32 rounded-sm">
-                    <SelectValue>
-                      {AVAILABLE_CHUNK_SIZES.find((s) => s.value === ingestChunkSize)?.label ??
-                        ingestChunkSize}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {AVAILABLE_CHUNK_SIZES.map((size) => (
-                        <SelectItem key={size.value} value={size.value}>
-                          {size.label} ({size.value})
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </ControlRow>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Chunk size controls source text length during ingestion. Smaller chunks are sharper;
-                larger chunks keep more surrounding context.
-              </p>
-              <Button className="w-full rounded-sm" onClick={runIngestion} disabled={ingestPending}>
-                {ingestPending ? 'Ingesting...' : 'Run Ingestion'}
-              </Button>
-              {ingestStatus && <p className="text-xs text-muted-foreground">{ingestStatus}</p>}
-            </ControlCard>
-
-            <ControlCard title="Query Settings" description="Speed, retrieval, sources">
-              <div className="flex flex-col gap-2">
-                <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Thinking speed</div>
-                <ToggleGroup
-                  type="single"
-                  value={thinkingSpeed}
-                  onValueChange={(value) => value && setThinkingSpeed(value as 'quick' | 'normal' | 'long')}
-                  className="grid grid-cols-3 gap-1"
-                >
-                  <ToggleGroupItem value="quick" className="rounded-sm">Quick</ToggleGroupItem>
-                  <ToggleGroupItem value="normal" className="rounded-sm">Normal</ToggleGroupItem>
-                  <ToggleGroupItem value="long" className="rounded-sm">Long</ToggleGroupItem>
-                </ToggleGroup>
-              </div>
-
-              <ControlRow label="Chunks per division">
-                <Select value={maxResults} onValueChange={setMaxResults}>
-                  <SelectTrigger className="w-24 rounded-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {['4', '6', '8', '10', '12', '15', '20'].map((value) => (
-                        <SelectItem key={value} value={value}>{value}</SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </ControlRow>
-
-              <ControlRow label="Include sources">
-                <Switch checked={includeSources} onCheckedChange={setIncludeSources} />
-              </ControlRow>
-            </ControlCard>
-
-            <ControlCard title="Divisions" description="Auto route or target manually">
-              <ControlRow label="Auto route">
-                <Switch checked={autoRoute} onCheckedChange={handleAutoRouteChange} />
-              </ControlRow>
-              <div className="flex max-h-64 flex-col gap-1 overflow-y-auto border bg-background p-2">
-                {AVAILABLE_DIVISIONS.map((division) => (
-                  <label
-                    key={division}
-                    className="flex cursor-pointer items-start gap-2 rounded-sm px-2 py-1 text-xs leading-snug hover:bg-muted"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedDivisions.includes(division)}
-                      onChange={() => toggleDivision(division)}
-                      className="mt-0.5"
-                    />
-                    <span>{division}</span>
-                  </label>
-                ))}
-              </div>
-            </ControlCard>
+                  </div>
+                </ControlCard>
+              </>
+            )}
 
           </div>
         </aside>
@@ -275,32 +322,45 @@ function AppContent() {
           <div className="flex flex-1 flex-col gap-5 p-8">
             <Card className="rounded-sm border-border/80">
               <CardHeader>
-                <CardTitle>Query Workspace</CardTitle>
+                <CardTitle>{historyMode ? 'Saved Question' : 'Query Workspace'}</CardTitle>
                 <CardDescription>
-                  Ask a natural-language question. Settings are controlled from the left rail.
+                  {historyMode
+                    ? 'This is a read-only saved result. Return to search to ask a new question.'
+                    : 'Ask a natural-language question. Settings are controlled from the left rail.'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
                 <Textarea
-                  value={query}
+                  value={historyMode ? lastQuestion : query}
                   onChange={(event) => updateQuery(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                    if (!historyMode && event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
                       submitCurrentQuery();
                     }
                   }}
+                  disabled={historyMode}
                   placeholder="How much money was appropriated for FEMA disaster relief?"
-                  className="min-h-36 resize-y rounded-sm text-base"
+                  className={`min-h-36 resize-y rounded-sm text-base ${historyMode ? 'bg-muted text-muted-foreground' : ''}`}
                 />
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="outline" className="rounded-sm">{thinkingSpeed}</Badge>
-                    <Badge variant="outline" className="rounded-sm">{maxResults} chunks/division</Badge>
-                    <Badge variant="outline" className="rounded-sm">{autoRoute ? 'auto route' : `${selectedDivisions.length} divisions`}</Badge>
+                    {historyMode ? (
+                      <Badge variant="outline" className="rounded-sm">
+                        {historyLoading ? 'loading history' : 'saved result'}
+                      </Badge>
+                    ) : (
+                      <>
+                        <Badge variant="outline" className="rounded-sm">{thinkingSpeed}</Badge>
+                        <Badge variant="outline" className="rounded-sm">{maxResults} chunks/division</Badge>
+                        <Badge variant="outline" className="rounded-sm">{autoRoute ? 'auto route' : `${selectedDivisions.length} divisions`}</Badge>
+                      </>
+                    )}
                   </div>
-                  <Button className="rounded-sm" onClick={submitCurrentQuery} disabled={!query.trim() || queryPending}>
-                    {queryPending ? 'Running...' : 'Run Query'}
-                  </Button>
+                  {!historyMode && (
+                    <Button className="rounded-sm" onClick={submitCurrentQuery} disabled={!query.trim() || queryPending}>
+                      {queryPending ? 'Running...' : 'Run Query'}
+                    </Button>
+                  )}
                 </div>
                 {queryError && (
                   <div className="border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
@@ -332,6 +392,166 @@ function AppContent() {
           </div>
         </main>
       </div>
+
+      {storageOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-8">
+          <div className="max-h-[88vh] w-full max-w-6xl overflow-hidden border bg-background shadow-xl">
+            <div className="flex items-start justify-between border-b p-5">
+              <div>
+                <h2 className="text-xl font-semibold">Storage Manager</h2>
+                <p className="text-sm text-muted-foreground">Manage versioned vector stores for the appropriations bills.</p>
+              </div>
+              <div className="flex gap-2">
+                <Button className="rounded-sm" onClick={() => setNewIngestionOpen(true)}>New Ingestion</Button>
+                <Button variant="outline" className="rounded-sm" onClick={() => setStorageOpen(false)}>Close</Button>
+              </div>
+            </div>
+
+            <div className="overflow-auto p-5">
+              <table className="w-full border-collapse text-sm">
+                <thead className="bg-muted text-left text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                  <tr>
+                    <th className="border p-3">Name</th>
+                    <th className="border p-3">Model</th>
+                    <th className="border p-3">Chunk</th>
+                    <th className="border p-3">Chunks</th>
+                    <th className="border p-3">Created</th>
+                    <th className="border p-3">Last Used</th>
+                    <th className="border p-3">Status</th>
+                    <th className="border p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vectorStores.map((store) => (
+                    <tr key={store.id}>
+                      <td className="border p-3">
+                        <div className="font-medium">{store.name}</div>
+                        {store.is_active && <div className="text-xs text-muted-foreground">Active store</div>}
+                      </td>
+                      <td className="border p-3">{store.embedding_model}</td>
+                      <td className="border p-3">{store.chunk_size}</td>
+                      <td className="border p-3">{store.chunk_count.toLocaleString()}</td>
+                      <td className="border p-3">{new Date(store.created_at).toLocaleDateString()}</td>
+                      <td className="border p-3">{store.last_used_at ? new Date(store.last_used_at).toLocaleString() : 'Never'}</td>
+                      <td className="border p-3">
+                        <Badge variant={store.status === 'ready' ? 'secondary' : 'outline'} className="rounded-sm">
+                          {store.status}
+                        </Badge>
+                      </td>
+                      <td className="border p-3">
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-sm"
+                            disabled={store.is_active || store.status !== 'ready'}
+                            onClick={() => void handleActivateStore(store)}
+                          >
+                            Activate
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-sm"
+                            disabled={store.is_active}
+                            onClick={() => void handleDeleteStore(store)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {ingestStatus && <p className="mt-3 text-sm text-muted-foreground">{ingestStatus}</p>}
+            </div>
+          </div>
+
+          {newIngestionOpen && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 p-8">
+              <div className="w-full max-w-2xl border bg-background p-6 shadow-xl">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">New Ingestion</h3>
+                    <p className="text-sm text-muted-foreground">Create a new vector store from the same two bills.</p>
+                  </div>
+                  <Button variant="outline" className="rounded-sm" onClick={() => setNewIngestionOpen(false)}>Close</Button>
+                </div>
+
+                <div className="mt-5 flex flex-col gap-4">
+                  <label className="flex flex-col gap-2 text-sm">
+                    Ingestion name
+                    <input
+                      value={ingestionName}
+                      onChange={(event) => setIngestionName(event.target.value)}
+                      placeholder="e.g. FY2024 Large Chunks"
+                      className="border bg-background px-3 py-2"
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <label className="flex flex-col gap-2 text-sm">
+                      Embedding model
+                      <Select value={embeddingModel} onValueChange={setEmbeddingModel}>
+                        <SelectTrigger className="rounded-sm">
+                          <SelectValue placeholder="Embedding model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {[...embeddingModels.map((model) => ({ value: model.name, label: model.name })), ...AVAILABLE_EMBEDDING_MODELS]
+                              .filter((model, index, items) => items.findIndex((item) => item.value === model.value) === index)
+                              .map((model) => (
+                                <SelectItem key={model.value} value={model.value}>
+                                  {model.label}
+                                </SelectItem>
+                              ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm">
+                      Add model
+                      <div className="flex gap-2">
+                        <input
+                          value={newEmbeddingName}
+                          onChange={(event) => setNewEmbeddingName(event.target.value)}
+                          placeholder="model name"
+                          className="w-40 border bg-background px-3 py-2"
+                        />
+                        <Button variant="outline" className="rounded-sm" onClick={() => void handleAddEmbeddingModel()}>
+                          Add
+                        </Button>
+                      </div>
+                    </label>
+                  </div>
+
+                  <ControlRow label="Chunk size">
+                    <Select value={ingestChunkSize} onValueChange={setIngestChunkSize}>
+                      <SelectTrigger className="w-44 rounded-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {AVAILABLE_CHUNK_SIZES.map((size) => (
+                            <SelectItem key={size.value} value={size.value}>
+                              {size.label} ({size.value})
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </ControlRow>
+
+                  <Button className="self-end rounded-sm" onClick={runIngestion} disabled={ingestPending}>
+                    {ingestPending ? 'Creating Store...' : 'Create and Activate'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

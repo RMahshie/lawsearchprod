@@ -29,6 +29,8 @@ from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
 from app.core.config import get_settings
+from app.db.models import VectorStore
+from app.db.session import SessionLocal, database_available
 from app.models.query import (
     DebugChunk,
     DebugDivisionQuery,
@@ -40,6 +42,15 @@ from app.models.query import (
 )
 from app.services.ingestion_service import IngestionService
 from app.services.llm_factory import create_chat_model, describe_model_strategy, format_model_spec, resolve_model
+from app.services.storage_registry import (
+    create_vector_store_record,
+    ensure_storage_ready,
+    get_active_vector_store,
+    mark_vector_store_failed,
+    mark_vector_store_ready,
+    save_query_response,
+    vector_store_path,
+)
 from app.services.vector_store_service import VectorStoreService, division_acronym
 
 logger = logging.getLogger(__name__)
@@ -109,6 +120,9 @@ class RAGState(TypedDict, total=False):
     debug_chunks: bool
     divisions_filter: list[str] | None
     model_used: str
+    vector_store_id: str | None
+    vector_store_root: str | None
+    vector_store_embedding_model: str | None
     selected_divisions: list[str]
     division_queries: list[DivisionQueryState]
     retrieved_chunks: Annotated[list[RetrievedChunkState], operator.add]
@@ -127,6 +141,7 @@ class RAGService:
 
     def __init__(self):
         self.settings = get_settings()
+        ensure_storage_ready()
         self.vectorstores = VectorStoreService()
         self.settings.embedding_model = self.vectorstores.embedding_model
         self.ingestion = IngestionService()
@@ -182,15 +197,32 @@ class RAGService:
             with self._progress_lock:
                 self._progress_callbacks[query_id] = progress_callback
 
+        active_store_id = None
+        active_store_root = str(self.settings.vectorstore_dir)
+        active_embedding_model = self.vectorstores.embedding_model
+        if database_available() and SessionLocal is not None:
+            try:
+                with SessionLocal() as db:
+                    active_store = get_active_vector_store(db)
+                    if active_store:
+                        active_store_id = active_store.id
+                        active_store_root = str(vector_store_path(active_store))
+                        active_embedding_model = active_store.embedding_model_id
+            except Exception as exc:
+                logger.warning("Storage registry unavailable; using configured Chroma store: %s", exc)
+
         state: RAGState = {
             "query_id": query_id,
             "question": request.question,
             "thinking_speed": thinking_speed,
             "max_results": retrieval_k_for_request(request),
-            "include_sources": bool(request.include_sources),
+            "include_sources": True,
             "debug_chunks": bool(request.debug_chunks),
             "divisions_filter": request.divisions_filter,
             "model_used": model_used,
+            "vector_store_id": active_store_id,
+            "vector_store_root": active_store_root,
+            "vector_store_embedding_model": active_embedding_model,
             "selected_divisions": [],
             "division_queries": [],
             "retrieved_chunks": [],
@@ -237,7 +269,16 @@ class RAGService:
         if progress_callback:
             with self._progress_lock:
                 self._progress_callbacks.pop(query_id, None)
-        return self._to_response(result, processing_time, query_id)
+        response = self._to_response(result, processing_time, query_id)
+        if database_available() and SessionLocal is not None:
+            try:
+                with SessionLocal() as db:
+                    vector_store = db.get(VectorStore, result.get("vector_store_id")) if result.get("vector_store_id") else None
+                    save_query_response(db, response=response, question=request.question, vector_store=vector_store)
+                    db.commit()
+            except Exception as exc:
+                logger.warning("Query result was not persisted: %s", exc)
+        return response
 
     def _route_divisions(self, state: RAGState) -> dict[str, Any]:
         start_time = time.time()
@@ -409,11 +450,17 @@ class RAGService:
             "Searching source text",
             division=division_acronym(division),
         )
-        chunks = self.vectorstores.retrieve(
-            question=state.get("retrieval_query", state["question"]),  # type: ignore[typeddict-item]
-            division=division,
-            k=state["max_results"],
-        )
+        retrieval_query = state.get("retrieval_query", state["question"])  # type: ignore[typeddict-item]
+        try:
+            chunks = self.vectorstores.retrieve(
+                question=retrieval_query,
+                division=division,
+                k=state["max_results"],
+                vectorstore_root=state.get("vector_store_root"),
+                embedding_model=state.get("vector_store_embedding_model"),
+            )
+        except TypeError:
+            chunks = self.vectorstores.retrieve(retrieval_query, division, state["max_results"])
         self._debug_log(
             "retrieve query_id=%s division=%s requested_k=%s returned=%s duration=%.2fs query_chars=%s",
             state.get("query_id", "unknown"),
@@ -896,20 +943,57 @@ class RAGService:
         chunk_size: int | None = None,
         clear_existing: bool = True,
         ingest_id: Optional[str] = None,
+        name: str | None = None,
+        activate: bool = True,
     ) -> tuple[IngestResponse, str]:
         start_time = time.time()
         ingest_id = ingest_id or f"ingest_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
         logger.info("Starting ingestion %s with embedding model %s", ingest_id, embedding_model)
+        chunk_size = chunk_size or self.settings.chunk_size
+
+        if not database_available() or SessionLocal is None:
+            raise ValueError("Storage metadata is unavailable")
+
+        with SessionLocal() as db:
+            store = create_vector_store_record(
+                db,
+                name=name or f"{embedding_model} ({chunk_size})",
+                embedding_model=embedding_model,
+                chunk_size=chunk_size,
+                chunk_overlap=self.settings.chunk_overlap,
+                activate=activate,
+            )
+            db.commit()
+            db.refresh(store)
 
         try:
             self.vectorstores.clear_cached_stores()
-            divisions_processed = self.ingestion.ingest(embedding_model, clear_existing, chunk_size)
+            target_dir = vector_store_path(store)
+            divisions_processed, partitions, total_chunks = self.ingestion.ingest(
+                embedding_model,
+                clear_existing,
+                chunk_size,
+                vectorstore_dir=target_dir,
+                vector_store_id=store.id,
+            )
             self.vectorstores.reset_embedding_model(embedding_model)
             self.settings.embedding_model = embedding_model
-            if chunk_size:
-                self.settings.chunk_size = chunk_size
+            self.settings.chunk_size = chunk_size
+            with SessionLocal() as db:
+                store = db.get(type(store), store.id)
+                if store:
+                    mark_vector_store_ready(db, store, partitions, total_chunks, activate=activate)
+                    db.commit()
         except Exception as exc:
             elapsed = time.time() - start_time
+            try:
+                with SessionLocal() as db:
+                    failed_store = db.get(type(store), store.id)
+                    if failed_store:
+                        mark_vector_store_failed(db, failed_store, str(exc))
+                        db.commit()
+            except Exception:
+                pass
             logger.error("Ingestion %s failed after %.2fs: %s", ingest_id, elapsed, exc, exc_info=True)
             raise Exception(f"Ingestion failed after {elapsed:.1f} seconds: {exc}") from exc
 
@@ -928,19 +1012,35 @@ class RAGService:
 
     async def health_check(self) -> dict[str, str]:
         try:
+            if database_available() and SessionLocal is not None:
+                try:
+                    with SessionLocal() as db:
+                        active_store = get_active_vector_store(db)
+                    if active_store:
+                        return {
+                            "status": "healthy",
+                            "database_status": "connected",
+                            "history_available": "true",
+                            "available_divisions": str(len(self.settings.subcommittee_stores)),
+                            "embedding_model": active_store.embedding_model_id,
+                            "active_vector_store": active_store.name,
+                        }
+                except Exception as exc:
+                    logger.warning("Storage registry unavailable during health check: %s", exc)
+
             vectorstore_dir = str(self.settings.vectorstore_dir)
             available_stores = [
                 name
                 for name in os.listdir(vectorstore_dir)
-                if os.path.isdir(os.path.join(vectorstore_dir, name))
+                if os.path.isdir(os.path.join(vectorstore_dir, name)) and name != "vector_stores"
             ]
             if not available_stores:
                 return {"status": "unhealthy", "reason": "No vector databases found"}
-
             return {
                 "status": "healthy",
                 "database_status": "connected",
-                "available_divisions": str(len(available_stores)),
+                "history_available": "false",
+                "available_divisions": str(len(self.settings.subcommittee_stores)),
                 "embedding_model": self.vectorstores.embedding_model,
             }
         except Exception as exc:

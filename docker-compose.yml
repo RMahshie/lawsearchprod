@@ -16,6 +16,7 @@ services:
       - LOG_LEVEL=INFO
       - VECTORSTORE_DIR=/app/db/chroma
       - DATA_DIR=/app/data/bills
+      - DATABASE_URL=postgresql+psycopg://lawsearch:lawsearch@postgres:5432/lawsearch
     volumes:
       # Mount database directory for persistence (bills now baked into container)
       - ./db:/app/db
@@ -23,6 +24,9 @@ services:
       - ./.env:/app/.env:ro
     networks:
       - lawsearch-network
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
@@ -48,11 +52,29 @@ services:
       - lawsearch-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  postgres:
+    image: postgres:17
+    container_name: lawsearch-postgres
+    environment:
+      - POSTGRES_USER=lawsearch
+      - POSTGRES_PASSWORD=lawsearch
+      - POSTGRES_DB=lawsearch
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - lawsearch-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lawsearch -d lawsearch"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   lawsearch-network:
@@ -63,4 +85,6 @@ volumes:
   chroma-data:
     driver: local
   bills-data:
+    driver: local
+  postgres-data:
     driver: local
