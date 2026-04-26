@@ -66,7 +66,23 @@ def init_db() -> None:
     import app.db.models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    _add_query_run_columns()
     _drop_removed_query_source_columns()
+
+
+def _add_query_run_columns() -> None:
+    """Add compatible query history columns for existing SQLite metadata databases."""
+    if engine is None:
+        return
+
+    with engine.begin() as connection:
+        inspector = inspect(connection)
+        if "query_runs" not in inspector.get_table_names():
+            return
+
+        existing_columns = {column["name"] for column in inspector.get_columns("query_runs")}
+        if "number_annotations" not in existing_columns:
+            connection.execute(text("ALTER TABLE query_runs ADD COLUMN number_annotations JSON"))
 
 
 def _drop_removed_query_source_columns() -> None:

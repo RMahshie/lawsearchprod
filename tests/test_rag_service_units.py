@@ -143,6 +143,50 @@ def test_load_conversation_hydrates_sources_from_chroma_only():
     assert response.division_results[0].source_chunk_ids == ["present"]
 
 
+def test_load_conversation_returns_saved_number_annotations():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.db.models import QueryRun
+    from app.db.session import Base
+    from app.services.storage_registry import load_conversation
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    db.add(
+        QueryRun(
+            id="query",
+            question="How much funding?",
+            answer="Answer $10 [[num:src_dhs_1]]",
+            processing_time=1.0,
+            number_annotations=[
+                {
+                    "id": "src_dhs_1",
+                    "kind": "source",
+                    "figure": "$10",
+                    "normalized_value": 10,
+                    "label": "DHS funding",
+                    "targets": [{"scope": "answer"}],
+                    "division": "DEPARTMENT OF HOMELAND SECURITY",
+                    "division_acronym": "DHS",
+                    "chunk_id": "chunk-1",
+                    "input_ids": [],
+                    "inputs": [],
+                }
+            ],
+        )
+    )
+    db.commit()
+
+    response = load_conversation(db, "query", lambda *_args: None)
+
+    assert response.number_annotations[0].id == "src_dhs_1"
+    assert response.number_annotations[0].targets[0].scope == "answer"
+
+
 def test_map_chunk_returns_facts_and_summary(monkeypatch):
     monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: FakeLLM())
     service = RAGService.__new__(RAGService)
@@ -253,6 +297,153 @@ def test_response_includes_sources_and_division_results():
     assert response.sources[0].chunk_snapshot == "DHS cybersecurity funding"
     assert response.debug_division_queries is None
     assert response.division_results[0].source_chunk_ids == ["DHS-1-test"]
+
+
+def test_response_includes_source_number_annotations_when_markers_are_used():
+    service = RAGService.__new__(RAGService)
+    result = {
+        "final_answer": "DHS receives $10,000,000 [[num:src_dhs_dhs_1_test_1]] [DHS].",
+        "selected_divisions": ["DEPARTMENT OF HOMELAND SECURITY"],
+        "include_sources": True,
+        "retrieved_chunks": [
+            {
+                "chunk_id": "DHS-1-test",
+                "division": "DEPARTMENT OF HOMELAND SECURITY",
+                "division_acronym": "DHS",
+                "content": "For cybersecurity, $10,000,000 shall be available.",
+                "chunk_summary": None,
+                "score": 0.1,
+                "metadata": {"source_file": "bill.html"},
+            }
+        ],
+        "mapped_chunks": [
+            {
+                "chunk_id": "DHS-1-test",
+                "division": "DEPARTMENT OF HOMELAND SECURITY",
+                "division_acronym": "DHS",
+                "extracted_facts": "Extracted $10,000,000 [[num:src_dhs_dhs_1_test_1]] for cybersecurity [DHS].",
+                "chunk_summary": "Chunk summarizes DHS cybersecurity funding.",
+                "chunk_snapshot": "DHS cybersecurity funding",
+                "source_content": "For cybersecurity, $10,000,000 shall be available.",
+                "score": 0.1,
+                "metadata": {"source_file": "bill.html"},
+                "number_annotations": [
+                    {
+                        "id": "src_dhs_dhs_1_test_1",
+                        "kind": "source",
+                        "figure": "$10,000,000",
+                        "normalized_value": 10_000_000,
+                        "label": "DHS cybersecurity funding",
+                        "targets": [],
+                        "division": "DEPARTMENT OF HOMELAND SECURITY",
+                        "division_acronym": "DHS",
+                        "chunk_id": "DHS-1-test",
+                        "chunk_summary": "Chunk summarizes DHS cybersecurity funding.",
+                        "chunk_snapshot": "DHS cybersecurity funding",
+                        "source_quote": "For cybersecurity, $10,000,000 shall be available.",
+                        "input_ids": [],
+                        "inputs": [],
+                    }
+                ],
+            }
+        ],
+        "division_answers": [
+            {
+                "division": "DEPARTMENT OF HOMELAND SECURITY",
+                "division_acronym": "DHS",
+                "answer": "DHS receives $10,000,000 [[num:src_dhs_dhs_1_test_1]] [DHS].",
+                "source_chunk_ids": ["DHS-1-test"],
+                "chunks_retrieved": 1,
+                "number_annotations": [],
+            }
+        ],
+        "number_annotations": [
+            {
+                "id": "src_dhs_dhs_1_test_1",
+                "kind": "source",
+                "figure": "$10,000,000",
+                "normalized_value": 10_000_000,
+                "label": "DHS cybersecurity funding",
+                "targets": [],
+                "division": "DEPARTMENT OF HOMELAND SECURITY",
+                "division_acronym": "DHS",
+                "chunk_id": "DHS-1-test",
+                "chunk_summary": "Chunk summarizes DHS cybersecurity funding.",
+                "chunk_snapshot": "DHS cybersecurity funding",
+                "source_quote": "For cybersecurity, $10,000,000 shall be available.",
+                "input_ids": [],
+                "inputs": [],
+            }
+        ],
+    }
+
+    response = service._to_response(result, 1.2, "query-test")
+
+    assert response.number_annotations[0].id == "src_dhs_dhs_1_test_1"
+    assert {target.scope for target in response.number_annotations[0].targets} == {"answer", "division"}
+
+
+def test_derived_number_validation_requires_source_backing_and_matching_total():
+    from app.models.query import NumberAnnotation, NumberAnnotationTarget
+    from app.services.rag_service import ProposedDerivedAnnotation
+
+    service = RAGService.__new__(RAGService)
+    source_a = NumberAnnotation(
+        id="src_a",
+        kind="source",
+        figure="$10",
+        normalized_value=10,
+        label="A",
+        division="AAA",
+        division_acronym="AAA",
+        chunk_id="a",
+    )
+    source_b = NumberAnnotation(
+        id="src_b",
+        kind="source",
+        figure="$5",
+        normalized_value=5,
+        label="B",
+        division="BBB",
+        division_acronym="BBB",
+        chunk_id="b",
+    )
+
+    accepted = service._validate_derived_annotations(
+        proposed=[
+            ProposedDerivedAnnotation(
+                id="drv_total",
+                figure="$15",
+                normalized_value=15,
+                label="Total",
+                equation="$10 + $5 = $15",
+                rationale="Both inputs are source-backed.",
+                input_ids=["src_a", "src_b"],
+            )
+        ],
+        target_answer="Total is $15 [[num:drv_total]].",
+        available=[source_a, source_b],
+        target=NumberAnnotationTarget(scope="answer"),
+    )
+
+    rejected = service._validate_derived_annotations(
+        proposed=[
+            ProposedDerivedAnnotation(
+                id="drv_bad",
+                figure="$20",
+                normalized_value=20,
+                label="Bad total",
+                equation="$10 + $5 = $20",
+                input_ids=["src_a", "src_b"],
+            )
+        ],
+        target_answer="Total is $20 [[num:drv_bad]].",
+        available=[source_a, source_b],
+        target=NumberAnnotationTarget(scope="answer"),
+    )
+
+    assert accepted[0].inputs[0].annotation_id == "src_a"
+    assert [item.id for item in rejected] == []
 
 
 def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):

@@ -7,6 +7,9 @@ Contains all request and response models for API validation.
 from .query import (
     QueryRequest,
     QueryResponse,
+    NumberAnnotation,
+    NumberAnnotationInput,
+    NumberAnnotationTarget,
     SourceDocument,
     HealthResponse,
     ErrorResponse
@@ -15,6 +18,9 @@ from .query import (
 __all__ = [
     "QueryRequest",
     "QueryResponse", 
+    "NumberAnnotation",
+    "NumberAnnotationInput",
+    "NumberAnnotationTarget",
     "SourceDocument",
     "HealthResponse",
     "ErrorResponse"

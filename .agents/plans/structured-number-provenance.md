@@ -51,20 +51,20 @@ Derived hovers should show the displayed total, the readable equation sentence, 
 None for v1. Revisit after implementation if generated answer markers conflict with markdown rendering or if the chosen database JSON type needs a compatibility fallback.
 
 ## Execution Steps
-- [ ] Define backend API models for number annotations, calculation inputs, source references, and annotation targets in `app/models/query.py`.
-- [ ] Add `number_annotations` to `QueryResponse` and mirror the types in `frontend/src/types/api.ts`.
-- [ ] Extend graph state in `app/services/rag_service.py` to carry source number evidence, reduce-derived annotations, synthesis-derived annotations, and final validated annotations.
-- [ ] Revise the map prompt/output so each mapped chunk extracts source-backed dollar figures with labels, `chunk_id`, division metadata, summaries, normalized values, and inline `[[num:src_*]]` markers in extracted facts.
-- [ ] Revise the reduce prompt to consume marked source facts, preserve source markers when reusing atomic figures, and return structured output with marked division answer text plus proposed derived annotations for any combined dollar figures.
-- [ ] Revise the synthesis prompt to consume marked division answers and available annotations, preserve existing markers where applicable, and return structured output with marked final answer text plus proposed derived annotations for any additional combined dollar figures.
-- [ ] Add deterministic validation for proposed derived annotations; keep only annotations whose markers appear in the target answer, whose inputs exist and flatten to source-backed numbers, and whose formula matches the displayed total within tolerance.
-- [ ] Track annotation targets so markers render in both `response.answer` and each `division_results[].answer`.
-- [ ] Merge validated source, reduce-derived, and synthesis-derived annotations into `QueryResponse.number_annotations`.
-- [ ] Persist `number_annotations` as a JSON snapshot on saved query runs and return it from `load_conversation`.
-- [ ] Replace the frontend command-F-first flow with annotation-first rendering in `QueryResults`.
-- [ ] Render `source` popovers from source annotations and `derived` popovers with readable equation text, formula rows, input summaries, and highlighted source snippets.
-- [ ] Keep the current source-snippet matching as a fallback for legacy saved conversations or responses without annotations.
-- [ ] Update backend and frontend tests for live responses, saved history, reduce-level derived hovers, final-answer derived hovers, verified derived totals, failed validation omission, and legacy fallback behavior.
+- [x] Define backend API models for number annotations, calculation inputs, source references, and annotation targets in `app/models/query.py`.
+- [x] Add `number_annotations` to `QueryResponse` and mirror the types in `frontend/src/types/api.ts`.
+- [x] Extend graph state in `app/services/rag_service.py` to carry source number evidence, reduce-derived annotations, synthesis-derived annotations, and final validated annotations.
+- [x] Revise the map prompt/output so each mapped chunk extracts source-backed dollar figures with labels, `chunk_id`, division metadata, summaries, normalized values, and inline `[[num:src_*]]` markers in extracted facts.
+- [x] Revise the reduce prompt to consume marked source facts, preserve source markers when reusing atomic figures, and return structured output with marked division answer text plus proposed derived annotations for any combined dollar figures.
+- [x] Revise the synthesis prompt to consume marked division answers and available annotations, preserve existing markers where applicable, and return structured output with marked final answer text plus proposed derived annotations for any additional combined dollar figures.
+- [x] Add deterministic validation for proposed derived annotations; keep only annotations whose markers appear in the target answer, whose inputs exist and flatten to source-backed numbers, and whose formula matches the displayed total within tolerance.
+- [x] Track annotation targets so markers render in both `response.answer` and each `division_results[].answer`.
+- [x] Merge validated source, reduce-derived, and synthesis-derived annotations into `QueryResponse.number_annotations`.
+- [x] Persist `number_annotations` as a JSON snapshot on saved query runs and return it from `load_conversation`.
+- [x] Replace the frontend command-F-first flow with annotation-first rendering in `QueryResults`.
+- [x] Render `source` popovers from source annotations and `derived` popovers with readable equation text, formula rows, input summaries, and highlighted source snippets.
+- [x] Keep the current source-snippet matching as a fallback for legacy saved conversations or responses without annotations.
+- [x] Update backend and frontend tests for live responses, saved history, reduce-level derived hovers, final-answer derived hovers, verified derived totals, failed validation omission, and legacy fallback behavior.
 
 ## Validation
 - `python3 -m pytest tests/test_rag_service_units.py tests/test_query_models.py`
@@ -76,6 +76,7 @@ No public README change is required for v1. Update inline schema descriptions an
 
 ## Progress
 - 2026-04-26: Plan created from pipeline/history review and product decisions.
+- 2026-04-26: Implemented backend annotation models, marker propagation, derived validation, saved-history JSON snapshots, annotation-first frontend rendering, and focused backend/frontend validation.
 
 ## Decisions
 - Keep markdown answers and add structured `number_annotations` instead of replacing the answer with structured blocks.
@@ -94,4 +95,4 @@ No public README change is required for v1. Update inline schema descriptions an
 - Reduce is a natural point for derived number creation because it combines mapped chunk facts into coherent division-level answers.
 
 ## Remaining Work
-Implementation has not started.
+- Manual UI check with a live query that creates reduce-level and final-answer totals.

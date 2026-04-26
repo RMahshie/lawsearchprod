@@ -21,7 +21,7 @@ from app.db.models import (
     VectorStorePartition,
 )
 from app.db.session import SessionLocal, database_available, init_db
-from app.models.query import DivisionResult, QueryResponse, SourceDocument
+from app.models.query import DivisionResult, NumberAnnotation, QueryResponse, SourceDocument
 from app.services.vector_store_service import division_acronym
 
 logger = logging.getLogger(__name__)
@@ -312,6 +312,7 @@ def save_query_response(
         status="completed",
         vector_store_id=vector_store.id if vector_store else None,
         processing_time=response.processing_time,
+        number_annotations=[annotation.model_dump(mode="json") for annotation in response.number_annotations],
         created_at=response.timestamp,
         completed_at=datetime.utcnow(),
     )
@@ -448,6 +449,11 @@ def load_conversation(db: Session, query_id: str, chunk_loader) -> QueryResponse
         selected_divisions=[item.division for item in division_results],
         division_results=division_results,
         sources=sources,
+        number_annotations=[
+            NumberAnnotation.model_validate(annotation)
+            for annotation in (run.number_annotations or [])
+            if isinstance(annotation, dict)
+        ],
         query_id=run.id,
         timestamp=run.created_at,
     )

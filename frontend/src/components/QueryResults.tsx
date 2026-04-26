@@ -1,7 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ReactNode } from 'react';
-import type { QueryResponse, SourceDocument } from '../types/api';
+import type { NumberAnnotation, NumberAnnotationInput, QueryResponse, SourceDocument } from '../types/api';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ interface QueryResultsProps {
 }
 
 export default function QueryResults({ result, question }: QueryResultsProps) {
-  const answerWithFigureLinks = linkAnswerFigures(result);
+  const answerWithFigureLinks = linkMarkdownFigures(result, result.answer, { scope: 'answer' });
   const excerpts = uniqueSources(result.sources ?? []);
 
   return (
@@ -48,7 +48,7 @@ export default function QueryResults({ result, question }: QueryResultsProps) {
                   const citation = answerWithFigureLinks.citations[Number(match[1])];
                   if (!citation) return <>{children}</>;
 
-                  return <FigurePopover figure={citation.figure} sources={citation.sources} />;
+                  return <FigurePopover citation={citation} result={result} />;
                 },
               }}
             >
@@ -77,7 +77,11 @@ export default function QueryResults({ result, question }: QueryResultsProps) {
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="rag-markdown border bg-muted/30 p-4">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{division.answer}</ReactMarkdown>
+                      <AnnotatedMarkdown
+                        markdown={division.answer}
+                        result={result}
+                        scope={{ scope: 'division', division: division.division }}
+                      />
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -162,10 +166,59 @@ function summaryForSource(source: SourceDocument) {
 
 interface FigureCitation {
   figure: string;
-  sources: SourceDocument[];
+  sources?: SourceDocument[];
+  annotation?: NumberAnnotation;
 }
 
-function FigurePopover({ figure, sources }: FigureCitation) {
+interface AnnotationScope {
+  scope: 'answer' | 'division';
+  division?: string;
+}
+
+function AnnotatedMarkdown({
+  markdown,
+  result,
+  scope,
+}: {
+  markdown: string;
+  result: QueryResponse;
+  scope: AnnotationScope;
+}) {
+  const linked = linkMarkdownFigures(result, markdown, scope);
+
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        a: ({ href, children }) => {
+          const match = href?.match(/^#figure-(\d+)$/);
+          if (!match) {
+            return <a href={href}>{children}</a>;
+          }
+
+          const citation = linked.citations[Number(match[1])];
+          if (!citation) return <>{children}</>;
+
+          return <FigurePopover citation={citation} result={result} />;
+        },
+      }}
+    >
+      {linked.markdown}
+    </ReactMarkdown>
+  );
+}
+
+function FigurePopover({ citation, result }: { citation: FigureCitation; result: QueryResponse }) {
+  if (citation.annotation?.kind === 'derived') {
+    return <DerivedFigurePopover annotation={citation.annotation} result={result} />;
+  }
+
+  if (citation.annotation?.kind === 'source') {
+    return <SourceAnnotationPopover annotation={citation.annotation} result={result} />;
+  }
+
+  const { figure } = citation;
+  const sources = citation.sources ?? [];
   const leadSummary = sources.find((source) => source.chunk_summary?.trim())?.chunk_summary?.trim();
 
   return (
@@ -209,14 +262,142 @@ function FigurePopover({ figure, sources }: FigureCitation) {
   );
 }
 
-function linkAnswerFigures(result: QueryResponse) {
+function SourceAnnotationPopover({ annotation, result }: { annotation: NumberAnnotation; result: QueryResponse }) {
+  const source = (result.sources ?? []).find((item) => item.chunk_id === annotation.chunk_id);
+  const content = source?.content_snippet ?? annotation.source_quote ?? '';
+  const summary = source?.chunk_summary ?? annotation.chunk_summary;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:bg-blue-50">
+          {annotation.figure}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[640px] rounded-sm">
+        <div className="flex flex-col gap-3">
+          <div>
+            <div className="text-sm font-medium">{annotation.figure}</div>
+            <p className="mt-1 text-sm text-muted-foreground">{annotation.label}</p>
+            {summary && <p className="mt-1 text-xs text-muted-foreground">{summary}</p>}
+          </div>
+          <Separator />
+          <div className="border bg-background p-3">
+            <div className="mb-2 flex items-center gap-2 text-xs">
+              <Badge variant="outline" className="rounded-sm">[{annotation.division_acronym}]</Badge>
+              {annotation.chunk_id && <span className="text-muted-foreground">{annotation.chunk_id}</span>}
+            </div>
+            <pre className="whitespace-pre-wrap text-xs leading-relaxed">
+              <HighlightedSourceSnippet content={content} figure={annotation.figure} />
+            </pre>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function DerivedFigurePopover({ annotation, result }: { annotation: NumberAnnotation; result: QueryResponse }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:bg-blue-50">
+          {annotation.figure}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[720px] rounded-sm">
+        <div className="flex flex-col gap-3">
+          <div>
+            <div className="text-sm font-medium">{annotation.figure}</div>
+            <p className="mt-1 text-sm text-muted-foreground">{annotation.equation ?? annotation.label}</p>
+            {annotation.rationale && <p className="mt-1 text-xs text-muted-foreground">{annotation.rationale}</p>}
+          </div>
+          <Separator />
+          <div className="max-h-96 overflow-y-auto">
+            <div className="flex flex-col gap-3 pr-2">
+              {annotation.inputs.map((input) => (
+                <DerivedInputRow key={input.annotation_id} input={input} result={result} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function DerivedInputRow({ input, result }: { input: NumberAnnotationInput; result: QueryResponse }) {
+  const source = (result.sources ?? []).find((item) => item.chunk_id === input.chunk_id);
+  const content = source?.content_snippet ?? input.source_quote ?? '';
+  const summary = source?.chunk_summary ?? input.chunk_summary;
+
+  return (
+    <div className="border bg-background p-3">
+      <div className="mb-2 flex items-center gap-2 text-xs">
+        <Badge variant="outline" className="rounded-sm">[{input.division_acronym}]</Badge>
+        <span className="font-medium">{input.figure}</span>
+        <span className="text-muted-foreground">{input.chunk_id}</span>
+      </div>
+      <p className="mb-2 text-sm text-muted-foreground">{input.label}</p>
+      {summary && <p className="mb-2 text-xs text-muted-foreground">{summary}</p>}
+      <pre className="whitespace-pre-wrap text-xs leading-relaxed">
+        <HighlightedSourceSnippet content={content} figure={input.figure} />
+      </pre>
+    </div>
+  );
+}
+
+function linkMarkdownFigures(result: QueryResponse, sourceMarkdown: string, scope: AnnotationScope) {
+  if (result.number_annotations?.length) {
+    return linkAnnotatedFigures(result, sourceMarkdown, scope);
+  }
+  if (scope.scope === 'answer') {
+    return linkLegacyAnswerFigures(result, sourceMarkdown);
+  }
+  return { markdown: stripNumberMarkers(sourceMarkdown), citations: [] };
+}
+
+function linkAnnotatedFigures(result: QueryResponse, sourceMarkdown: string, scope: AnnotationScope) {
+  const citations: FigureCitation[] = [];
+  const annotationsById = new Map(result.number_annotations.map((annotation) => [annotation.id, annotation]));
+
+  const markdown = sourceMarkdown.replace(
+    new RegExp(`(${FIGURE_PATTERN_SOURCE})\\s*\\[\\[num:([A-Za-z0-9_-]+)\\]\\]`, 'gi'),
+    (_fullMatch, figure, _value, _scale, annotationId) => {
+      const annotation = annotationsById.get(annotationId);
+      if (!annotation || !annotationTargetsScope(annotation, scope)) {
+        return figure;
+      }
+
+      const citationIndex = citations.length;
+      citations.push({ figure, annotation });
+      return `[${figure}](#figure-${citationIndex})`;
+    },
+  );
+
+  return { markdown: stripNumberMarkers(markdown), citations };
+}
+
+function annotationTargetsScope(annotation: NumberAnnotation, scope: AnnotationScope) {
+  return annotation.targets.some((target) => {
+    if (target.scope !== scope.scope) return false;
+    if (scope.scope === 'answer') return true;
+    return target.division === scope.division;
+  });
+}
+
+function stripNumberMarkers(markdown: string) {
+  return markdown.replace(/\s*\[\[num:[A-Za-z0-9_-]+\]\]/g, '');
+}
+
+function linkLegacyAnswerFigures(result: QueryResponse, sourceMarkdown: string) {
   const citations: FigureCitation[] = [];
   const sources = result.sources ?? [];
   const sourcesByChunkId = new Map(sources.map((source) => [source.chunk_id, source]));
 
-  const markdown = result.answer.replace(createFigurePattern(), (figure, _value, _scale, offset) => {
+  const markdown = stripNumberMarkers(sourceMarkdown).replace(createFigurePattern(), (figure, _value, _scale, offset) => {
     const matchingSources = sources.filter((source) => sourceContainsFigure(source.content_snippet, figure));
-    const nearbyMarker = nearbyDivisionMarker(result.answer, offset);
+    const nearbyMarker = nearbyDivisionMarker(sourceMarkdown, offset);
     const fallbackSources = sourcesForNearbyDivisionMarker(result.division_results, sourcesByChunkId, nearbyMarker);
     const citedSources = matchingSources.length > 0
       ? matchingSources

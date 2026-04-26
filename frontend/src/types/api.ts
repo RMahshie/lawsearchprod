@@ -22,6 +22,44 @@ export interface SourceDocument {
   metadata?: Record<string, unknown>;
 }
 
+export interface NumberAnnotationInput {
+  annotation_id: string;
+  figure: string;
+  normalized_value: number;
+  label: string;
+  division: string;
+  division_acronym: string;
+  chunk_id: string;
+  chunk_summary?: string;
+  chunk_snapshot?: string;
+  source_quote?: string;
+}
+
+export interface NumberAnnotationTarget {
+  scope: 'answer' | 'division';
+  division?: string;
+  division_acronym?: string;
+}
+
+export interface NumberAnnotation {
+  id: string;
+  kind: 'source' | 'derived';
+  figure: string;
+  normalized_value: number;
+  label: string;
+  targets: NumberAnnotationTarget[];
+  division?: string;
+  division_acronym?: string;
+  chunk_id?: string;
+  chunk_summary?: string;
+  chunk_snapshot?: string;
+  source_quote?: string;
+  equation?: string;
+  rationale?: string;
+  input_ids: string[];
+  inputs: NumberAnnotationInput[];
+}
+
 export interface DebugDivisionQuery {
   division: string;
   division_acronym: string;
@@ -42,6 +80,7 @@ export interface QueryResponse {
   selected_divisions: string[];
   division_results: DivisionResult[];
   sources?: SourceDocument[];
+  number_annotations: NumberAnnotation[];
   debug_division_queries?: DebugDivisionQuery[];
   timestamp: string;
   query_id?: string;

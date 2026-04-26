@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -83,6 +83,7 @@ class QueryRun(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     vector_store_id: Mapped[str | None] = mapped_column(ForeignKey("vector_stores.id"), nullable=True)
     processing_time: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    number_annotations: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
