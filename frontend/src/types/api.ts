@@ -111,6 +111,7 @@ export interface CreateVectorStoreRequest {
   name: string;
   embedding_model: string;
   chunk_size: number;
+  chunk_overlap: number;
   activate?: boolean;
 }
 
@@ -173,9 +174,9 @@ export type DivisionName = typeof AVAILABLE_DIVISIONS[number];
 
 // Available embedding models
 export const AVAILABLE_EMBEDDING_MODELS = [
-  { value: "text-embedding-ada-002", label: "Ada-002 (Recommended)" },
-  { value: "text-embedding-3-small", label: "Embedding-3-Small" },
-  { value: "text-embedding-3-large", label: "Embedding-3-Large" }
+  { value: "text-embedding-3-large", label: "text-embedding-3-large" },
+  { value: "text-embedding-3-small", label: "text-embedding-3-small" },
+  { value: "text-embedding-ada-002", label: "text-embedding-ada-002" }
 ] as const;
 
 export type EmbeddingModel = typeof AVAILABLE_EMBEDDING_MODELS[number]["value"];

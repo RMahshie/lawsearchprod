@@ -1,5 +1,6 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import type { ReactNode } from 'react';
 import type { QueryResponse, SourceDocument } from '../types/api';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
@@ -196,7 +197,7 @@ function FigurePopover({ figure, sources }: FigureCitation) {
                     <p className="mb-2 text-sm text-muted-foreground">{source.chunk_summary}</p>
                   )}
                   <pre className="whitespace-pre-wrap text-xs leading-relaxed">
-                    {source.content_snippet}
+                    <HighlightedSourceSnippet content={source.content_snippet} figure={figure} />
                   </pre>
                 </div>
               ))}
@@ -230,6 +231,50 @@ function sourceContainsFigure(content: string, figure: string) {
 
   const sourceFigures = content.match(/\$\d[\d,]*(?:\.\d+)?(?:\s*(?:thousand|million|billion|trillion))?/gi) ?? [];
   return sourceFigures.some((sourceFigure) => normalizeFigure(sourceFigure) === normalizedFigure);
+}
+
+interface HighlightedSourceSnippetProps {
+  content: string;
+  figure: string;
+}
+
+function HighlightedSourceSnippet({ content, figure }: HighlightedSourceSnippetProps) {
+  const normalizedFigure = normalizeFigure(figure);
+  const figurePattern = /\$\d[\d,]*(?:\.\d+)?(?:\s*(?:thousand|million|billion|trillion))?/gi;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = figurePattern.exec(content)) !== null) {
+    const matchedFigure = match[0];
+    const isMatch = normalizedFigure
+      ? normalizeFigure(matchedFigure) === normalizedFigure
+      : matchedFigure === figure;
+
+    if (!isMatch) continue;
+
+    if (match.index > lastIndex) {
+      parts.push(content.slice(lastIndex, match.index));
+    }
+
+    parts.push(
+      <mark
+        key={`${match.index}-${matchedFigure}`}
+        className="rounded-sm bg-amber-200 px-0.5 font-semibold text-amber-950"
+      >
+        {matchedFigure}
+      </mark>,
+    );
+    lastIndex = match.index + matchedFigure.length;
+  }
+
+  if (parts.length === 0) return <>{content}</>;
+
+  if (lastIndex < content.length) {
+    parts.push(content.slice(lastIndex));
+  }
+
+  return <>{parts}</>;
 }
 
 function normalizeFigure(figure: string) {

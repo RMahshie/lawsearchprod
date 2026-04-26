@@ -1118,6 +1118,7 @@ class RAGService:
         self,
         embedding_model: str,
         chunk_size: int | None = None,
+        chunk_overlap: int | None = None,
         clear_existing: bool = True,
         ingest_id: Optional[str] = None,
         name: str | None = None,
@@ -1128,6 +1129,7 @@ class RAGService:
         Args:
             embedding_model: Embedding model used to vectorize source chunks.
             chunk_size: Optional character count per chunk.
+            chunk_overlap: Optional character overlap between adjacent chunks.
             clear_existing: Whether to clear the target vector-store directory first.
             ingest_id: Optional external ingestion identifier for logging.
             name: Optional display name for the vector store registry row.
@@ -1140,6 +1142,7 @@ class RAGService:
         ingest_id = ingest_id or f"ingest_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
         logger.info("Starting ingestion %s with embedding model %s", ingest_id, embedding_model)
         chunk_size = chunk_size or self.settings.chunk_size
+        chunk_overlap = chunk_overlap if chunk_overlap is not None else self.settings.chunk_overlap
 
         if not database_available() or SessionLocal is None:
             raise ValueError("Storage metadata is unavailable")
@@ -1150,7 +1153,7 @@ class RAGService:
                 name=name or f"{embedding_model} ({chunk_size})",
                 embedding_model=embedding_model,
                 chunk_size=chunk_size,
-                chunk_overlap=self.settings.chunk_overlap,
+                chunk_overlap=chunk_overlap,
                 activate=activate,
             )
             db.commit()
@@ -1160,15 +1163,17 @@ class RAGService:
             self.vectorstores.clear_cached_stores()
             target_dir = vector_store_path(store)
             divisions_processed, partitions, total_chunks = self.ingestion.ingest(
-                embedding_model,
-                clear_existing,
-                chunk_size,
+                embedding_model=embedding_model,
+                clear_existing=clear_existing,
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
                 vectorstore_dir=target_dir,
                 vector_store_id=store.id,
             )
             self.vectorstores.reset_embedding_model(embedding_model)
             self.settings.embedding_model = embedding_model
             self.settings.chunk_size = chunk_size
+            self.settings.chunk_overlap = chunk_overlap
             with SessionLocal() as db:
                 store = db.get(type(store), store.id)
                 if store:

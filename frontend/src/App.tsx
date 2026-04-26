@@ -3,11 +3,10 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Database, History, Search } from 'lucide-react';
 import QueryResults from '@/components/QueryResults';
-import { useApiStatus, useConversations, useEmbeddingModels, useHealthCheck, useVectorStores } from './hooks/useApi';
+import { useApiStatus, useConversations, useHealthCheck, useVectorStores } from './hooks/useApi';
 import { useSessionState } from './hooks/useSessionState';
 import {
   activateVectorStore,
-  createEmbeddingModel,
   createVectorStore,
   deleteVectorStore,
   getConversation,
@@ -48,9 +47,20 @@ const queryClient = new QueryClient({
 });
 
 const AVAILABLE_CHUNK_SIZES = [
-  { value: '1000', label: 'Small', note: 'More precise retrieval, less context per hit.' },
-  { value: '1500', label: 'Balanced', note: 'Default balance of precision and context.' },
-  { value: '2200', label: 'Large', note: 'More context per chunk, less targeted retrieval.' },
+  '800',
+  '1000',
+  '1250',
+  '1500',
+  '2000',
+  '2500',
+] as const;
+
+const AVAILABLE_CHUNK_OVERLAPS = [
+  '100',
+  '200',
+  '350',
+  '500',
+  '700',
 ] as const;
 
 function AppContent() {
@@ -68,8 +78,8 @@ function AppContent() {
   const [selectedDivisions, setSelectedDivisions] = useState<DivisionName[]>([]);
   const [embeddingModel, setEmbeddingModel] = useState<string>(AVAILABLE_EMBEDDING_MODELS[0].value);
   const [ingestChunkSize, setIngestChunkSize] = useState('1500');
+  const [ingestChunkOverlap, setIngestChunkOverlap] = useState('200');
   const [ingestionName, setIngestionName] = useState('');
-  const [newEmbeddingName, setNewEmbeddingName] = useState('');
   const [ingestStatus, setIngestStatus] = useState<string | null>(null);
   const [ingestPending, setIngestPending] = useState(false);
   const [queryPending, setQueryPending] = useState(false);
@@ -81,15 +91,15 @@ function AppContent() {
   const { data: statusData, refetch: refetchStatus } = useApiStatus();
   const historyAvailable = Boolean(statusData?.history_available);
   const { data: vectorStores = [] } = useVectorStores();
-  const { data: embeddingModels = [] } = useEmbeddingModels();
   const { data: conversationsData } = useConversations(historyMode);
   const conversations = conversationsData?.conversations ?? [];
+  const currentEmbeddingModel = statusData?.current_embedding_model;
 
   useEffect(() => {
-    if (statusData?.current_embedding_model) {
-      setEmbeddingModel(statusData.current_embedding_model);
+    if (currentEmbeddingModel && AVAILABLE_EMBEDDING_MODELS.some((model) => model.value === currentEmbeddingModel)) {
+      setEmbeddingModel(currentEmbeddingModel);
     }
-  }, [statusData?.current_embedding_model]);
+  }, [currentEmbeddingModel]);
 
   const handleQuery = async (queryRequest: QueryRequest) => {
     setLastQuestion(queryRequest.question);
@@ -112,9 +122,10 @@ function AppContent() {
     setIngestStatus(null);
     try {
       const response = await createVectorStore({
-        name: ingestionName || `${embeddingModel} ${ingestChunkSize}`,
+        name: ingestionName || `${embeddingModel} ${ingestChunkSize}/${ingestChunkOverlap}`,
         embedding_model: embeddingModel,
         chunk_size: Number(ingestChunkSize),
+        chunk_overlap: Number(ingestChunkOverlap),
         activate: true,
       });
       void refetchStatus();
@@ -153,15 +164,6 @@ function AppContent() {
   const handleDeleteStore = async (store: VectorStoreInfo) => {
     await deleteVectorStore(store.id);
     await queryClient.invalidateQueries({ queryKey: queryKeys.vectorStores });
-  };
-
-  const handleAddEmbeddingModel = async () => {
-    const name = newEmbeddingName.trim();
-    if (!name) return;
-    await createEmbeddingModel({ name });
-    setEmbeddingModel(name);
-    setNewEmbeddingName('');
-    await queryClient.invalidateQueries({ queryKey: queryKeys.embeddingModels });
   };
 
   const submitCurrentQuery = () => {
@@ -413,7 +415,7 @@ function AppContent() {
                   <tr>
                     <th className="border p-3">Name</th>
                     <th className="border p-3">Model</th>
-                    <th className="border p-3">Chunk</th>
+                    <th className="border p-3">Chunk / Overlap</th>
                     <th className="border p-3">Chunks</th>
                     <th className="border p-3">Created</th>
                     <th className="border p-3">Last Used</th>
@@ -429,7 +431,7 @@ function AppContent() {
                         {store.is_active && <div className="text-xs text-muted-foreground">Active store</div>}
                       </td>
                       <td className="border p-3">{store.embedding_model}</td>
-                      <td className="border p-3">{store.chunk_size}</td>
+                      <td className="border p-3">{store.chunk_size} / {store.chunk_overlap}</td>
                       <td className="border p-3">{store.chunk_count.toLocaleString()}</td>
                       <td className="border p-3">{new Date(store.created_at).toLocaleDateString()}</td>
                       <td className="border p-3">{store.last_used_at ? new Date(store.last_used_at).toLocaleString() : 'Never'}</td>
@@ -490,7 +492,7 @@ function AppContent() {
                     />
                   </label>
 
-                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <div className="grid gap-4 md:grid-cols-3">
                     <label className="flex flex-col gap-2 text-sm">
                       Embedding model
                       <Select value={embeddingModel} onValueChange={setEmbeddingModel}>
@@ -499,49 +501,50 @@ function AppContent() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
-                            {[...embeddingModels.map((model) => ({ value: model.name, label: model.name })), ...AVAILABLE_EMBEDDING_MODELS]
-                              .filter((model, index, items) => items.findIndex((item) => item.value === model.value) === index)
-                              .map((model) => (
-                                <SelectItem key={model.value} value={model.value}>
-                                  {model.label}
-                                </SelectItem>
-                              ))}
+                            {AVAILABLE_EMBEDDING_MODELS.map((model) => (
+                              <SelectItem key={model.value} value={model.value}>
+                                {model.label}
+                              </SelectItem>
+                            ))}
                           </SelectGroup>
                         </SelectContent>
                       </Select>
                     </label>
                     <label className="flex flex-col gap-2 text-sm">
-                      Add model
-                      <div className="flex gap-2">
-                        <input
-                          value={newEmbeddingName}
-                          onChange={(event) => setNewEmbeddingName(event.target.value)}
-                          placeholder="model name"
-                          className="w-40 border bg-background px-3 py-2"
-                        />
-                        <Button variant="outline" className="rounded-sm" onClick={() => void handleAddEmbeddingModel()}>
-                          Add
-                        </Button>
-                      </div>
+                      Chunk size
+                      <Select value={ingestChunkSize} onValueChange={setIngestChunkSize}>
+                        <SelectTrigger className="rounded-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {AVAILABLE_CHUNK_SIZES.map((size) => (
+                              <SelectItem key={size} value={size}>
+                                {size}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm">
+                      Overlap
+                      <Select value={ingestChunkOverlap} onValueChange={setIngestChunkOverlap}>
+                        <SelectTrigger className="rounded-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {AVAILABLE_CHUNK_OVERLAPS.map((overlap) => (
+                              <SelectItem key={overlap} value={overlap}>
+                                {overlap}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
                     </label>
                   </div>
-
-                  <ControlRow label="Chunk size">
-                    <Select value={ingestChunkSize} onValueChange={setIngestChunkSize}>
-                      <SelectTrigger className="w-44 rounded-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {AVAILABLE_CHUNK_SIZES.map((size) => (
-                            <SelectItem key={size.value} value={size.value}>
-                              {size.label} ({size.value})
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </ControlRow>
 
                   <Button className="self-end rounded-sm" onClick={runIngestion} disabled={ingestPending}>
                     {ingestPending ? 'Creating Store...' : 'Create and Activate'}

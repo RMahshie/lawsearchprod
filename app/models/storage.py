@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.models.query import QueryResponse
 
@@ -36,7 +36,14 @@ class CreateVectorStoreRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     embedding_model: str
     chunk_size: int = Field(default=1500, ge=600, le=3000)
+    chunk_overlap: int = Field(default=200, ge=0, le=1000)
     activate: bool = True
+
+    @model_validator(mode="after")
+    def validate_overlap(self) -> "CreateVectorStoreRequest":
+        if self.chunk_overlap >= self.chunk_size:
+            raise ValueError("chunk_overlap must be smaller than chunk_size")
+        return self
 
 
 class CreateEmbeddingModelRequest(BaseModel):

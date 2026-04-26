@@ -91,7 +91,7 @@ async def create_vector_store(request: CreateVectorStoreRequest) -> VectorStoreI
     """Create a new versioned vector store by running ingestion.
 
     Args:
-        request: Storage manager request containing name, embedding model, chunk size, and activation preference.
+        request: Storage manager request containing name, embedding model, chunk size, overlap, and activation preference.
 
     Returns:
         VectorStoreInfo for the newly registered vector store.
@@ -105,6 +105,7 @@ async def create_vector_store(request: CreateVectorStoreRequest) -> VectorStoreI
         await rag_service.ingest_data(
             embedding_model=request.embedding_model,
             chunk_size=request.chunk_size,
+            chunk_overlap=request.chunk_overlap,
             clear_existing=True,
             ingest_id=ingest_id,
             name=request.name,

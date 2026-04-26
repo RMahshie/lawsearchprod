@@ -46,6 +46,7 @@ class IngestionService:
         embedding_model: str,
         clear_existing: bool = True,
         chunk_size: int | None = None,
+        chunk_overlap: int | None = None,
         vectorstore_dir: str | Path | None = None,
         vector_store_id: str | None = None,
     ) -> tuple[int, dict[str, int], int]:
@@ -55,6 +56,7 @@ class IngestionService:
             embedding_model: Embedding model used to vectorize chunks.
             clear_existing: Whether to delete the target vector store directory first.
             chunk_size: Optional character count per chunk.
+            chunk_overlap: Optional character overlap between adjacent chunks.
             vectorstore_dir: Optional target Chroma root directory.
             vector_store_id: Optional registry id stored in chunk metadata.
 
@@ -75,7 +77,14 @@ class IngestionService:
         for division, store_name in self.settings.subcommittee_stores.items():
             bill_path = self._bill_path_for_store(store_name)
             text = self._extract_division_text(bill_path, self._division_letter(store_name))
-            documents = self._chunk_documents(text, division, bill_path.name, chunk_size, vector_store_id)
+            documents = self._chunk_documents(
+                text,
+                division,
+                bill_path.name,
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                vector_store_id=vector_store_id,
+            )
             if not documents:
                 continue
 
@@ -156,6 +165,7 @@ class IngestionService:
         division: str,
         source_file: str,
         chunk_size: int | None = None,
+        chunk_overlap: int | None = None,
         vector_store_id: str | None = None,
     ) -> list[Document]:
         """Split division text into LangChain documents with stable metadata.
@@ -165,13 +175,15 @@ class IngestionService:
             division: Full division name for metadata and citations.
             source_file: Source HTML filename for metadata.
             chunk_size: Optional character count per chunk.
+            chunk_overlap: Optional character overlap between adjacent chunks.
             vector_store_id: Optional vector store registry id for metadata.
 
         Returns:
             List of LangChain Document objects ready for Chroma ingestion.
         """
         chunk_size = chunk_size or self.settings.chunk_size
-        overlap = min(self.settings.chunk_overlap, max(chunk_size // 8, 1))
+        overlap = chunk_overlap if chunk_overlap is not None else self.settings.chunk_overlap
+        overlap = min(overlap, max(chunk_size - 1, 0))
         docs: list[Document] = []
 
         start = 0
