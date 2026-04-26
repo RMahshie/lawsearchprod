@@ -4,32 +4,7 @@ LawSearch AI is a RAG application for querying U.S. federal appropriations bills
 
 The project is built as a service-oriented FastAPI backend with a shadcn React/TypeScript frontend. It is designed to show a practical, inspectable AI system rather than a toy chatbot: ingestion, retrieval, model routing, source display, saved history, and storage management are all first-class parts of the app.
 
-## Screenshots
-
-<table>
-  <tr>
-    <td valign="top" width="66%">
-      <img src="docs/images/main_screen.png" alt="LawSearch AI main screen" width="100%" />
-    </td>
-    <td valign="top" width="34%">
-      <p>
-        <img src="docs/images/history_screen.png" alt="LawSearch AI history screen" width="100%" />
-        <br />
-        <strong>Saved history</strong>
-      </p>
-      <p>
-        <img src="docs/images/static_modal.png" alt="Static number popup" width="100%" />
-        <br />
-        <strong>Static number detail</strong>
-      </p>
-      <p>
-        <img src="docs/images/synthesized_modal.png" alt="Synthesized result popup" width="100%" />
-        <br />
-        <strong>Synthesized result detail</strong>
-      </p>
-    </td>
-  </tr>
-</table>
+<img src="docs/images/main_screen.png" alt="LawSearch AI main screen" width="100%" />
 
 ## Key Features
 
@@ -40,6 +15,57 @@ The project is built as a service-oriented FastAPI backend with a shadcn React/T
 - Storage manager for versioned Chroma vector stores, embedding model selection, and chunk size.
 - Saved question history backed by PostgreSQL metadata and Chroma `chunk_id` hydration.
 - Dockerized FastAPI + React stack with health and status endpoints.
+
+## Source Backing
+
+The source-backed popovers keep the retrieved chunk visible next to the highlighted dollar figure, so you can verify exactly which text supports a number.
+
+<table>
+  <tr>
+    <td valign="top" width="58%">
+      <p>
+        The app highlights source-backed figures directly in the answer. Clicking the number opens the underlying chunk context and keeps the supporting text close to the claim.
+      </p>
+    </td>
+    <td valign="top" width="42%">
+      <img src="docs/images/static_modal.png" alt="Static number popup" width="100%" />
+    </td>
+  </tr>
+</table>
+
+## Synthesized Results
+
+The synthesis view brings the extracted facts together into a single answer, then breaks out the line items that contributed to the combined total.
+
+<table>
+  <tr>
+    <td valign="top" width="58%">
+      <p>
+        The synthesis step combines the relevant line items, explains the calculation, and shows the total alongside the inputs that produced it.
+      </p>
+    </td>
+    <td valign="top" width="42%">
+      <img src="docs/images/synthesized_modal.png" alt="Synthesized result popup" width="100%" />
+    </td>
+  </tr>
+</table>
+
+## Saved History
+
+Saved questions preserve the original prompt and the generated answer, so you can return to prior searches without re-running the query.
+
+<table>
+  <tr>
+    <td valign="top" width="58%">
+      <p>
+        History entries keep the original result visible in a read-only view, which makes it easy to scan prior questions and jump back into a previous answer.
+      </p>
+    </td>
+    <td valign="top" width="42%">
+      <img src="docs/images/history_screen.png" alt="LawSearch AI history screen" width="100%" />
+    </td>
+  </tr>
+</table>
 
 ## Stack
 
