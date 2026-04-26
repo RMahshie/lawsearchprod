@@ -492,8 +492,8 @@ function AppContent() {
                     />
                   </label>
 
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <label className="flex flex-col gap-2 text-sm">
+                  <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end">
+                    <label className="flex min-w-0 flex-col gap-2 text-sm">
                       Embedding model
                       <Select value={embeddingModel} onValueChange={setEmbeddingModel}>
                         <SelectTrigger className="rounded-sm">
@@ -510,7 +510,7 @@ function AppContent() {
                         </SelectContent>
                       </Select>
                     </label>
-                    <label className="flex flex-col gap-2 text-sm">
+                    <label className="flex min-w-0 flex-col gap-2 text-sm">
                       Chunk size
                       <Select value={ingestChunkSize} onValueChange={setIngestChunkSize}>
                         <SelectTrigger className="rounded-sm">
@@ -527,7 +527,7 @@ function AppContent() {
                         </SelectContent>
                       </Select>
                     </label>
-                    <label className="flex flex-col gap-2 text-sm">
+                    <label className="flex min-w-0 flex-col gap-2 text-sm">
                       Overlap
                       <Select value={ingestChunkOverlap} onValueChange={setIngestChunkOverlap}>
                         <SelectTrigger className="rounded-sm">

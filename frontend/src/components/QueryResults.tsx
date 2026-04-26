@@ -14,7 +14,7 @@ interface QueryResultsProps {
 }
 
 export default function QueryResults({ result, question }: QueryResultsProps) {
-  const answerWithFigureLinks = linkAnswerFigures(result.answer, result.sources ?? []);
+  const answerWithFigureLinks = linkAnswerFigures(result);
   const excerpts = uniqueSources(result.sources ?? []);
 
   return (
@@ -209,16 +209,22 @@ function FigurePopover({ figure, sources }: FigureCitation) {
   );
 }
 
-function linkAnswerFigures(answer: string, sources: SourceDocument[]) {
+function linkAnswerFigures(result: QueryResponse) {
   const citations: FigureCitation[] = [];
-  const figurePattern = /\$\d[\d,]*(?:\.\d+)?(?:\s*(?:thousand|million|billion|trillion))?/gi;
+  const sources = result.sources ?? [];
+  const sourcesByChunkId = new Map(sources.map((source) => [source.chunk_id, source]));
 
-  const markdown = answer.replace(figurePattern, (figure) => {
+  const markdown = result.answer.replace(createFigurePattern(), (figure, _value, _scale, offset) => {
     const matchingSources = sources.filter((source) => sourceContainsFigure(source.content_snippet, figure));
-    if (matchingSources.length === 0) return figure;
+    const citedSources = matchingSources.length > 0
+      ? matchingSources
+      : sourcesForNearbyDivisionMarker(result.answer, offset, result.division_results, sourcesByChunkId);
 
+    if (citedSources.length === 0) return figure;
+
+    const uniqueCitationSources = uniqueSources(citedSources);
     const citationIndex = citations.length;
-    citations.push({ figure, sources: matchingSources });
+    citations.push({ figure, sources: uniqueCitationSources });
     return `[${figure}](#figure-${citationIndex})`;
   });
 
@@ -229,8 +235,26 @@ function sourceContainsFigure(content: string, figure: string) {
   const normalizedFigure = normalizeFigure(figure);
   if (!normalizedFigure) return content.includes(figure);
 
-  const sourceFigures = content.match(/\$\d[\d,]*(?:\.\d+)?(?:\s*(?:thousand|million|billion|trillion))?/gi) ?? [];
+  const sourceFigures = extractFigures(content);
   return sourceFigures.some((sourceFigure) => normalizeFigure(sourceFigure) === normalizedFigure);
+}
+
+function sourcesForNearbyDivisionMarker(
+  answer: string,
+  figureOffset: number,
+  divisionResults: QueryResponse['division_results'],
+  sourcesByChunkId: Map<string, SourceDocument>,
+) {
+  const markerWindow = answer.slice(figureOffset, figureOffset + 80);
+  const marker = markerWindow.match(/\[([A-Z]{2,8})\]/)?.[1];
+  if (!marker) return [];
+
+  const division = divisionResults.find((item) => item.division_acronym === marker);
+  if (!division) return [];
+
+  return division.source_chunk_ids
+    .map((chunkId) => sourcesByChunkId.get(chunkId))
+    .filter((source): source is SourceDocument => Boolean(source));
 }
 
 interface HighlightedSourceSnippetProps {
@@ -240,10 +264,10 @@ interface HighlightedSourceSnippetProps {
 
 function HighlightedSourceSnippet({ content, figure }: HighlightedSourceSnippetProps) {
   const normalizedFigure = normalizeFigure(figure);
-  const figurePattern = /\$\d[\d,]*(?:\.\d+)?(?:\s*(?:thousand|million|billion|trillion))?/gi;
   const parts: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
+  const figurePattern = createFigurePattern();
 
   while ((match = figurePattern.exec(content)) !== null) {
     const matchedFigure = match[0];
@@ -275,6 +299,16 @@ function HighlightedSourceSnippet({ content, figure }: HighlightedSourceSnippetP
   }
 
   return <>{parts}</>;
+}
+
+const FIGURE_PATTERN_SOURCE = String.raw`\$([\d,]+(?:\.\d+)?)(?:\s*(thousand|million|billion|trillion))?`;
+
+function createFigurePattern() {
+  return new RegExp(FIGURE_PATTERN_SOURCE, 'gi');
+}
+
+function extractFigures(content: string) {
+  return content.match(createFigurePattern()) ?? [];
 }
 
 function normalizeFigure(figure: string) {
