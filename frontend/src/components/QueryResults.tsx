@@ -13,8 +13,6 @@ interface QueryResultsProps {
   question: string;
 }
 
-const FRONTEND_DEBUG = import.meta.env.VITE_DEBUG === 'true';
-
 export default function QueryResults({ result, question }: QueryResultsProps) {
   const answerWithFigureLinks = linkAnswerFigures(result);
   const excerpts = uniqueSources(result.sources ?? []);
@@ -215,20 +213,6 @@ function linkAnswerFigures(result: QueryResponse) {
   const citations: FigureCitation[] = [];
   const sources = result.sources ?? [];
   const sourcesByChunkId = new Map(sources.map((source) => [source.chunk_id, source]));
-  const answerFigures = extractFigures(result.answer);
-
-  if (FRONTEND_DEBUG) {
-    console.debug('CITATION_DEBUG link_summary', {
-      answerChars: result.answer.length,
-      answerFigures,
-      sourcesCount: sources.length,
-      sourceChunkIds: sources.map((source) => source.chunk_id),
-      divisions: result.division_results.map((division) => ({
-        division: division.division_acronym,
-        sourceChunkIds: division.source_chunk_ids,
-      })),
-    });
-  }
 
   const markdown = result.answer.replace(createFigurePattern(), (figure, _value, _scale, offset) => {
     const matchingSources = sources.filter((source) => sourceContainsFigure(source.content_snippet, figure));
@@ -238,18 +222,6 @@ function linkAnswerFigures(result: QueryResponse) {
       ? matchingSources
       : fallbackSources;
     const uniqueCitationSources = uniqueSources(citedSources);
-
-    if (FRONTEND_DEBUG) {
-      console.debug('CITATION_DEBUG figure', {
-        figure,
-        normalizedFigure: normalizeFigure(figure),
-        exactMatchingSourceChunkIds: matchingSources.map((source) => source.chunk_id),
-        nearbyDivisionMarker: nearbyMarker,
-        fallbackSourceChunkIds: fallbackSources.map((source) => source.chunk_id),
-        finalLinked: uniqueCitationSources.length > 0,
-        firstMatchingSourcePreview: matchingSources[0]?.content_snippet.slice(0, 120).replace(/\s+/g, ' '),
-      });
-    }
 
     if (uniqueCitationSources.length === 0) return figure;
 

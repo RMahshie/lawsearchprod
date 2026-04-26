@@ -441,17 +441,6 @@ def load_conversation(db: Session, query_id: str, chunk_loader) -> QueryResponse
                 source_chunk_ids=hydrated_chunk_ids,
             )
         )
-        if debug_enabled:
-            logger.info(
-                "HISTORY_DEBUG division query_id=%s division=%s chunks_retrieved=%s "
-                "saved_source_ids_count=%s hydrated_source_ids_count=%s hydrated_source_ids=%s",
-                query_id,
-                division_acronym(division.division_key),
-                division.chunks_retrieved,
-                division_saved_count,
-                len(hydrated_chunk_ids),
-                hydrated_chunk_ids,
-            )
 
     response = QueryResponse(
         answer=run.answer,
