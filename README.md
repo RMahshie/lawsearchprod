@@ -4,22 +4,23 @@
 
 LawSearch AI is a RAG application for querying U.S. federal appropriations bills in plain English. It routes questions across 14 appropriations divisions, retrieves relevant legislative text from ChromaDB, and uses OpenAI models to produce cited answers with source-backed dollar figures.
 
-The project is built as a service-oriented FastAPI backend with a shadcn React/TypeScript frontend. It is designed to show a practical, inspectable AI system rather than a toy chatbot: ingestion, retrieval, model routing, source display, and debugging are all first-class parts of the app.
+The project is built as a service-oriented FastAPI backend with a shadcn React/TypeScript frontend. It is designed to show a practical, inspectable AI system rather than a toy chatbot: ingestion, retrieval, model routing, source display, saved history, and storage management are all first-class parts of the app.
 
 ## Key Features
 
 - Natural-language search across federal appropriations laws.
 - LangGraph map-reduce pipeline with division routing, parallel chunk analysis, division-level reduction, and final synthesis.
-- Configurable thinking speed, `max_results`, division filters, source inclusion, and debug chunks.
+- Configurable thinking speed, `max_results`, division filters, and source inclusion.
 - Source-aware UI that highlights dollar figures and shows matching retrieved chunks with generated summaries.
-- Runtime ingestion controls for embedding model and chunk size.
+- Storage manager for versioned Chroma vector stores, embedding model selection, and chunk size.
+- Saved question history backed by PostgreSQL metadata and Chroma `chunk_id` hydration.
 - Dockerized FastAPI + React stack with health and status endpoints.
 
 ## Stack
 
-- Backend: FastAPI, Pydantic, LangGraph, LangChain, ChromaDB, OpenAI
+- Backend: FastAPI, Pydantic, LangGraph, LangChain, ChromaDB, PostgreSQL, OpenAI
 - Frontend: React, TypeScript, Vite, React Query, shadcn/ui, Tailwind
-- Infrastructure: Docker Compose, persisted local vector store
+- Infrastructure: Docker Compose, persisted local vector stores and PostgreSQL metadata
 
 ## Quick Start
 

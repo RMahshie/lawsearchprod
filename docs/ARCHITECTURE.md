@@ -5,13 +5,14 @@ LawSearch AI is a service-oriented RAG app for querying 2024 federal appropriati
 ## System Shape
 
 ```text
-React UI -> FastAPI API -> RAG services -> ChromaDB + OpenAI
+React UI -> FastAPI API -> RAG services -> ChromaDB + PostgreSQL + OpenAI
 ```
 
 Core backend modules:
 
 - `app/main.py`: FastAPI app setup, CORS, logging, route registration.
-- `app/api/endpoints/query.py`: query, ingest, health, and status endpoints.
+- `app/api/endpoints/query.py`: query, streaming query, health, and status endpoints.
+- `app/api/endpoints/storage.py`: storage manager and saved question history endpoints.
 - `app/models/query.py`: typed API contracts for requests, answers, chunks, and division results.
 - `app/services/rag_service.py`: LangGraph workflow and query orchestration.
 - `app/services/vector_store_service.py`: Chroma access and embedding model lifecycle.
@@ -20,13 +21,13 @@ Core backend modules:
 
 ## Query Flow
 
-1. API receives a question plus controls like `max_results`, `divisions_filter`, `include_sources`, `debug_chunks`, and `thinking_speed`.
+1. API receives a question plus controls like `max_results`, `divisions_filter`, `include_sources`, and `thinking_speed`.
 2. Router selects relevant appropriations divisions unless the user provides a filter.
 3. Retriever pulls matching chunks from each selected division collection in Chroma.
 4. Map step runs per chunk, extracting facts and generating a short chunk summary for the UI.
 5. Reduce step combines mapped facts into one answer per division.
 6. Synthesize step combines division answers only when more than one division answered.
-7. API returns the final answer, selected divisions, division reductions, sources, debug chunks, model label, timing, and query ID.
+7. API returns the final answer, selected divisions, division reductions, sources, model label, timing, and query ID.
 
 ## LangGraph Flow
 
@@ -56,9 +57,15 @@ flowchart TD
 
 LangGraph state is kept flat and reducer-friendly. Retrieved chunks, mapped chunks, and division answers carry their `division` and acronym metadata with them instead of being nested in dicts by division. This makes fan-out/fan-in behavior explicit and keeps API objects typed.
 
+## Persistence Model
+
+PostgreSQL stores metadata for embedding models, versioned vector stores, saved questions, division answers, source `chunk_id`s, source `rank`, `chunk_summary`, and `chunk_snapshot`. It does not store source text, source metadata, or retrieval scores.
+
+Saved question replay uses `vector_store_id + chunk_id` to hydrate source text from Chroma. If the Chroma chunk is missing, that source is skipped entirely, including its stored summary/snapshot labels.
+
 ## Frontend Behavior
 
-The frontend uses a left control rail and right answer workspace. Users can select thinking speed, max results, divisions, source/debug display, embedding model, and ingestion chunk size.
+The frontend uses a left control rail and right answer workspace. Users can select thinking speed, max results, divisions, and source display. Storage Manager opens a large modal for vector-store ingestion and activation, while Question History switches the left rail into saved-question browsing.
 
 Answers render as markdown. Literal dollar figures are highlighted when they match retrieved source snippets. Hovering a figure shows all matching chunks with the original text and generated chunk summaries.
 
@@ -66,5 +73,6 @@ Answers render as markdown. Literal dollar figures are highlighted when they mat
 
 - `DEBUG=true` enables concise `RAG_DEBUG` stage logs.
 - Chroma data persists in `db/chroma/`.
-- Re-ingestion clears stale Chroma clients and writes the active embedding model to `.embedding_model`.
+- Storage registry records which versioned vector store is active.
+- History/storage features are disabled when PostgreSQL is unavailable; live queries can still run against Chroma.
 - Single-division queries skip final synthesis to avoid extra latency.

@@ -62,6 +62,94 @@ def test_division_acronym_and_chunk_id_are_stable():
     )
 
 
+def test_query_source_model_does_not_persist_source_text_or_scores():
+    from app.db.models import QuerySource
+
+    assert not hasattr(QuerySource, "content_snippet")
+    assert not hasattr(QuerySource, "source_metadata")
+    assert not hasattr(QuerySource, "score")
+
+
+def test_load_conversation_hydrates_sources_from_chroma_only():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.db.models import EmbeddingModel, QueryDivisionResult, QueryRun, QuerySource, VectorStore
+    from app.db.session import Base
+    from app.services.storage_registry import load_conversation
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    db.add(EmbeddingModel(id="embed", name="text-embedding-3-large"))
+    db.add(
+        VectorStore(
+            id="store",
+            name="Current",
+            embedding_model_id="embed",
+            chunk_size=1000,
+            chunk_overlap=100,
+            relative_path="store",
+            status="ready",
+        )
+    )
+    db.add(
+        QueryRun(
+            id="query",
+            question="How much DHS funding?",
+            answer="Answer",
+            vector_store_id="store",
+            processing_time=1.0,
+        )
+    )
+    db.add(
+        QueryDivisionResult(
+            id="division",
+            query_run_id="query",
+            division_key="DEPARTMENT OF HOMELAND SECURITY",
+            answer="Division answer",
+            chunks_retrieved=2,
+            sort_order=0,
+        )
+    )
+    db.add_all(
+        [
+            QuerySource(
+                query_run_id="query",
+                query_division_result_id="division",
+                chunk_id="missing",
+                rank=1,
+                chunk_summary="Missing summary",
+                chunk_snapshot="Missing snapshot",
+            ),
+            QuerySource(
+                query_run_id="query",
+                query_division_result_id="division",
+                chunk_id="present",
+                rank=2,
+                chunk_summary="Present summary",
+                chunk_snapshot="Present snapshot",
+            ),
+        ]
+    )
+    db.commit()
+
+    def chunk_loader(_store, _division, chunk_id):
+        if chunk_id == "present":
+            return {"content": "Hydrated Chroma chunk text.", "metadata": {"source_file": "bill.html"}}
+        return None
+
+    response = load_conversation(db, "query", chunk_loader)
+
+    assert response.sources is not None
+    assert [source.chunk_id for source in response.sources] == ["present"]
+    assert response.sources[0].content_snippet == "Hydrated Chroma chunk text."
+    assert response.sources[0].chunk_summary == "Present summary"
+    assert response.division_results[0].source_chunk_ids == ["present"]
+
+
 def test_map_chunk_returns_facts_and_summary(monkeypatch):
     monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: FakeLLM())
     service = RAGService.__new__(RAGService)
@@ -115,13 +203,12 @@ def test_invoke_text_does_not_retry_non_transient_error(monkeypatch):
     assert llm.calls == 1
 
 
-def test_response_includes_sources_debug_chunks_and_division_results():
+def test_response_includes_sources_and_division_results():
     service = RAGService.__new__(RAGService)
     result = {
         "final_answer": "DHS receives $10,000,000 [DHS].",
         "selected_divisions": ["DEPARTMENT OF HOMELAND SECURITY"],
         "include_sources": True,
-        "debug_chunks": True,
         "thinking_speed": "normal",
         "model_used": "gpt-4o",
         "division_queries": [
@@ -171,11 +258,7 @@ def test_response_includes_sources_debug_chunks_and_division_results():
     assert response.sources is not None
     assert response.sources[0].chunk_summary == "Chunk summarizes DHS cybersecurity funding."
     assert response.sources[0].chunk_snapshot == "DHS cybersecurity funding"
-    assert response.debug_chunks is not None
-    assert response.debug_chunks[0].division_acronym == "DHS"
-    assert response.debug_chunks[0].chunk_snapshot == "DHS cybersecurity funding"
-    assert response.debug_division_queries is not None
-    assert response.debug_division_queries[0].query == "How much funding is provided for DHS cybersecurity?"
+    assert response.debug_division_queries is None
     assert response.division_results[0].source_chunk_ids == ["DHS-1-test"]
 
 
@@ -226,7 +309,6 @@ def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
             "thinking_speed": "normal",
             "max_results": 1,
             "include_sources": True,
-            "debug_chunks": False,
             "divisions_filter": ["AAA", "BBB"],
             "model_used": "gpt-4o",
             "selected_divisions": [],

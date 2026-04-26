@@ -8,7 +8,6 @@ export interface QueryRequest {
   max_results?: number;
   include_sources?: boolean;
   divisions_filter?: string[];
-  debug_chunks?: boolean;
   thinking_speed?: 'quick' | 'normal' | 'long';
 }
 
@@ -20,17 +19,6 @@ export interface SourceDocument {
   chunk_summary?: string;
   chunk_snapshot?: string;
   confidence_score?: number;
-  metadata?: Record<string, unknown>;
-}
-
-export interface DebugChunk {
-  chunk_id: string;
-  division: string;
-  division_acronym: string;
-  content: string;
-  chunk_summary?: string;
-  chunk_snapshot?: string;
-  score?: number;
   metadata?: Record<string, unknown>;
 }
 
@@ -54,7 +42,6 @@ export interface QueryResponse {
   selected_divisions: string[];
   division_results: DivisionResult[];
   sources?: SourceDocument[];
-  debug_chunks?: DebugChunk[];
   debug_division_queries?: DebugDivisionQuery[];
   timestamp: string;
   query_id?: string;

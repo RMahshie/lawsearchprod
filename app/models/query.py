@@ -44,12 +44,6 @@ class QueryRequest(BaseModel):
         example=["DEPARTMENT OF HOMELAND SECURITY", "DEPARTMENT OF DEFENSE"]
     )
     
-    debug_chunks: Optional[bool] = Field(
-        default=False,
-        description="If True, include retrieved document chunks in response for debugging",
-        example=False
-    )
-
     thinking_speed: Optional[str] = Field(
         default="normal",
         description="Thinking speed mode affecting model selection and retrieval parameters",
@@ -203,20 +197,8 @@ class SourceDocument(BaseModel):
     )
 
 
-class DebugChunk(BaseModel):
-    """Retrieved chunk payload returned when debug_chunks is enabled."""
-    chunk_id: str
-    division: str
-    division_acronym: str
-    content: str
-    chunk_summary: Optional[str] = None
-    chunk_snapshot: Optional[str] = None
-    score: Optional[float] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-
-
 class DebugDivisionQuery(BaseModel):
-    """Per-division retrieval query returned when debug_chunks is enabled."""
+    """Per-division retrieval query returned for query inspection."""
     division: str
     division_acronym: str
     query: str
@@ -280,15 +262,9 @@ class QueryResponse(BaseModel):
         example="query_20240315_143000_abc123"
     )
     
-    debug_chunks: Optional[List[DebugChunk]] = Field(
-        default=None,
-        description="Retrieved document chunks for debugging (only if requested)",
-        example=None
-    )
-
     debug_division_queries: Optional[List[DebugDivisionQuery]] = Field(
         default=None,
-        description="Refined per-division retrieval questions for debugging (only if requested)",
+        description="Refined per-division retrieval questions",
         example=None
     )
 

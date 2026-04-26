@@ -20,7 +20,7 @@ from app.db.models import (
     VectorStorePartition,
 )
 from app.db.session import SessionLocal, database_available, init_db
-from app.models.query import DebugChunk, DivisionResult, QueryResponse, SourceDocument
+from app.models.query import DivisionResult, QueryResponse, SourceDocument
 from app.services.vector_store_service import division_acronym
 
 
@@ -317,7 +317,6 @@ def save_query_response(
     db.flush()
 
     sources_by_chunk = {source.chunk_id: source for source in response.sources or []}
-    debug_by_chunk = {chunk.chunk_id: chunk for chunk in response.debug_chunks or []}
 
     for order, division in enumerate(response.division_results):
         division_row = QueryDivisionResult(
@@ -332,19 +331,14 @@ def save_query_response(
 
         for rank, chunk_id in enumerate(division.source_chunk_ids, start=1):
             source = sources_by_chunk.get(chunk_id)
-            debug = debug_by_chunk.get(chunk_id)
-            snippet = source.content_snippet if source else (debug.content if debug else "")
             db.add(
                 QuerySource(
                     query_run_id=run.id,
                     query_division_result_id=division_row.id,
                     chunk_id=chunk_id,
                     rank=rank,
-                    score=debug.score if debug else None,
                     chunk_summary=source.chunk_summary if source else None,
                     chunk_snapshot=source.chunk_snapshot if source else None,
-                    content_snippet=snippet[:5000],
-                    source_metadata=source.metadata if source else {},
                 )
             )
 
@@ -400,24 +394,21 @@ def load_conversation(db: Session, query_id: str, chunk_loader) -> QueryResponse
 
     division_results: list[DivisionResult] = []
     sources: list[SourceDocument] = []
-    debug_chunks: list[DebugChunk] = []
 
     for division in run.division_results:
-        chunk_ids = [source.chunk_id for source in division.sources]
-        division_results.append(
-            DivisionResult(
-                division=division.division_key,
-                division_acronym=division_acronym(division.division_key),
-                chunks_retrieved=division.chunks_retrieved,
-                answer=division.answer,
-                source_chunk_ids=chunk_ids,
-            )
-        )
+        hydrated_chunk_ids: list[str] = []
 
         for source in division.sources:
             loaded = chunk_loader(run.vector_store, division.division_key, source.chunk_id) if run.vector_store else None
-            content = loaded.get("content") if loaded else source.content_snippet
-            metadata = loaded.get("metadata") if loaded else source.source_metadata
+            if not loaded:
+                continue
+
+            content = loaded.get("content")
+            if not content:
+                continue
+
+            metadata = loaded.get("metadata")
+            hydrated_chunk_ids.append(source.chunk_id)
             sources.append(
                 SourceDocument(
                     division=division.division_key,
@@ -430,18 +421,16 @@ def load_conversation(db: Session, query_id: str, chunk_loader) -> QueryResponse
                     metadata={**(metadata or {}), "source_available": bool(loaded)},
                 )
             )
-            debug_chunks.append(
-                DebugChunk(
-                    chunk_id=source.chunk_id,
-                    division=division.division_key,
-                    division_acronym=division_acronym(division.division_key),
-                    content=content,
-                    chunk_summary=source.chunk_summary,
-                    chunk_snapshot=source.chunk_snapshot,
-                    score=source.score,
-                    metadata={**(metadata or {}), "source_available": bool(loaded)},
-                )
+
+        division_results.append(
+            DivisionResult(
+                division=division.division_key,
+                division_acronym=division_acronym(division.division_key),
+                chunks_retrieved=division.chunks_retrieved,
+                answer=division.answer,
+                source_chunk_ids=hydrated_chunk_ids,
             )
+        )
 
     return QueryResponse(
         answer=run.answer,
@@ -449,7 +438,6 @@ def load_conversation(db: Session, query_id: str, chunk_loader) -> QueryResponse
         selected_divisions=[item.division for item in division_results],
         division_results=division_results,
         sources=sources,
-        debug_chunks=debug_chunks,
         query_id=run.id,
         timestamp=run.created_at,
     )

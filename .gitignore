@@ -32,7 +32,7 @@ CLAUDE.md
 AGENTS.md
 
 # Database files (generated locally)
-db/
+/db/
 
 # Log files
 *.log

@@ -32,7 +32,6 @@ from app.core.config import get_settings
 from app.db.models import VectorStore
 from app.db.session import SessionLocal, database_available
 from app.models.query import (
-    DebugChunk,
     DebugDivisionQuery,
     DivisionResult,
     IngestResponse,
@@ -117,7 +116,6 @@ class RAGState(TypedDict, total=False):
     thinking_speed: str
     max_results: int
     include_sources: bool
-    debug_chunks: bool
     divisions_filter: list[str] | None
     model_used: str
     vector_store_id: str | None
@@ -250,7 +248,6 @@ class RAGService:
             "thinking_speed": thinking_speed,
             "max_results": retrieval_k_for_request(request),
             "include_sources": True,
-            "debug_chunks": bool(request.debug_chunks),
             "divisions_filter": request.divisions_filter,
             "model_used": model_used,
             "vector_store_id": active_store_id,
@@ -265,13 +262,12 @@ class RAGService:
         }
         self._debug_log(
             "query_start query_id=%s speed=%s model=%s max_results=%s include_sources=%s "
-            "debug_chunks=%s filter_count=%s question_chars=%s",
+            "filter_count=%s question_chars=%s",
             query_id,
             thinking_speed,
             model_used,
             state["max_results"],
             state["include_sources"],
-            state["debug_chunks"],
             len(request.divisions_filter or []),
             len(request.question),
         )
@@ -1049,8 +1045,6 @@ class RAGService:
         """
         mapped_by_chunk = {chunk["chunk_id"]: chunk for chunk in result.get("mapped_chunks", [])}
         sources = self._source_documents(result, mapped_by_chunk) if result.get("include_sources") else None
-        debug_chunks = self._debug_chunks(result, mapped_by_chunk) if result.get("debug_chunks") else None
-        debug_division_queries = self._debug_division_queries(result) if result.get("debug_chunks") else None
 
         return QueryResponse(
             answer=result.get("final_answer", ""),
@@ -1067,8 +1061,7 @@ class RAGService:
                 for item in result.get("division_answers", [])
             ],
             sources=sources,
-            debug_chunks=debug_chunks,
-            debug_division_queries=debug_division_queries,
+            debug_division_queries=None,
             query_id=query_id,
             timestamp=datetime.utcnow(),
             thinking_speed=result.get("thinking_speed"),
@@ -1119,34 +1112,6 @@ class RAGService:
                 query=item["query"],
             )
             for item in result.get("division_queries", [])
-        ]
-
-    def _debug_chunks(
-        self,
-        result: RAGState,
-        mapped_by_chunk: dict[str, MappedChunkState],
-    ) -> list[DebugChunk]:
-        """Build debug chunk payloads with full source content and map summaries.
-
-        Args:
-            result: Final graph state containing retrieved chunks.
-            mapped_by_chunk: Mapped chunks keyed by stable chunk id.
-
-        Returns:
-            DebugChunk records for optional debug output.
-        """
-        return [
-            DebugChunk(
-                chunk_id=chunk["chunk_id"],
-                division=chunk["division"],
-                division_acronym=chunk["division_acronym"],
-                content=chunk["content"],
-                chunk_summary=mapped_by_chunk.get(chunk["chunk_id"], {}).get("chunk_summary"),
-                chunk_snapshot=mapped_by_chunk.get(chunk["chunk_id"], {}).get("chunk_snapshot"),
-                score=chunk.get("score"),
-                metadata=chunk.get("metadata", {}),
-            )
-            for chunk in result.get("retrieved_chunks", [])
         ]
 
     async def ingest_data(
