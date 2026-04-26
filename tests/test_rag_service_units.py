@@ -919,7 +919,9 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     assert "Example 1 - FEMA scoped buckets:" in prompt
     assert "$20,261,000,000" in prompt
     assert "Example 2 - Immigration buckets:" in prompt
-    assert "Do not include CBP in an \"immigration\" total" in prompt
+    assert "include relevant DHS components such as CBP, ICE, USCIS" in prompt
+    assert "Break the answer down by agency/component by default" in prompt
+    assert "it includes FEMA Federal Assistance plus CBP, ICE, and USCIS buckets" in prompt
     assert "Do not add the ICE enforcement/detention/removal component separately" in prompt
     assert "Example 3 - Non-FEMA component handling:" in prompt
     assert "Army Corps Construction" in prompt
@@ -972,7 +974,7 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     assert "Preserve division-level scoped buckets and caveats" in prompt
     assert "do not collapse them into a grand total" in prompt
     assert "Preserve notes about excluded transfers, component amounts" in prompt
-    assert "If the division answers separate CBP, ICE, and USCIS" in prompt
+    assert "preserve that component breakdown even when also reporting a combined immigration-related subtotal" in prompt
     assert "Do not create a new grand total from scoped division buckets" in prompt
 
 

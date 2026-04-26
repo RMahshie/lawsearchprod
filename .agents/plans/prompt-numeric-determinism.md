@@ -20,7 +20,7 @@ The reduce prompt should explicitly prefer scoped buckets over unsupported grand
 
 ## Assumptions
 - Default FEMA behavior is scoped buckets, not one grand total unless explicitly requested.
-- Default immigration behavior is separate CBP, ICE, and USCIS buckets; CBP is excluded from immigration totals unless explicitly requested.
+- Default immigration behavior is to include relevant DHS components such as CBP, ICE, USCIS, and DHS-wide immigration-related accounts when the facts support them, while breaking the answer down by agency/component instead of hiding them inside one opaque number.
 - Examples should use realistic LawSearch-style figures, including observed FEMA/immigration figures where useful.
 
 ## Open Questions
@@ -42,10 +42,12 @@ No public documentation changes required. The execution plan records the behavio
 - 2026-04-26: Plan created after inspecting current inline reduce/synthesis prompts and unit test structure.
 - 2026-04-26: Added accounting policy constants, compact few-shot examples, reduce/synthesis prompt injection, and prompt-capture unit tests.
 - 2026-04-26: Ran `python3 -m pytest tests/test_rag_service_units.py tests/test_query_models.py`; 32 passed.
+- 2026-04-26: Revised immigration policy after user feedback: include relevant components like CBP, ICE, and USCIS by default, but present a component breakdown and label any combined subtotal.
 
 ## Decisions
 - Keep this prompt-only; do not change schemas, retrieval, chunking, UI, or arithmetic code.
 - Inject examples directly in the reduce prompt so the model sees the intended accounting pattern at runtime.
+- For immigration questions, prefer component breakdown plus clearly scoped subtotal over excluding CBP by default.
 
 ## Discoveries
 - Current reduce prompt already preserves markers and validates derived annotations, but lacks accounting-scope rules.

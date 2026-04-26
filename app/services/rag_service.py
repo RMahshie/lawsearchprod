@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
 ACCOUNTING_SCOPE_POLICY = """Accounting scope policy:
 - Prefer scoped buckets over a grand total for broad agency, program, or policy-area questions.
 - For broad questions like "how much for FEMA?", report separate buckets such as top-level accounts, Federal Assistance, Disaster Relief Fund, National Flood Insurance Fund, grants/subprograms, and transfers when present.
-- For immigration questions, report CBP, ICE, and USCIS separately by default. Do not include CBP in an "immigration" total unless the user explicitly asks for CBP, border, border security, or all immigration/border enforcement.
+- For immigration questions, include relevant DHS components such as CBP, ICE, USCIS, and DHS-wide immigration-related accounts when the facts support them. Break the answer down by agency/component by default instead of hiding them inside one opaque number.
 - Only calculate a total when the user explicitly asks for a total over clearly comparable, source-backed buckets.
 - Every calculated total must state exactly what is included and what is excluded.
 - Do not add subprograms, transfers, component amounts, caps, or availability notes into a parent total unless the facts clearly show they are separate additive appropriations.
@@ -79,7 +79,7 @@ Good answer pattern: Do not give one default FEMA grand total. Say the facts sho
 Example 2 - Immigration buckets:
 Question: how much for FEMA and immigration combined?
 Facts include FEMA Federal Assistance $3,497,019,369, ICE operations and support $9,501,542,000, ICE enforcement/detention/removal $5,082,218,000, USCIS operations and support $271,140,000, USCIS Citizenship and Integration grants $10,000,000, and CBP operations and support $18,426,870,000.
-Good answer pattern: If the user did not ask for CBP or border security, keep CBP separate and do not include it in an immigration total. A narrow explicit immigration subtotal can add FEMA Federal Assistance + ICE operations/support + USCIS operations/support + USCIS grants. Do not add the ICE enforcement/detention/removal component separately when the broader ICE operations/support amount is included.
+Good answer pattern: Break the immigration-related funding down by component: CBP operations/support $18,426,870,000; ICE operations/support $9,501,542,000; USCIS operations/support $271,140,000; USCIS grants $10,000,000. If giving a combined FEMA + immigration-related subtotal, state that it includes FEMA Federal Assistance plus CBP, ICE, and USCIS buckets. Do not add the ICE enforcement/detention/removal component separately when the broader ICE operations/support amount is included.
 
 Example 3 - Non-FEMA component handling:
 Question: how much for Army Corps construction?
@@ -91,7 +91,7 @@ SYNTHESIS_ACCOUNTING_POLICY = """Accounting synthesis policy:
 - Preserve division-level scoped buckets and caveats; do not collapse them into a grand total unless the division answers already provide compatible scoped totals.
 - If combining division totals, state exactly which scoped totals are included.
 - Preserve notes about excluded transfers, component amounts, caps, and non-comparable accounts.
-- If the division answers separate CBP, ICE, and USCIS, keep those buckets separate unless the user explicitly asked to combine all immigration/border enforcement."""
+- If the division answers separate CBP, ICE, and USCIS, preserve that component breakdown even when also reporting a combined immigration-related subtotal."""
 
 
 class RouteDecision(BaseModel):
