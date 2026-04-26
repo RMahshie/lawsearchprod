@@ -115,6 +115,17 @@ If saved conversations lose source popovers:
 
 Do not add silent fallbacks for missing vector store state or invented chunk ids. Missing required state should fail loudly or skip the affected source, because fake fallbacks can make live queries look correct while history hydration breaks.
 
+## Repeated Query Inconsistency
+
+When identical questions return different numeric answers, compare saved runs before changing prompts or code:
+
+- Restrict comparisons to the same normalized question and same `vector_store_id` / embedding model first.
+- Compare selected divisions, saved source chunk ids and ranks, division answers, final answer, and `number_annotations`.
+- Treat differing saved source chunk ids or ranks as the first observable retrieval divergence unless full stage logs prove an earlier rewrite difference.
+- If divisions and sources are the same but visible figures differ, inspect map/reduce outputs or annotation logs; saved history does not persist exact mapped facts.
+- Distinguish accepted derived annotations from answer markers that have no saved annotation object. A visible `[[num:drv_*]]` marker without a matching saved `number_annotations` entry will not behave like an accepted derived hover.
+- If the needed `query_start`, `rewrite`, retrieved scores, or map outputs are no longer in logs, mark those stages as not directly observable instead of inferring certainty from saved answers.
+
 ## Minimal Log Paste Checklist
 
 For number hover bugs, paste only:

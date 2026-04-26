@@ -37,3 +37,6 @@ AGENTS.md
 *.log
 
 .claude/
+
+.agents/plans/
+.agents/diagnostics/
