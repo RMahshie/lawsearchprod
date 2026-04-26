@@ -63,6 +63,8 @@ const AVAILABLE_CHUNK_OVERLAPS = [
   '700',
 ] as const;
 
+const FRONTEND_DEBUG = import.meta.env.VITE_DEBUG === 'true';
+
 function AppContent() {
   const queryClient = useQueryClient();
   const [result, setResult] = useState<QueryResponse | null>(null);
@@ -146,6 +148,19 @@ function AppContent() {
     setSelectedConversationId(conversation.id);
     try {
       const detail = await getConversation(conversation.id);
+      if (FRONTEND_DEBUG) {
+        console.debug('HISTORY_DEBUG frontend_load', {
+          conversationId: conversation.id,
+          answerChars: detail.response.answer.length,
+          sourcesCount: detail.response.sources?.length ?? 0,
+          divisionResultsCount: detail.response.division_results.length,
+          totalSourceChunkIds: detail.response.division_results.reduce(
+            (total, division) => total + division.source_chunk_ids.length,
+            0,
+          ),
+          firstSourceChunkIds: detail.response.sources?.slice(0, 5).map((source) => source.chunk_id) ?? [],
+        });
+      }
       setResult(detail.response);
       setLastQuestion(conversation.question);
     } catch (error) {

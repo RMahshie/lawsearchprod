@@ -1,6 +1,6 @@
 from app.services.llm_factory import describe_model_strategy, resolve_model
 from app.services.rag_service import RAGService
-from app.services.vector_store_service import division_acronym, stable_chunk_id
+from app.services.vector_store_service import VectorStoreService, division_acronym
 
 
 class FakeMessage:
@@ -51,15 +51,8 @@ class FakeRewriteLLM:
         return FakeStructuredLLM(self.response)
 
 
-def test_division_acronym_and_chunk_id_are_stable():
-    content = "For cybersecurity, $10,000,000 shall be available."
-
+def test_division_acronym_is_stable():
     assert division_acronym("DEPARTMENT OF HOMELAND SECURITY") == "DHS"
-    assert stable_chunk_id("DEPARTMENT OF HOMELAND SECURITY", 0, content) == stable_chunk_id(
-        "DEPARTMENT OF HOMELAND SECURITY",
-        0,
-        content,
-    )
 
 
 def test_query_source_model_does_not_persist_source_text_or_scores():
@@ -283,8 +276,8 @@ def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
         def __init__(self):
             self.calls = []
 
-        def retrieve(self, question, division, k):
-            self.calls.append((question, division, k))
+        def retrieve(self, question, division, k, vectorstore_root, embedding_model):
+            self.calls.append((question, division, k, vectorstore_root, embedding_model))
             return [
                 {
                     "chunk_id": f"{division}-{index}",
@@ -311,6 +304,9 @@ def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
             "include_sources": True,
             "divisions_filter": ["AAA", "BBB"],
             "model_used": "gpt-4o",
+            "vector_store_id": "store",
+            "vector_store_root": "/tmp/store",
+            "vector_store_embedding_model": "text-embedding-3-large",
             "selected_divisions": [],
             "retrieved_chunks": [],
             "mapped_chunks": [],
@@ -325,8 +321,8 @@ def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
     assert len(result["division_answers"]) == 2
     assert {chunk["division"] for chunk in result["mapped_chunks"]} == {"AAA", "BBB"}
     assert sorted(vectorstores.calls) == [
-        ("AAA-specific funding", "AAA", 1),
-        ("BBB-specific funding", "BBB", 1),
+        ("AAA-specific funding", "AAA", 1, "/tmp/store", "text-embedding-3-large"),
+        ("BBB-specific funding", "BBB", 1, "/tmp/store", "text-embedding-3-large"),
     ]
 
 
@@ -415,6 +411,45 @@ def test_reduce_fanout_sends_one_job_per_selected_division():
     assert [send.node for send in sends] == ["reduce_division", "reduce_division"]
     assert [send.arg["division"] for send in sends] == ["AAA", "BBB"]
     assert [len(send.arg["mapped_items"]) for send in sends] == [1, 1]
+
+
+def test_division_fanout_preserves_vector_store_context():
+    service = RAGService.__new__(RAGService)
+
+    sends = service._fan_out_divisions(
+        {
+            "question": "How much funding?",
+            "query_id": "query",
+            "selected_divisions": ["DEPARTMENT OF DEFENSE"],
+            "division_queries": [
+                {
+                    "division": "DEPARTMENT OF DEFENSE",
+                    "division_acronym": "DOD",
+                    "query": "DOD funding",
+                }
+            ],
+            "max_results": 8,
+            "vector_store_id": "store",
+            "vector_store_root": "/tmp/store",
+            "vector_store_embedding_model": "text-embedding-3-large",
+        }
+    )
+
+    assert len(sends) == 1
+    assert sends[0].arg["vector_store_id"] == "store"
+    assert sends[0].arg["vector_store_root"] == "/tmp/store"
+    assert sends[0].arg["vector_store_embedding_model"] == "text-embedding-3-large"
+
+
+def test_vector_store_retrieve_requires_explicit_root():
+    service = VectorStoreService.__new__(VectorStoreService)
+
+    try:
+        service.retrieve("How much funding?", "DEPARTMENT OF DEFENSE", 1)
+    except ValueError as exc:
+        assert "Vector store root is required" in str(exc)
+    else:
+        raise AssertionError("Expected missing vector store root to fail")
 
 
 def test_model_strategy_resolves_by_speed_and_task():

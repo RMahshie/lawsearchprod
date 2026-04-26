@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,7 @@ from app.db.session import SessionLocal, database_available, init_db
 from app.models.query import DivisionResult, QueryResponse, SourceDocument
 from app.services.vector_store_service import division_acronym
 
+logger = logging.getLogger(__name__)
 
 DEFAULT_EMBEDDINGS = [
     ("text-embedding-ada-002", None),
@@ -394,17 +396,25 @@ def load_conversation(db: Session, query_id: str, chunk_loader) -> QueryResponse
 
     division_results: list[DivisionResult] = []
     sources: list[SourceDocument] = []
+    settings = get_settings()
+    debug_enabled = bool(settings.debug)
+    saved_source_count = 0
+    missing_chunk_count = 0
 
     for division in run.division_results:
         hydrated_chunk_ids: list[str] = []
+        division_saved_count = len(division.sources)
+        saved_source_count += division_saved_count
 
         for source in division.sources:
             loaded = chunk_loader(run.vector_store, division.division_key, source.chunk_id) if run.vector_store else None
             if not loaded:
+                missing_chunk_count += 1
                 continue
 
             content = loaded.get("content")
             if not content:
+                missing_chunk_count += 1
                 continue
 
             metadata = loaded.get("metadata")
@@ -431,8 +441,19 @@ def load_conversation(db: Session, query_id: str, chunk_loader) -> QueryResponse
                 source_chunk_ids=hydrated_chunk_ids,
             )
         )
+        if debug_enabled:
+            logger.info(
+                "HISTORY_DEBUG division query_id=%s division=%s chunks_retrieved=%s "
+                "saved_source_ids_count=%s hydrated_source_ids_count=%s hydrated_source_ids=%s",
+                query_id,
+                division_acronym(division.division_key),
+                division.chunks_retrieved,
+                division_saved_count,
+                len(hydrated_chunk_ids),
+                hydrated_chunk_ids,
+            )
 
-    return QueryResponse(
+    response = QueryResponse(
         answer=run.answer,
         processing_time=run.processing_time,
         selected_divisions=[item.division for item in division_results],
@@ -441,3 +462,16 @@ def load_conversation(db: Session, query_id: str, chunk_loader) -> QueryResponse
         query_id=run.id,
         timestamp=run.created_at,
     )
+    if debug_enabled:
+        logger.info(
+            "HISTORY_DEBUG load query_id=%s answer_chars=%s divisions=%s saved_source_rows=%s "
+            "hydrated_sources=%s missing_chunks=%s first_hydrated_chunk_ids=%s",
+            query_id,
+            len(run.answer),
+            len(division_results),
+            saved_source_count,
+            len(sources),
+            missing_chunk_count,
+            [source.chunk_id for source in sources[:5]],
+        )
+    return response

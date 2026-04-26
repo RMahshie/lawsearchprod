@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import gc
+import logging
 import os
 import re
 from functools import lru_cache
@@ -17,6 +17,7 @@ from langchain_openai import OpenAIEmbeddings
 
 from app.core.config import get_settings
 
+logger = logging.getLogger(__name__)
 
 DIVISION_ACRONYMS = {
     "MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES": "MCVA",
@@ -100,21 +101,6 @@ def division_acronym(division: str) -> str:
 
     words = re.findall(r"[A-Z]+", division)
     return "".join(word[0] for word in words[:5]) or "SRC"
-
-
-def stable_chunk_id(division: str, index: int, content: str) -> str:
-    """Create a deterministic fallback chunk id for citations and UI lookup.
-
-    Args:
-        division: Full division name.
-        index: Zero-based chunk index within the retrieval result.
-        content: Source chunk text used to derive the hash.
-
-    Returns:
-        Stable chunk identifier string.
-    """
-    digest = hashlib.sha1(f"{division}:{index}:{content}".encode("utf-8")).hexdigest()[:8]
-    return f"{division_acronym(division)}-{index + 1}-{digest}"
 
 
 class VectorStoreService:
@@ -210,12 +196,43 @@ class VectorStoreService:
         Returns:
             List of chunk dictionaries with content, score, id, division, and metadata.
         """
+        if not vectorstore_root:
+            raise ValueError(f"Vector store root is required for retrieval in {division_acronym(division)}")
+        if not embedding_model:
+            raise ValueError(f"Embedding model is required for retrieval in {division_acronym(division)}")
         if embedding_model:
             self.use_embedding_model(embedding_model)
         store_name = self.settings.subcommittee_stores[division]
-        root = str(vectorstore_root or self.settings.vectorstore_dir)
+        root = str(vectorstore_root)
         store = self.get_store(root, store_name)
         docs_with_scores = store.similarity_search_with_score(question, k=k)
+        if self.settings.debug:
+            logger.info(
+                "VECTOR_DEBUG retrieve root=%s store_name=%s division=%s embedding_model=%s requested_k=%s returned=%s",
+                root,
+                store_name,
+                division_acronym(division),
+                self.embedding_model,
+                k,
+                len(docs_with_scores),
+            )
+            for index, item in enumerate(docs_with_scores[:3]):
+                doc, score = item
+                metadata = dict(doc.metadata or {})
+                logger.info(
+                    "VECTOR_DEBUG retrieved_doc root=%s store_name=%s division=%s index=%s score=%s "
+                    "metadata_keys=%s metadata_chunk_id=%s metadata_vector_store_id=%s content_hash=%s content_preview=%s",
+                    root,
+                    store_name,
+                    division_acronym(division),
+                    index,
+                    score,
+                    sorted(metadata.keys()),
+                    metadata.get("chunk_id"),
+                    metadata.get("vector_store_id"),
+                    _content_hash(doc.page_content),
+                    doc.page_content[:120].replace("\n", "\\n"),
+                )
 
         chunks: list[dict[str, Any]] = []
         for index, item in enumerate(docs_with_scores):
@@ -241,10 +258,14 @@ class VectorStoreService:
         Returns:
             Chunk dictionary when found, otherwise None.
         """
+        if not vectorstore_root:
+            raise ValueError(f"Vector store root is required to load chunk {chunk_id}")
+        if not embedding_model:
+            raise ValueError(f"Embedding model is required to load chunk {chunk_id}")
         if embedding_model:
             self.use_embedding_model(embedding_model)
         store_name = self.settings.subcommittee_stores[division]
-        root = str(vectorstore_root or self.settings.vectorstore_dir)
+        root = str(vectorstore_root)
         store = self.get_store(root, store_name)
         result = store._collection.get(ids=[chunk_id], include=["documents", "metadatas"])  # noqa: SLF001
         documents = result.get("documents") or []
@@ -278,8 +299,18 @@ class VectorStoreService:
             Chunk dictionary consumed by the RAG graph.
         """
         content = doc.page_content
+        metadata_chunk_id = doc.metadata.get("chunk_id")
+        chunk_id = str(metadata_chunk_id) if metadata_chunk_id else None
+        if self.settings.debug and chunk_id is None:
+            logger.info(
+                "VECTOR_DEBUG missing_chunk_id division=%s index=%s metadata_keys=%s content_hash=%s",
+                division_acronym(division),
+                index,
+                sorted((doc.metadata or {}).keys()),
+                _content_hash(content),
+            )
         return {
-            "chunk_id": str(doc.metadata.get("chunk_id") or stable_chunk_id(division, index, content)),
+            "chunk_id": chunk_id,
             "division": division,
             "division_acronym": division_acronym(division),
             "content": content,
@@ -287,3 +318,10 @@ class VectorStoreService:
             "score": score,
             "metadata": dict(doc.metadata or {}),
         }
+
+
+def _content_hash(content: str) -> str:
+    """Return a short diagnostic hash for source text without exposing full content."""
+    import hashlib
+
+    return hashlib.sha1(content.encode("utf-8")).hexdigest()[:8]

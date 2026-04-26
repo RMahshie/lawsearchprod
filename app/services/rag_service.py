@@ -81,7 +81,7 @@ class DivisionQueryState(TypedDict):
 
 
 class RetrievedChunkState(TypedDict):
-    chunk_id: str
+    chunk_id: str | None
     division: str
     division_acronym: str
     content: str
@@ -91,7 +91,7 @@ class RetrievedChunkState(TypedDict):
 
 
 class MappedChunkState(TypedDict):
-    chunk_id: str
+    chunk_id: str | None
     division: str
     division_acronym: str
     extracted_facts: str
@@ -262,7 +262,7 @@ class RAGService:
         }
         self._debug_log(
             "query_start query_id=%s speed=%s model=%s max_results=%s include_sources=%s "
-            "filter_count=%s question_chars=%s",
+            "filter_count=%s question_chars=%s active_store_id=%s active_store_root=%s active_embedding_model=%s",
             query_id,
             thinking_speed,
             model_used,
@@ -270,6 +270,9 @@ class RAGService:
             state["include_sources"],
             len(request.divisions_filter or []),
             len(request.question),
+            active_store_id,
+            active_store_root,
+            active_embedding_model,
         )
         self._emit_progress(query_id, "start", "Starting query", model=model_used)
 
@@ -489,6 +492,9 @@ class RAGService:
                     "division": item["division"],
                     "retrieval_query": item["query"],
                     "max_results": state["max_results"],
+                    "vector_store_id": state.get("vector_store_id"),
+                    "vector_store_root": state.get("vector_store_root"),
+                    "vector_store_embedding_model": state.get("vector_store_embedding_model"),
                 },
             )
             for item in division_queries
@@ -512,16 +518,13 @@ class RAGService:
             division=division_acronym(division),
         )
         retrieval_query = state.get("retrieval_query", state["question"])  # type: ignore[typeddict-item]
-        try:
-            chunks = self.vectorstores.retrieve(
-                question=retrieval_query,
-                division=division,
-                k=state["max_results"],
-                vectorstore_root=state.get("vector_store_root"),
-                embedding_model=state.get("vector_store_embedding_model"),
-            )
-        except TypeError:
-            chunks = self.vectorstores.retrieve(retrieval_query, division, state["max_results"])
+        chunks = self.vectorstores.retrieve(
+            question=retrieval_query,
+            division=division,
+            k=state["max_results"],
+            vectorstore_root=state.get("vector_store_root"),
+            embedding_model=state.get("vector_store_embedding_model"),
+        )
         self._debug_log(
             "retrieve query_id=%s division=%s requested_k=%s returned=%s duration=%.2fs query_chars=%s",
             state.get("query_id", "unknown"),
@@ -793,7 +796,7 @@ class RAGService:
             "division": division,
             "division_acronym": state["division_acronym"],  # type: ignore[typeddict-item]
             "answer": answer,
-            "source_chunk_ids": [item["chunk_id"] for item in mapped_items],
+            "source_chunk_ids": [item["chunk_id"] for item in mapped_items if item["chunk_id"]],
             "chunks_retrieved": chunks_retrieved,
         }
         self._debug_log(
@@ -1043,7 +1046,7 @@ class RAGService:
         Returns:
             QueryResponse containing the final answer, divisions, sources, and metadata.
         """
-        mapped_by_chunk = {chunk["chunk_id"]: chunk for chunk in result.get("mapped_chunks", [])}
+        mapped_by_chunk = {chunk["chunk_id"]: chunk for chunk in result.get("mapped_chunks", []) if chunk["chunk_id"]}
         sources = self._source_documents(result, mapped_by_chunk) if result.get("include_sources") else None
 
         return QueryResponse(
@@ -1086,7 +1089,7 @@ class RAGService:
             SourceDocument(
                 division=chunk["division"],
                 division_acronym=chunk["division_acronym"],
-                chunk_id=chunk["chunk_id"],
+                chunk_id=chunk["chunk_id"] or "",
                 content_snippet=chunk["content"],
                 chunk_summary=mapped_by_chunk.get(chunk["chunk_id"], {}).get("chunk_summary"),
                 chunk_snapshot=mapped_by_chunk.get(chunk["chunk_id"], {}).get("chunk_snapshot"),
@@ -1094,6 +1097,7 @@ class RAGService:
                 metadata=chunk.get("metadata", {}),
             )
             for chunk in result.get("retrieved_chunks", [])
+            if chunk["chunk_id"]
         ]
 
     def _debug_division_queries(self, result: RAGState) -> list[DebugDivisionQuery]:

@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.core.config import get_settings
 from app.db.models import EmbeddingModel, VectorStore
 from app.db.session import SessionLocal, database_available
 from app.models.storage import (
@@ -32,6 +33,7 @@ from app.services.storage_registry import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+settings = get_settings()
 
 
 def _store_info(db, store: VectorStore) -> VectorStoreInfo:
@@ -306,4 +308,14 @@ async def conversation_detail(query_id: str) -> ConversationDetail:
             response = load_conversation(db, query_id, load_chunk)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        if settings.debug:
+            logger.info(
+                "HISTORY_DEBUG response query_id=%s sources_count=%s division_results_count=%s "
+                "total_source_chunk_ids=%s answer_preview=%s",
+                query_id,
+                len(response.sources or []),
+                len(response.division_results),
+                sum(len(division.source_chunk_ids) for division in response.division_results),
+                response.answer[:300].replace("\n", "\\n"),
+            )
         return ConversationDetail(response=response)
