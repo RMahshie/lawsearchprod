@@ -62,8 +62,8 @@ logger = logging.getLogger(__name__)
 
 ACCOUNTING_SCOPE_POLICY = """Accounting scope policy:
 - Give direct working totals when the retrieved facts contain apparently top-level additive buckets. Label them as "total found" or "retrieved top-level bucket total", not as an authoritative statutory total.
-- For broad questions like "how much for FEMA?", provide a FEMA total found when top-level FEMA buckets are present, then show the included FEMA buckets and the FEMA figures not added separately.
-- For immigration questions, include relevant DHS components such as CBP, ICE, USCIS, and DHS-wide immigration-related accounts when the facts support them. Break the answer down by agency/component by default instead of hiding them inside one opaque number.
+- For broad topic questions, provide a topic total found when top-level buckets are present, then show the included buckets and the related figures not added separately.
+- For questions that span agencies, components, accounts, or programs, include the relevant supported buckets and break the answer down by those units by default instead of hiding them inside one opaque number.
 - For combined-topic questions, provide one total found per topic and a combined total found when those topic totals are clearly additive.
 - Every calculated total must state exactly what is included and what was not added separately.
 - Do not add subprograms, transfers, component amounts, caps, or availability notes into a parent total unless the facts clearly show they are separate additive appropriations.
@@ -71,6 +71,8 @@ ACCOUNTING_SCOPE_POLICY = """Accounting scope policy:
 
 
 ACCOUNTING_FEW_SHOT_EXAMPLES = """Accounting examples:
+These examples are illustrative accounting patterns, not required output headings. Do not copy example topic names unless the user's question asks about that topic or the retrieved facts make that topic directly relevant.
+
 Example 1 - FEMA scoped buckets:
 Question: how much for FEMA?
 Facts include FEMA operations and support $1,483,990,000, FEMA procurement/construction/improvements $99,528,000, FEMA Federal Assistance $3,497,019,369, Disaster Relief Fund $20,261,000,000, National Flood Insurance Fund $239,983,000, and a $33,000,000 transfer to FEMA Federal Assistance.
@@ -91,7 +93,8 @@ SYNTHESIS_ACCOUNTING_POLICY = """Accounting synthesis policy:
 - Preserve division-level "total found" values, topic sections, included buckets, and not-added caveats.
 - If combining division totals, state exactly which scoped totals are included.
 - Preserve notes about excluded transfers, component amounts, caps, and non-comparable accounts.
-- If the division answers separate CBP, ICE, and USCIS, preserve that component breakdown even when also reporting a combined immigration-related subtotal."""
+- If the division answers separate agencies, components, accounts, or programs under a topic, preserve that breakdown even when also reporting a topic subtotal.
+- Do not introduce topic sections that were not requested by the question and are not directly relevant to the division answers."""
 
 
 class RouteDecision(BaseModel):
@@ -912,19 +915,14 @@ class RAGService:
             prompt = (
                 "Synthesize the extracted facts into a division-level answer with a fixed structure. "
                 "Return structured output with `answer` markdown and `derived_annotations`.\n\n"
-                "Use this exact markdown structure:\n"
+                "Use this markdown structure, replacing topic placeholders with only the topics relevant to the question and facts:\n"
                 f"### [{state['division_acronym']}] {division}\n"
                 "- **Bottom line:** <direct total found values first; include topic totals and combined total when supported.>\n"
-                "- **FEMA:**\n"
-                "  - **Included in FEMA total found:**\n"
-                "    - <top-level FEMA account and exact dollar figure, preserving citation marker>\n"
+                "- **<Topic name>:**\n"
+                "  - **Included in <topic> total found:**\n"
+                "    - <top-level account/program/component and exact dollar figure, preserving citation marker>\n"
                 "  - **Not added separately:**\n"
-                "    - <FEMA subprogram, transfer, component, cap, or availability amount and reason; use 'None identified.' if none>\n"
-                "- **Immigration-related:**\n"
-                "  - **Included in immigration-related total found:**\n"
-                "    - <CBP, ICE, USCIS, or DHS-wide immigration-related bucket and exact dollar figure, preserving citation marker>\n"
-                "  - **Not added separately:**\n"
-                "    - <immigration-related component, transfer, cap, or availability amount and reason; use 'None identified.' if none>\n"
+                "    - <subprogram, transfer, component, cap, availability amount, or related excluded figure and reason; use 'None identified.' if none>\n"
                 "- **Other notes:**\n"
                 "  - <short caveat or limitation; use 'None identified.' if none>\n\n"
                 f"{ACCOUNTING_SCOPE_POLICY}\n\n"
@@ -937,7 +935,9 @@ class RAGService:
                 "- Keep citation markers immediately after the figure or clause they support.\n"
                 "- Apply the accounting scope policy before proposing any calculated total.\n"
                 "- The bottom line should lead with '<Topic> total found' values when the retrieved facts support top-level additive buckets.\n"
-                "- Use the FEMA and Immigration-related sections when those topics are relevant; omit a topic section only when it is unrelated to the question.\n"
+                "- Choose topic sections from the user's question and the retrieved facts; do not copy topic names from examples unless they are directly relevant.\n"
+                "- If the question asks about one topic, use one topic section unless the facts clearly require separate comparable subtopics.\n"
+                "- If an excluded transfer, cap, administrative amount, component, or related figure belongs to the requested topic only as a caveat, put it under that topic's Not added separately subsection rather than creating a new topic section.\n"
                 "- Group breakdown bullets under their topic instead of writing one flat accounts list.\n"
                 "- Do not invent totals unless the extracted facts explicitly support the arithmetic.\n"
                 "- If a total is provisional because hierarchy is ambiguous, label it as a retrieved top-level bucket total and explain the ambiguity in Not added separately or Other notes.\n"
@@ -1077,22 +1077,17 @@ class RAGService:
         prompt = (
             "Create the final answer from the division-level answers using a stable structure. "
             "Return structured output with `answer` markdown and `derived_annotations`.\n\n"
-            "Use this exact markdown structure:\n"
+            "Use this markdown structure, preserving only the topic sections relevant to the question and division answers:\n"
             "## Answer\n"
             "- <direct total found values first; include topic totals and combined total when supported.>\n\n"
             "## By Division\n"
             "### [ACRONYM] Division Name\n"
             "- **Bottom line:** <division bottom line>\n"
-            "- **FEMA:**\n"
-            "  - **Included in FEMA total found:**\n"
-            "    - <top-level FEMA account and exact dollar figure with citation marker>\n"
+            "- **<Topic name>:**\n"
+            "  - **Included in <topic> total found:**\n"
+            "    - <top-level account/program/component and exact dollar figure with citation marker>\n"
             "  - **Not added separately:**\n"
-            "    - <FEMA subprogram, transfer, component, cap, or availability amount and reason; use 'None identified.' if none>\n"
-            "- **Immigration-related:**\n"
-            "  - **Included in immigration-related total found:**\n"
-            "    - <CBP, ICE, USCIS, or DHS-wide immigration-related bucket and exact dollar figure with citation marker>\n"
-            "  - **Not added separately:**\n"
-            "    - <immigration-related component, transfer, cap, or availability amount and reason; use 'None identified.' if none>\n\n"
+            "    - <subprogram, transfer, component, cap, availability amount, or related excluded figure and reason; use 'None identified.' if none>\n\n"
             "## Caveats\n"
             "- <only include important caveats about totals, transfers, offsets, or incomplete comparability.>\n\n"
             f"{SYNTHESIS_ACCOUNTING_POLICY}\n\n"
@@ -1104,7 +1099,8 @@ class RAGService:
             "- Do not write a source-backed or derived dollar figure without its existing marker when that figure appears in the division answers with a marker.\n"
             "- Keep citation markers immediately after the figure or clause they support.\n"
             "- Combine figures only when they are clearly comparable and supported by the division answers.\n"
-            "- Preserve FEMA and Immigration-related topic sections when they are present in division answers.\n"
+            "- Preserve topic sections that are present in division answers, but do not introduce unrelated example topics.\n"
+            "- If the question asks about one topic, do not add unrelated topic sections unless a division answer makes them directly responsive to that question.\n"
             "- A combined total found is acceptable when it adds clearly labeled topic totals; state exactly which topic totals are included.\n"
             "- For any new calculated total, add a new marker like [[num:drv_final_1]] immediately after the visible total and add a matching derived annotation.\n"
             "- Derived annotation input_ids must reference existing source or derived marker ids from the available annotations.\n"

@@ -916,20 +916,26 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     prompt = llm.prompts[0]
     assert "Accounting scope policy:" in prompt
     assert "Give direct working totals" in prompt
+    assert "For broad topic questions, provide a topic total found" in prompt
+    assert "span agencies, components, accounts, or programs" in prompt
     assert "total found" in prompt
     assert "Example 1 - FEMA scoped buckets:" in prompt
     assert "FEMA total found: $25,581,520,369" in prompt
     assert "$20,261,000,000" in prompt
     assert "Example 2 - Immigration buckets:" in prompt
-    assert "include relevant DHS components such as CBP, ICE, USCIS" in prompt
-    assert "Break the answer down by agency/component by default" in prompt
+    assert "Under Immigration-related, include CBP, ICE, USCIS" in prompt
+    assert "break the answer down by those units by default" in prompt
     assert "Immigration-related total found" in prompt
     assert "Combined FEMA + immigration-related total found" in prompt
     assert "Do not add the ICE enforcement/detention/removal component separately" in prompt
     assert "Example 3 - Non-FEMA component handling:" in prompt
     assert "Army Corps Construction" in prompt
-    assert "**Included in FEMA total found:**" in prompt
-    assert "**Included in immigration-related total found:**" in prompt
+    assert "illustrative accounting patterns, not required output headings" in prompt
+    assert "**<Topic name>:**" in prompt
+    assert "**Included in <topic> total found:**" in prompt
+    assert "Choose topic sections from the user's question and the retrieved facts" in prompt
+    assert "If the question asks about one topic, use one topic section" in prompt
+    assert "rather than creating a new topic section" in prompt
     assert "**Not added separately:**" in prompt
     assert "Group breakdown bullets under their topic" in prompt
 
@@ -980,9 +986,12 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     assert "Preserve division-level \"total found\" values" in prompt
     assert "topic sections" in prompt
     assert "Preserve notes about excluded transfers, component amounts" in prompt
-    assert "preserve that component breakdown even when also reporting a combined immigration-related subtotal" in prompt
-    assert "**Included in FEMA total found:**" in prompt
-    assert "**Included in immigration-related total found:**" in prompt
+    assert "preserve that breakdown even when also reporting a topic subtotal" in prompt
+    assert "Do not introduce topic sections that were not requested" in prompt
+    assert "**<Topic name>:**" in prompt
+    assert "**Included in <topic> total found:**" in prompt
+    assert "do not introduce unrelated example topics" in prompt
+    assert "do not add unrelated topic sections unless a division answer makes them directly responsive" in prompt
     assert "A combined total found is acceptable" in prompt
 
 
