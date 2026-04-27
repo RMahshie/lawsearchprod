@@ -43,11 +43,13 @@ No public documentation changes required. The execution plan records the behavio
 - 2026-04-26: Added accounting policy constants, compact few-shot examples, reduce/synthesis prompt injection, and prompt-capture unit tests.
 - 2026-04-26: Ran `python3 -m pytest tests/test_rag_service_units.py tests/test_query_models.py`; 32 passed.
 - 2026-04-26: Revised immigration policy after user feedback: include relevant components like CBP, ICE, and USCIS by default, but present a component breakdown and label any combined subtotal.
+- 2026-04-26: Revised answer shape after reviewing live output: lead with "total found" values, then use topic sections with Included and Not added separately bullets.
 
 ## Decisions
 - Keep this prompt-only; do not change schemas, retrieval, chunking, UI, or arithmetic code.
 - Inject examples directly in the reduce prompt so the model sees the intended accounting pattern at runtime.
 - For immigration questions, prefer component breakdown plus clearly scoped subtotal over excluding CBP by default.
+- For lobbying-style money questions, prefer direct "total found" working numbers with visible assumptions over making the user do the arithmetic.
 
 ## Discoveries
 - Current reduce prompt already preserves markers and validates derived annotations, but lacks accounting-scope rules.

@@ -915,17 +915,23 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
 
     prompt = llm.prompts[0]
     assert "Accounting scope policy:" in prompt
-    assert "Prefer scoped buckets over a grand total" in prompt
+    assert "Give direct working totals" in prompt
+    assert "total found" in prompt
     assert "Example 1 - FEMA scoped buckets:" in prompt
+    assert "FEMA total found: $25,581,520,369" in prompt
     assert "$20,261,000,000" in prompt
     assert "Example 2 - Immigration buckets:" in prompt
     assert "include relevant DHS components such as CBP, ICE, USCIS" in prompt
     assert "Break the answer down by agency/component by default" in prompt
-    assert "it includes FEMA Federal Assistance plus CBP, ICE, and USCIS buckets" in prompt
+    assert "Immigration-related total found" in prompt
+    assert "Combined FEMA + immigration-related total found" in prompt
     assert "Do not add the ICE enforcement/detention/removal component separately" in prompt
     assert "Example 3 - Non-FEMA component handling:" in prompt
     assert "Army Corps Construction" in prompt
-    assert "The bottom line must say whether the answer is separate buckets" in prompt
+    assert "**Included in FEMA total found:**" in prompt
+    assert "**Included in immigration-related total found:**" in prompt
+    assert "**Not added separately:**" in prompt
+    assert "Group breakdown bullets under their topic" in prompt
 
 
 def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
@@ -971,11 +977,13 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
 
     prompt = llm.prompts[0]
     assert "Accounting synthesis policy:" in prompt
-    assert "Preserve division-level scoped buckets and caveats" in prompt
-    assert "do not collapse them into a grand total" in prompt
+    assert "Preserve division-level \"total found\" values" in prompt
+    assert "topic sections" in prompt
     assert "Preserve notes about excluded transfers, component amounts" in prompt
     assert "preserve that component breakdown even when also reporting a combined immigration-related subtotal" in prompt
-    assert "Do not create a new grand total from scoped division buckets" in prompt
+    assert "**Included in FEMA total found:**" in prompt
+    assert "**Included in immigration-related total found:**" in prompt
+    assert "A combined total found is acceptable" in prompt
 
 
 def test_division_fanout_preserves_vector_store_context():
