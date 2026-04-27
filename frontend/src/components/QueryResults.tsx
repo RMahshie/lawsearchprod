@@ -1,7 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { NumberAnnotation, QueryResponse, SourceDocument } from '../types/api';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
@@ -14,12 +14,20 @@ interface QueryResultsProps {
   question: string;
 }
 
+const POPOVER_COLLISION_PADDING = 12;
+const SOURCE_POPOVER_CLASS = 'w-[min(640px,calc(100vw-2rem))] max-w-[var(--radix-popover-content-available-width)] rounded-sm';
+const DERIVED_POPOVER_CLASS = 'w-[min(720px,calc(100vw-2rem))] max-w-[var(--radix-popover-content-available-width)] rounded-sm';
+
 export default function QueryResults({ result, question }: QueryResultsProps) {
+  const [popoverBoundary, setPopoverBoundary] = useState<HTMLDivElement | null>(null);
+  const handlePopoverBoundaryRef = useCallback((node: HTMLDivElement | null) => {
+    setPopoverBoundary(node);
+  }, []);
   const answerWithFigureLinks = linkMarkdownFigures(result, result.answer, { scope: 'answer' });
   const excerpts = uniqueSources(result.sources ?? []);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div ref={handlePopoverBoundaryRef} className="flex flex-col gap-5">
       <Card className="rounded-sm">
         <CardHeader>
           <div className="flex flex-col gap-2">
@@ -49,7 +57,7 @@ export default function QueryResults({ result, question }: QueryResultsProps) {
                   const citation = answerWithFigureLinks.citations[Number(match[1])];
                   if (!citation) return <>{children}</>;
 
-                  return <FigurePopover citation={citation} result={result} />;
+                  return <FigurePopover citation={citation} result={result} collisionBoundary={popoverBoundary} />;
                 },
               }}
             >
@@ -82,6 +90,7 @@ export default function QueryResults({ result, question }: QueryResultsProps) {
                         markdown={division.answer}
                         result={result}
                         scope={{ scope: 'division', division: division.division }}
+                        collisionBoundary={popoverBoundary}
                       />
                     </div>
                   </AccordionContent>
@@ -180,10 +189,12 @@ function AnnotatedMarkdown({
   markdown,
   result,
   scope,
+  collisionBoundary,
 }: {
   markdown: string;
   result: QueryResponse;
   scope: AnnotationScope;
+  collisionBoundary: Element | null;
 }) {
   const linked = linkMarkdownFigures(result, markdown, scope);
 
@@ -200,7 +211,7 @@ function AnnotatedMarkdown({
           const citation = linked.citations[Number(match[1])];
           if (!citation) return <>{children}</>;
 
-          return <FigurePopover citation={citation} result={result} />;
+          return <FigurePopover citation={citation} result={result} collisionBoundary={collisionBoundary} />;
         },
       }}
     >
@@ -209,13 +220,21 @@ function AnnotatedMarkdown({
   );
 }
 
-function FigurePopover({ citation, result }: { citation: FigureCitation; result: QueryResponse }) {
+function FigurePopover({
+  citation,
+  result,
+  collisionBoundary,
+}: {
+  citation: FigureCitation;
+  result: QueryResponse;
+  collisionBoundary: Element | null;
+}) {
   if (citation.annotation?.kind === 'derived') {
-    return <DerivedFigurePopover annotation={citation.annotation} result={result} />;
+    return <DerivedFigurePopover annotation={citation.annotation} result={result} collisionBoundary={collisionBoundary} />;
   }
 
   if (citation.annotation?.kind === 'source') {
-    return <SourceAnnotationPopover annotation={citation.annotation} result={result} />;
+    return <SourceAnnotationPopover annotation={citation.annotation} result={result} collisionBoundary={collisionBoundary} />;
   }
 
   const { figure } = citation;
@@ -229,7 +248,11 @@ function FigurePopover({ citation, result }: { citation: FigureCitation; result:
           {figure}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[640px] rounded-sm">
+      <PopoverContent
+        collisionBoundary={collisionBoundary ?? undefined}
+        collisionPadding={POPOVER_COLLISION_PADDING}
+        className={SOURCE_POPOVER_CLASS}
+      >
         <div className="flex flex-col gap-3">
           <div>
             <div className="text-sm font-medium">{figure}</div>
@@ -263,7 +286,15 @@ function FigurePopover({ citation, result }: { citation: FigureCitation; result:
   );
 }
 
-function SourceAnnotationPopover({ annotation, result }: { annotation: NumberAnnotation; result: QueryResponse }) {
+function SourceAnnotationPopover({
+  annotation,
+  result,
+  collisionBoundary,
+}: {
+  annotation: NumberAnnotation;
+  result: QueryResponse;
+  collisionBoundary: Element | null;
+}) {
   if (annotation.kind !== 'source') return null;
   const source = sourceForAnnotation(annotation, result);
   const content = source?.content_snippet ?? '';
@@ -276,7 +307,11 @@ function SourceAnnotationPopover({ annotation, result }: { annotation: NumberAnn
           {annotation.figure}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[640px] rounded-sm">
+      <PopoverContent
+        collisionBoundary={collisionBoundary ?? undefined}
+        collisionPadding={POPOVER_COLLISION_PADDING}
+        className={SOURCE_POPOVER_CLASS}
+      >
         <div className="flex flex-col gap-3">
           <div>
             <div className="text-sm font-medium">{annotation.figure}</div>
@@ -299,7 +334,15 @@ function SourceAnnotationPopover({ annotation, result }: { annotation: NumberAnn
   );
 }
 
-function DerivedFigurePopover({ annotation, result }: { annotation: NumberAnnotation; result: QueryResponse }) {
+function DerivedFigurePopover({
+  annotation,
+  result,
+  collisionBoundary,
+}: {
+  annotation: NumberAnnotation;
+  result: QueryResponse;
+  collisionBoundary: Element | null;
+}) {
   if (annotation.kind !== 'derived') return null;
   const annotationsById = new Map(result.number_annotations.map((item) => [item.id, item]));
   const sourceInputs = annotation.derived.source_input_ids
@@ -313,7 +356,12 @@ function DerivedFigurePopover({ annotation, result }: { annotation: NumberAnnota
           {annotation.figure}
         </button>
       </PopoverTrigger>
-      <PopoverContent side="bottom" align="start" avoidCollisions={false} className="w-[720px] rounded-sm">
+      <PopoverContent
+        side="bottom"
+        collisionBoundary={collisionBoundary ?? undefined}
+        collisionPadding={POPOVER_COLLISION_PADDING}
+        className={DERIVED_POPOVER_CLASS}
+      >
         <div className="flex flex-col gap-4">
           <div>
             <div className="text-sm font-medium">{annotation.figure}</div>
