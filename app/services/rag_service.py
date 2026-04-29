@@ -72,6 +72,9 @@ ACCOUNTING_SCOPE_POLICY = """Accounting scope policy:
 - Do not add subprograms, transfers, component amounts, caps, or availability notes into a parent total unless the facts clearly show they are separate additive appropriations.
 - If a broader parent account and one of its components both appear, include the parent account and explain that the component was not added separately.
 - For account questions, separate internally: main appropriation amount, suballocations within that amount, user fees credited to the account, and separate provisions outside the account. Surface only the categories needed to answer the user.
+- Before aggregating dollar figures, classify each amount by financial type and additive relationship. Only sum amounts that are comparable, additive, and in the same scope.
+- Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
+- For mixed financial-type questions, group amounts by type first. If arithmetic across mixed types is useful, label it as a "mixed identified total" and state that it combines different financial types and should not be treated as one clean funding pool.
 - Do not create a "Not added separately" section unless the user asks for reconciliation/breakdown or excluding an amount is necessary to prevent double counting.
 - Distinguish dollar-figure evidence from funding-mechanism evidence. Continuing appropriations, rate-for-operations language, apportionment authority, extensions, and referenced prior laws can explain how funding continues, but they are not dollar amounts.
 - If the requested topic has funding-mechanism evidence but no relevant dollar figure, say that a dollar total was not found in the extracted facts and explain what mechanism was found. Do not substitute unrelated dollar figures from the same division or source bucket."""
@@ -103,7 +106,12 @@ Good answer pattern: Say "FEMA total found: no FEMA-specific dollar amount ident
 Example 5 - Direct account answer:
 Question: What amount is appropriated for the FDA Salaries and Expenses account in FY2026, and what are the major allowed uses?
 Facts include $6,957,972,000 for FDA Salaries and Expenses, necessary FDA expenses including passenger motor vehicles, space rental and related costs, special-purpose space, and emergency enforcement, program/center activities such as Human Foods, CDER, CBER, CVM, CDRH, NCTR, and Center for Tobacco Products, user fees credited to the account, and a separate nearby $3,000,000 provision.
-Good answer pattern: Give the $6,957,972,000 account amount and a compact summary of major allowed uses. Mention that user fees are credited to the account under applicable laws only if useful for clarity. Do not list every center suballocation, do not include the separate nearby $3,000,000 provision, and do not create a "Not added separately" section unless the user asks for a breakdown or reconciliation."""
+Good answer pattern: Give the $6,957,972,000 account amount and a compact summary of major allowed uses. Mention that user fees are credited to the account under applicable laws only if useful for clarity. Do not list every center suballocation, do not include the separate nearby $3,000,000 provision, and do not create a "Not added separately" section unless the user asks for a breakdown or reconciliation.
+
+Example 6 - Mixed financial types:
+Question: What FY2026 funding is available for rural water/wastewater infrastructure?
+Facts include USDA Rural Utilities Service direct loan authority $X, USDA Rural Utilities Service guaranteed loan authority $Y, USDA Rural Utilities Service subsidy/grant/program funding $Z, USDA technical assistance/circuit rider funding $A, and EPA targeted grant funding $B.
+Good answer pattern: Group the answer by financial type: direct loan authority, guaranteed loan authority, subsidy/grant/program funding, technical assistance, and targeted grants. Do not present X+Y+Z+A+B as a clean grant pool or top-line appropriation. If showing arithmetic across all retrieved figures, label it as "Mixed identified total: $N" and explain that it combines different financial types and should not be treated as one clean funding pool."""
 
 
 SYNTHESIS_ACCOUNTING_POLICY = """Accounting synthesis policy:
@@ -111,6 +119,8 @@ SYNTHESIS_ACCOUNTING_POLICY = """Accounting synthesis policy:
 - If combining division totals, state exactly which scoped totals are included.
 - Preserve notes about excluded transfers, component amounts, caps, and non-comparable accounts.
 - If the division answers separate agencies, components, accounts, or programs under a topic, preserve that breakdown even when also reporting a topic subtotal.
+- If division answers group amounts by financial type, preserve those financial-type groups instead of flattening them into one headline total.
+- Do not create a cross-division headline total unless the division answers identify comparable additive amounts in the same scope. For mixed types, preserve any "mixed identified total" caveat and prioritize the grouped breakdown.
 - Do not introduce topic sections that were not requested by the question and are not directly relevant to the division answers."""
 
 
@@ -735,6 +745,8 @@ class RAGService:
             "- Extract only facts that help answer the question.\n"
             "- Relevance must be tied to the agency, account, program, authority, or topic in the question, not just the same division or catch-all source bucket.\n"
             "- Preserve exact dollar figures, account names, agencies, fiscal years, and section references.\n"
+            "- Preserve financial-type language around each dollar figure, such as account total, suballocation, grant, direct loan authority, guaranteed loan authority, loan subsidy cost, user fee, offsetting collection, transfer, rescission, set-aside, cap, or limitation.\n"
+            "- Preserve relationship language such as 'of which', 'to remain available', 'derived from fees', 'transferred', 'rescinded', 'not to exceed', and 'loan authority'.\n"
             "- If the chunk has relevant funding-mechanism evidence but no relevant dollar figure, extract that mechanism as a fact without a source_numbers item.\n"
             "- Funding-mechanism evidence includes continuing appropriations, rate-for-operations language, apportionment authority, extensions, and referenced prior laws.\n"
             "- Do not extract unrelated dollar figures merely because the question asks how much; unrelated figures must not be used as substitutes for missing topic-specific amounts.\n"
@@ -958,6 +970,8 @@ class RAGService:
                 f"{ACCOUNTING_FEW_SHOT_EXAMPLES}\n\n"
                 "Rules:\n"
                 "- Before writing, classify facts internally as DIRECT, SUPPORTING, or IRRELEVANT. Use DIRECT plus only essential SUPPORTING facts in the final answer.\n"
+                "- Before proposing any total, classify every dollar figure internally by financial_type, scope/account/program, additive_relationship, and include_in_headline_total.\n"
+                "- Use additive_relationship values such as additive, suballocation, offset/fee, transfer, rescission, cap/limitation, or unknown. Treat unknown as not safe for a headline total unless the text clearly supports addition.\n"
                 "- Preserve all relevant dollar figures from the extracted facts.\n"
                 "- Preserve existing [[num:...]] markers immediately after their visible source figures.\n"
                 "- If you repeat or restate a marked dollar figure in the bottom line, accounts/programs, or notes, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.\n"
@@ -965,6 +979,8 @@ class RAGService:
                 "- Keep citation markers immediately after the figure or clause they support.\n"
                 "- Apply the accounting scope policy before proposing any calculated total.\n"
                 "- The bottom line should lead with '<Topic> total found' values when the retrieved facts support top-level additive buckets.\n"
+                "- For mixed financial types, lead with grouped amounts by type rather than one clean headline total.\n"
+                "- For direct account questions, keep the concise account answer shape and do not expand into a financial-type ledger unless needed to avoid double counting.\n"
                 "- Choose topic sections from the user's question and the retrieved facts; do not copy topic names from examples unless they are directly relevant.\n"
                 "- Do not include nearby provisions merely because they were retrieved.\n"
                 "- Do not include long suballocation or user-fee detail unless the user asks for that breakdown or it is essential to answer accurately.\n"
@@ -1115,6 +1131,7 @@ class RAGService:
             "Use this markdown structure, preserving only the topic sections relevant to the question and division answers:\n"
             "## Answer\n"
             "- <direct total found values first; include topic totals and combined total when supported.>\n\n"
+            "- <for mixed financial types, lead with grouped amounts by type and only include a labeled mixed identified total when useful.>\n\n"
             "## By Division\n"
             "### [ACRONYM] Division Name\n"
             "- **Bottom line:** <division bottom line>\n"
@@ -1134,6 +1151,8 @@ class RAGService:
             "- Do not write a source-backed or derived dollar figure without its existing marker when that figure appears in the division answers with a marker.\n"
             "- Keep citation markers immediately after the figure or clause they support.\n"
             "- Combine figures only when they are clearly comparable and supported by the division answers.\n"
+            "- Do not create a clean cross-division headline total from mixed financial types such as loan authority, subsidy costs, grants, user fees, transfers, rescissions, set-asides, caps, or limitations.\n"
+            "- If division answers identify mixed financial types, preserve their grouped breakdown and any warning that a mixed identified total is not one clean funding pool.\n"
             "- Preserve topic sections that are present in division answers, but do not introduce unrelated example topics.\n"
             "- If the question asks about one topic, do not add unrelated topic sections unless a division answer makes them directly responsive to that question.\n"
             "- A combined total found is acceptable when it adds clearly labeled topic totals; state exactly which topic totals are included.\n"

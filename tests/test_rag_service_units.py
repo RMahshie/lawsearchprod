@@ -995,6 +995,18 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     assert "If the question asks about one topic, use one topic section" in prompt
     assert "rather than creating a new topic section" in prompt
     assert "Group breakdown bullets under their topic" in prompt
+    assert "classify each amount by financial type and additive relationship" in prompt
+    assert "Only sum amounts that are comparable, additive, and in the same scope" in prompt
+    assert "Do not add account totals plus suballocations" in prompt
+    assert "loan authority plus loan subsidy cost" in prompt
+    assert "rescissions as positive funding" in prompt
+    assert "mixed identified total" in prompt
+    assert "Example 6 - Mixed financial types:" in prompt
+    assert "rural water/wastewater infrastructure" in prompt
+    assert "direct loan authority, guaranteed loan authority, subsidy/grant/program funding" in prompt
+    assert "financial_type, scope/account/program, additive_relationship, and include_in_headline_total" in prompt
+    assert "Use additive_relationship values such as additive, suballocation, offset/fee, transfer, rescission" in prompt
+    assert "For mixed financial types, lead with grouped amounts by type" in prompt
 
 
 def test_map_prompt_filters_unrelated_dollars_for_funding_mechanisms(monkeypatch):
@@ -1031,6 +1043,9 @@ def test_map_prompt_filters_unrelated_dollars_for_funding_mechanisms(monkeypatch
     assert "Relevance must be tied to the agency, account, program, authority, or topic in the question" in prompt
     assert "relevant funding-mechanism evidence but no relevant dollar figure" in prompt
     assert "Do not extract unrelated dollar figures merely because the question asks how much" in prompt
+    assert "Preserve financial-type language around each dollar figure" in prompt
+    assert "direct loan authority, guaranteed loan authority, loan subsidy cost" in prompt
+    assert "Preserve relationship language such as 'of which', 'to remain available', 'derived from fees'" in prompt
 
 
 def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
@@ -1081,11 +1096,16 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     assert "Preserve notes about excluded transfers, component amounts" in prompt
     assert "preserve that breakdown even when also reporting a topic subtotal" in prompt
     assert "Do not introduce topic sections that were not requested" in prompt
+    assert "preserve those financial-type groups instead of flattening them into one headline total" in prompt
+    assert "Do not create a cross-division headline total unless the division answers identify comparable additive amounts" in prompt
+    assert "preserve any \"mixed identified total\" caveat" in prompt
     assert "**<Topic name>:**" in prompt
     assert "**Included in <topic> total found:**" in prompt
     assert "do not introduce unrelated example topics" in prompt
     assert "do not add unrelated topic sections unless a division answer makes them directly responsive" in prompt
     assert "A combined total found is acceptable" in prompt
+    assert "Do not create a clean cross-division headline total from mixed financial types" in prompt
+    assert "preserve their grouped breakdown and any warning that a mixed identified total is not one clean funding pool" in prompt
 
 
 def test_division_fanout_preserves_vector_store_context():
