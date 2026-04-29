@@ -487,7 +487,7 @@ function AppContent() {
                     <input
                       value={ingestionName}
                       onChange={(event) => setIngestionName(event.target.value)}
-                      placeholder="e.g. FY2024 Large Chunks"
+                      placeholder="e.g. FY2026 Large Chunks"
                       className="border bg-background px-3 py-2"
                     />
                   </label>

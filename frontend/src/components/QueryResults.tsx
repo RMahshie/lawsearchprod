@@ -147,6 +147,7 @@ export default function QueryResults({ result, question }: QueryResultsProps) {
                       <Badge variant="outline" className="rounded-sm">{source.division_acronym}</Badge>
                       <span>{source.chunk_id}</span>
                     </div>
+                    <OriginalDivisionLine source={source} />
                     <pre className="max-h-80 overflow-auto whitespace-pre-wrap border bg-background p-4 text-xs leading-relaxed">
                       {source.content_snippet}
                     </pre>
@@ -270,6 +271,7 @@ function FigurePopover({
                     <Badge variant="outline" className="rounded-sm">[{source.division_acronym}]</Badge>
                     <span className="text-muted-foreground">{source.chunk_id}</span>
                   </div>
+                  <OriginalDivisionLine source={source} />
                   {source.chunk_summary && (
                     <p className="mb-2 text-sm text-muted-foreground">{source.chunk_summary}</p>
                   )}
@@ -324,6 +326,7 @@ function SourceAnnotationPopover({
               <Badge variant="outline" className="rounded-sm">[{source?.division_acronym ?? 'SRC'}]</Badge>
               <span className="text-muted-foreground">{annotation.source.chunk_id}</span>
             </div>
+            {source && <OriginalDivisionLine source={source} />}
             <pre className="whitespace-pre-wrap text-xs leading-relaxed">
               {content ? <HighlightedSourceSnippet content={content} figure={annotation.figure} /> : 'Source chunk unavailable.'}
             </pre>
@@ -429,6 +432,7 @@ function DerivedInputRow({ input, result }: { input: NumberAnnotation & { kind: 
             <Badge variant="outline" className="rounded-sm">[{source?.division_acronym ?? 'SRC'}]</Badge>
             <span className="text-muted-foreground">{input.source.chunk_id}</span>
           </div>
+          {source && <OriginalDivisionLine source={source} />}
           {summary && <p className="mb-2 text-xs text-muted-foreground">{summary}</p>}
           <pre className="whitespace-pre-wrap border bg-background p-3 text-xs leading-relaxed">
             {content ? <HighlightedSourceSnippet content={content} figure={input.figure} /> : 'Source chunk unavailable.'}
@@ -441,6 +445,26 @@ function DerivedInputRow({ input, result }: { input: NumberAnnotation & { kind: 
 
 function sourceForAnnotation(annotation: NumberAnnotation & { kind: 'source' }, result: QueryResponse) {
   return (result.sources ?? []).find((item) => item.chunk_id === annotation.source.chunk_id);
+}
+
+function OriginalDivisionLine({ source }: { source: SourceDocument }) {
+  const line = originalDivisionLine(source);
+  if (!line) return null;
+  return <p className="mb-2 text-xs text-muted-foreground">{line}</p>;
+}
+
+function originalDivisionLine(source: SourceDocument) {
+  if (source.division_acronym !== 'CRX') return null;
+  const metadata = source.metadata ?? {};
+  const publicLaw = stringMetadata(metadata.source_public_law);
+  const letter = stringMetadata(metadata.source_division_letter);
+  const title = stringMetadata(metadata.source_division_title);
+  if (!publicLaw || !letter || !title) return null;
+  return `Original division: ${publicLaw} Division ${letter} - ${title}`;
+}
+
+function stringMetadata(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 function linkMarkdownFigures(result: QueryResponse, sourceMarkdown: string, scope: AnnotationScope) {

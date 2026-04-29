@@ -1,6 +1,6 @@
 # LawSearch AI
 
-LawSearch AI is a RAG application for querying U.S. federal appropriations bills in plain English. It routes questions across 14 appropriations divisions, retrieves relevant legislative text from ChromaDB, and uses OpenAI models to produce cited answers with source-backed dollar figures.
+LawSearch AI is a RAG application for querying FY2026 U.S. federal appropriations bills in plain English. It routes questions across the supported FY2026 appropriations divisions, retrieves relevant legislative text from ChromaDB, and uses OpenAI models to produce cited answers with source-backed dollar figures.
 
 The project is built as a service-oriented FastAPI backend with a shadcn React/TypeScript frontend. It is designed to show a practical, inspectable AI system rather than a toy chatbot: ingestion, retrieval, model routing, source display, saved history, and storage management are all first-class parts of the app.
 
