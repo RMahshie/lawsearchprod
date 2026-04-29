@@ -1,3 +1,6 @@
+from types import SimpleNamespace
+
+from app.core.config import FY2026_INCOMPATIBLE_QUESTION_ANSWER, get_settings
 from app.services.llm_factory import describe_model_strategy, resolve_model
 from app.services.rag_service import RAGService
 from app.services.vector_store_service import VectorStoreService, division_acronym
@@ -11,10 +14,10 @@ class FakeMessage:
 class FakeLLM:
     def invoke(self, prompt):
         if "UI excerpt label" in str(prompt):
-            return FakeMessage("DHS cybersecurity funding")
+            return FakeMessage("CRX cybersecurity funding")
         if "source hover summary" in str(prompt):
-            return FakeMessage("Chunk summarizes DHS cybersecurity funding.")
-        return FakeMessage("Extracted $10,000,000 for cybersecurity [DHS].")
+            return FakeMessage("Chunk summarizes CRX cybersecurity funding.")
+        return FakeMessage("Extracted $10,000,000 for cybersecurity [CRX].")
 
 
 class FakeStatusError(Exception):
@@ -65,7 +68,51 @@ class CapturingStructuredLLM:
 
 
 def test_division_acronym_is_stable():
-    assert division_acronym("DEPARTMENT OF HOMELAND SECURITY") == "DHS"
+    assert division_acronym("CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS") == "CRX"
+
+
+def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
+    llm = CapturingStructuredLLM(
+        SimpleNamespace(divisions=["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"])
+    )
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+    service.settings = get_settings()
+
+    result = service._route_divisions(
+        {
+            "query_id": "query-test",
+            "question": "How much FEMA funding is continued?",
+            "thinking_speed": "normal",
+        }
+    )
+
+    prompt = llm.prompts[0]
+    assert result["selected_divisions"] == [
+        "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"
+    ]
+    assert "Allowed FY2026 divisions and routing hints:" in prompt[1].content
+    assert "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS" in prompt[1].content
+    assert "FEMA" in prompt[1].content
+    assert "DEPARTMENT OF HOMELAND SECURITY" not in prompt[1].content
+
+
+def test_route_returns_incompatible_answer_when_no_valid_fy2026_division(monkeypatch):
+    llm = CapturingStructuredLLM(SimpleNamespace(divisions=["DEPARTMENT OF HOMELAND SECURITY"]))
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+    service.settings = get_settings()
+
+    result = service._route_divisions(
+        {
+            "query_id": "query-test",
+            "question": "Who won the World Series?",
+            "thinking_speed": "normal",
+        }
+    )
+
+    assert result["selected_divisions"] == []
+    assert result["final_answer"] == FY2026_INCOMPATIBLE_QUESTION_ANSWER
 
 
 def test_query_source_model_does_not_persist_source_text_or_scores():
@@ -123,7 +170,7 @@ def test_load_conversation_hydrates_sources_from_chroma_only():
     db.add(
         QueryRun(
             id="query",
-            question="How much DHS funding?",
+            question="How much CRX funding?",
             answer="Answer",
             vector_store_id="store",
             processing_time=1.0,
@@ -133,7 +180,7 @@ def test_load_conversation_hydrates_sources_from_chroma_only():
         QueryDivisionResult(
             id="division",
             query_run_id="query",
-            division_key="DEPARTMENT OF HOMELAND SECURITY",
+            division_key="CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
             answer="Division answer",
             chunks_retrieved=2,
             sort_order=0,
@@ -192,18 +239,18 @@ def test_load_conversation_returns_saved_number_annotations():
         QueryRun(
             id="query",
             question="How much funding?",
-            answer="Answer $10 [[num:src_dhs_1]]",
+            answer="Answer $10 [[num:src_crx_1]]",
             processing_time=1.0,
             number_annotations=[
                 {
-                    "id": "src_dhs_1",
+                    "id": "src_crx_1",
                     "kind": "source",
                     "figure": "$10",
                     "normalized_value": 10,
-                    "label": "DHS funding",
+                    "label": "CRX funding",
                     "targets": [{"scope": "answer"}],
-                    "division": "DEPARTMENT OF HOMELAND SECURITY",
-                    "division_acronym": "DHS",
+                    "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                    "division_acronym": "CRX",
                     "chunk_id": "chunk-1",
                     "input_ids": [],
                     "inputs": [],
@@ -215,7 +262,7 @@ def test_load_conversation_returns_saved_number_annotations():
 
     response = load_conversation(db, "query", lambda *_args: None)
 
-    assert response.number_annotations[0].id == "src_dhs_1"
+    assert response.number_annotations[0].id == "src_crx_1"
     assert response.number_annotations[0].targets[0].scope == "answer"
     assert response.number_annotations[0].value == 10
     assert response.number_annotations[0].source.chunk_id == "chunk-1"
@@ -238,7 +285,7 @@ def test_list_conversations_strips_hidden_number_markers_from_preview():
         QueryRun(
             id="query",
             question="How much funding?",
-            answer="Answer $10 [[num:src_dhs_1]] for DHS",
+            answer="Answer $10 [[num:src_crx_1]] for CRX",
             processing_time=1.0,
         )
     )
@@ -246,7 +293,7 @@ def test_list_conversations_strips_hidden_number_markers_from_preview():
 
     summaries = list_conversations(db)
 
-    assert summaries[0]["answer_preview"] == "Answer $10 for DHS"
+    assert summaries[0]["answer_preview"] == "Answer $10 for CRX"
 
 
 def test_map_chunk_returns_facts_and_summary(monkeypatch):
@@ -258,9 +305,9 @@ def test_map_chunk_returns_facts_and_summary(monkeypatch):
             "question": "How much cybersecurity funding is provided?",
             "model_used": "gpt-4o",
             "chunk": {
-                "chunk_id": "DHS-1-test",
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
+                "chunk_id": "CRX-1-test",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
                 "content": "For cybersecurity, $10,000,000 shall be available.",
                 "chunk_summary": None,
                 "score": 0.1,
@@ -270,9 +317,9 @@ def test_map_chunk_returns_facts_and_summary(monkeypatch):
     )
 
     mapped = result["mapped_chunks"][0]
-    assert mapped["division"] == "DEPARTMENT OF HOMELAND SECURITY"
-    assert mapped["chunk_summary"] == "Chunk summarizes DHS cybersecurity funding."
-    assert mapped["chunk_snapshot"] == "DHS cybersecurity funding"
+    assert mapped["division"] == "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"
+    assert mapped["chunk_summary"] == "Chunk summarizes CRX cybersecurity funding."
+    assert mapped["chunk_snapshot"] == "CRX cybersecurity funding"
     assert "$10,000,000" in mapped["extracted_facts"]
 
 
@@ -305,23 +352,23 @@ def test_invoke_text_does_not_retry_non_transient_error(monkeypatch):
 def test_response_includes_sources_and_division_results():
     service = RAGService.__new__(RAGService)
     result = {
-        "final_answer": "DHS receives $10,000,000 [DHS].",
-        "selected_divisions": ["DEPARTMENT OF HOMELAND SECURITY"],
+        "final_answer": "CRX receives $10,000,000 [CRX].",
+        "selected_divisions": ["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"],
         "include_sources": True,
         "thinking_speed": "normal",
         "model_used": "gpt-4o",
         "division_queries": [
             {
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
-                "query": "How much funding is provided for DHS cybersecurity?",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "query": "How much funding is provided for CRX cybersecurity?",
             }
         ],
         "retrieved_chunks": [
             {
-                "chunk_id": "DHS-1-test",
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
+                "chunk_id": "CRX-1-test",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
                 "content": "For cybersecurity, $10,000,000 shall be available.",
                 "chunk_summary": None,
                 "score": 0.1,
@@ -330,12 +377,12 @@ def test_response_includes_sources_and_division_results():
         ],
         "mapped_chunks": [
             {
-                "chunk_id": "DHS-1-test",
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
-                "extracted_facts": "Extracted $10,000,000 for cybersecurity [DHS].",
-                "chunk_summary": "Chunk summarizes DHS cybersecurity funding.",
-                "chunk_snapshot": "DHS cybersecurity funding",
+                "chunk_id": "CRX-1-test",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "extracted_facts": "Extracted $10,000,000 for cybersecurity [CRX].",
+                "chunk_summary": "Chunk summarizes CRX cybersecurity funding.",
+                "chunk_snapshot": "CRX cybersecurity funding",
                 "source_content": "For cybersecurity, $10,000,000 shall be available.",
                 "score": 0.1,
                 "metadata": {"source_file": "bill.html"},
@@ -343,10 +390,10 @@ def test_response_includes_sources_and_division_results():
         ],
         "division_answers": [
             {
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
-                "answer": "DHS receives $10,000,000 [DHS].",
-                "source_chunk_ids": ["DHS-1-test"],
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "answer": "CRX receives $10,000,000 [CRX].",
+                "source_chunk_ids": ["CRX-1-test"],
                 "chunks_retrieved": 1,
             }
         ],
@@ -355,23 +402,23 @@ def test_response_includes_sources_and_division_results():
     response = service._to_response(result, 1.2, "query-test")
 
     assert response.sources is not None
-    assert response.sources[0].chunk_summary == "Chunk summarizes DHS cybersecurity funding."
-    assert response.sources[0].chunk_snapshot == "DHS cybersecurity funding"
+    assert response.sources[0].chunk_summary == "Chunk summarizes CRX cybersecurity funding."
+    assert response.sources[0].chunk_snapshot == "CRX cybersecurity funding"
     assert response.debug_division_queries is None
-    assert response.division_results[0].source_chunk_ids == ["DHS-1-test"]
+    assert response.division_results[0].source_chunk_ids == ["CRX-1-test"]
 
 
 def test_response_includes_source_number_annotations_when_markers_are_used():
     service = RAGService.__new__(RAGService)
     result = {
-        "final_answer": "DHS receives $10,000,000 [[num:src_dhs_dhs_1_test_1]] [DHS].",
-        "selected_divisions": ["DEPARTMENT OF HOMELAND SECURITY"],
+        "final_answer": "CRX receives $10,000,000 [[num:src_crx_dhs_1_test_1]] [CRX].",
+        "selected_divisions": ["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"],
         "include_sources": True,
         "retrieved_chunks": [
             {
-                "chunk_id": "DHS-1-test",
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
+                "chunk_id": "CRX-1-test",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
                 "content": "For cybersecurity, $10,000,000 shall be available.",
                 "chunk_summary": None,
                 "score": 0.1,
@@ -380,54 +427,54 @@ def test_response_includes_source_number_annotations_when_markers_are_used():
         ],
         "mapped_chunks": [
             {
-                "chunk_id": "DHS-1-test",
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
-                "extracted_facts": "Extracted $10,000,000 [[num:src_dhs_dhs_1_test_1]] for cybersecurity [DHS].",
-                "chunk_summary": "Chunk summarizes DHS cybersecurity funding.",
-                "chunk_snapshot": "DHS cybersecurity funding",
+                "chunk_id": "CRX-1-test",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "extracted_facts": "Extracted $10,000,000 [[num:src_crx_dhs_1_test_1]] for cybersecurity [CRX].",
+                "chunk_summary": "Chunk summarizes CRX cybersecurity funding.",
+                "chunk_snapshot": "CRX cybersecurity funding",
                 "source_content": "For cybersecurity, $10,000,000 shall be available.",
                 "score": 0.1,
                 "metadata": {"source_file": "bill.html"},
                 "number_annotations": [
                     {
-                        "id": "src_dhs_dhs_1_test_1",
+                        "id": "src_crx_dhs_1_test_1",
                         "kind": "source",
                         "figure": "$10,000,000",
                         "value": 10_000_000,
-                        "label": "DHS cybersecurity funding",
+                        "label": "CRX cybersecurity funding",
                         "targets": [],
-                        "source": {"chunk_id": "DHS-1-test"},
+                        "source": {"chunk_id": "CRX-1-test"},
                     }
                 ],
             }
         ],
         "division_answers": [
             {
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
-                "answer": "DHS receives $10,000,000 [[num:src_dhs_dhs_1_test_1]] [DHS].",
-                "source_chunk_ids": ["DHS-1-test"],
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "answer": "CRX receives $10,000,000 [[num:src_crx_dhs_1_test_1]] [CRX].",
+                "source_chunk_ids": ["CRX-1-test"],
                 "chunks_retrieved": 1,
                 "number_annotations": [],
             }
         ],
         "number_annotations": [
             {
-                "id": "src_dhs_dhs_1_test_1",
+                "id": "src_crx_dhs_1_test_1",
                 "kind": "source",
                 "figure": "$10,000,000",
                 "value": 10_000_000,
-                "label": "DHS cybersecurity funding",
+                "label": "CRX cybersecurity funding",
                 "targets": [],
-                "source": {"chunk_id": "DHS-1-test"},
+                "source": {"chunk_id": "CRX-1-test"},
             }
         ],
     }
 
     response = service._to_response(result, 1.2, "query-test")
 
-    assert response.number_annotations[0].id == "src_dhs_dhs_1_test_1"
+    assert response.number_annotations[0].id == "src_crx_dhs_1_test_1"
     assert {target.scope for target in response.number_annotations[0].targets} == {"answer", "division"}
 
 
@@ -575,7 +622,7 @@ def test_derived_number_validation_uses_visible_marker_figure_when_structured_fi
         ],
         target_answer="**FEMA total:** **$5,080,537,369** [[num:drv_dhs_1]]",
         available=[source_a, source_b, source_c],
-        target=NumberAnnotationTarget(scope="division", division="DHS"),
+        target=NumberAnnotationTarget(scope="division", division="CRX"),
     )
 
     assert accepted[0].id == "drv_dhs_1"
@@ -887,18 +934,18 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
         {
             "question": "how much for fema and immigration combined",
             "query_id": "query-test",
-            "division": "DEPARTMENT OF HOMELAND SECURITY",
-            "division_acronym": "DHS",
+            "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+            "division_acronym": "CRX",
             "mapped_items": [
                 {
                     "chunk_id": "chunk-1",
-                    "division": "DEPARTMENT OF HOMELAND SECURITY",
-                    "division_acronym": "DHS",
+                    "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                    "division_acronym": "CRX",
                     "extracted_facts": (
-                        "- FEMA Federal Assistance $3,497,019,369 [[num:src_fema]] [DHS]\n"
-                        "- CBP operations and support $18,426,870,000 [[num:src_cbp]] [DHS]\n"
-                        "- ICE operations and support $9,501,542,000 [[num:src_ice]] [DHS]\n"
-                        "- USCIS operations and support $271,140,000 [[num:src_uscis]] [DHS]"
+                        "- FEMA Federal Assistance $3,497,019,369 [[num:src_fema]] [CRX]\n"
+                        "- CBP operations and support $18,426,870,000 [[num:src_cbp]] [CRX]\n"
+                        "- ICE operations and support $9,501,542,000 [[num:src_ice]] [CRX]\n"
+                        "- USCIS operations and support $271,140,000 [[num:src_uscis]] [CRX]"
                     ),
                     "chunk_summary": "summary",
                     "chunk_snapshot": "snapshot",
@@ -955,10 +1002,10 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
             "number_annotations": [],
             "division_answers": [
                 {
-                    "division": "DEPARTMENT OF HOMELAND SECURITY",
-                    "division_acronym": "DHS",
+                    "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                    "division_acronym": "CRX",
                     "answer": (
-                        "### [DHS] DEPARTMENT OF HOMELAND SECURITY\n"
+                        "### [CRX] CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS\n"
                         "- **Bottom line:** Separate buckets are safer than a grand total.\n"
                         "- **Notes:** CBP is kept separate."
                     ),

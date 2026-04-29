@@ -11,6 +11,116 @@ from pydantic import Field, field_validator, ConfigDict
 from pydantic_settings import BaseSettings
 
 
+FY2026_INCOMPATIBLE_QUESTION_ANSWER = "This question is incompatible with the FY2026 appropriations text available in LawSearch."
+
+FY2026_DIVISIONS = [
+    "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+    "LEGISLATIVE BRANCH",
+    "MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES",
+    "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+    "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES",
+    "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+    "DEPARTMENT OF DEFENSE",
+    "DEPARTMENTS OF LABOR, HEALTH AND HUMAN SERVICES, AND EDUCATION, AND RELATED AGENCIES",
+    "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+    "FINANCIAL SERVICES AND GENERAL GOVERNMENT",
+    "DEPARTMENT OF STATE, FOREIGN OPERATIONS, AND RELATED PROGRAMS",
+    "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+]
+
+FY2026_SUBCOMMITTEE_STORES = {
+    "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS_Division_B_AGRICULTURE_RURAL_DEVELOPMENT_FOOD_AND_DRUG_ADMINISTRATION_AND_RELATED_AGENCIES",
+    "LEGISLATIVE BRANCH": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS_Division_C_LEGISLATIVE_BRANCH",
+    "MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS_Division_D_MILITARY_CONSTRUCTION_VETERANS_AFFAIRS_AND_RELATED_AGENCIES",
+    "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES": "FY2026_COMMERCEJUSTICESCIENCE_ENERGYWATERDEV_INTERIORENVIRONMENTAL_Division_A_COMMERCE_JUSTICE_SCIENCE_AND_RELATED_AGENCIES",
+    "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES": "FY2026_COMMERCEJUSTICESCIENCE_ENERGYWATERDEV_INTERIORENVIRONMENTAL_Division_B_ENERGY_AND_WATER_DEVELOPMENT_AND_RELATED_AGENCIES",
+    "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES": "FY2026_COMMERCEJUSTICESCIENCE_ENERGYWATERDEV_INTERIORENVIRONMENTAL_Division_C_DEPARTMENT_OF_THE_INTERIOR_ENVIRONMENT_AND_RELATED_AGENCIES",
+    "DEPARTMENT OF DEFENSE": "FY2026_CONSOLIDATED_Division_A_DEPARTMENT_OF_DEFENSE",
+    "DEPARTMENTS OF LABOR, HEALTH AND HUMAN SERVICES, AND EDUCATION, AND RELATED AGENCIES": "FY2026_CONSOLIDATED_Division_B_DEPARTMENTS_OF_LABOR_HEALTH_AND_HUMAN_SERVICES_AND_EDUCATION_AND_RELATED_AGENCIES",
+    "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES": "FY2026_CONSOLIDATED_Division_D_TRANSPORTATION_HOUSING_AND_URBAN_DEVELOPMENT_AND_RELATED_AGENCIES",
+    "FINANCIAL SERVICES AND GENERAL GOVERNMENT": "FY2026_CONSOLIDATED_Division_E_FINANCIAL_SERVICES_AND_GENERAL_GOVERNMENT",
+    "DEPARTMENT OF STATE, FOREIGN OPERATIONS, AND RELATED PROGRAMS": "FY2026_CONSOLIDATED_Division_F_DEPARTMENT_OF_STATE_FOREIGN_OPERATIONS_AND_RELATED_PROGRAMS",
+    "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS": "FY2026_OTHER_CONTINUING_APPROPRIATIONS_EXTENDERS_HOMELAND_SECURITY_OTHER_MATTERS",
+}
+
+FY2026_DIVISION_ACRONYMS = {
+    "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES": "AG",
+    "LEGISLATIVE BRANCH": "LEG",
+    "MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES": "MCVA",
+    "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES": "CJS",
+    "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES": "EWD",
+    "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES": "INT",
+    "DEPARTMENT OF DEFENSE": "DOD",
+    "DEPARTMENTS OF LABOR, HEALTH AND HUMAN SERVICES, AND EDUCATION, AND RELATED AGENCIES": "LHHS",
+    "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES": "THUD",
+    "FINANCIAL SERVICES AND GENERAL GOVERNMENT": "FSGG",
+    "DEPARTMENT OF STATE, FOREIGN OPERATIONS, AND RELATED PROGRAMS": "SFOPS",
+    "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS": "CRX",
+}
+
+FY2026_ROUTING_ALIASES = {
+    "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES": "agriculture, USDA, rural development, FDA, food and drug, food safety, farm programs, nutrition programs, WIC, SNAP references when tied to agriculture appropriations.",
+    "LEGISLATIVE BRANCH": "Congress, House, Senate, Capitol Police, Architect of the Capitol, Library of Congress, Government Accountability Office, GAO, Congressional Budget Office, CBO.",
+    "MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES": "military construction, MILCON, veterans affairs, VA, veterans health, veterans benefits, cemeteries, American Battle Monuments Commission.",
+    "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES": "CJS, Commerce, DOJ, Justice, FBI, DEA, ATF, prisons, NASA, NSF, NOAA, Census, NIST, science agencies.",
+    "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES": "Energy and Water, Department of Energy, DOE, Corps of Engineers, Bureau of Reclamation, water projects, nuclear security, NNSA.",
+    "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES": "Interior, DOI, EPA, environment, public lands, National Park Service, Bureau of Land Management, Fish and Wildlife, Indian Affairs, Forest Service, Smithsonian.",
+    "DEPARTMENT OF DEFENSE": "Defense, DOD, military personnel, operation and maintenance, procurement, research and development, RDT&E, Army, Navy, Marine Corps, Air Force, Space Force.",
+    "DEPARTMENTS OF LABOR, HEALTH AND HUMAN SERVICES, AND EDUCATION, AND RELATED AGENCIES": "Labor, DOL, HHS, Education, ED, NIH, CDC, CMS, public health, schools, Pell, student aid, workforce, OSHA.",
+    "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES": "THUD, Transportation, DOT, FAA, highways, transit, rail, maritime, HUD, housing, rental assistance, community development.",
+    "FINANCIAL SERVICES AND GENERAL GOVERNMENT": "FSGG, Treasury, IRS, Executive Office of the President, judiciary, District of Columbia, GSA, OPM, SEC, FCC, FTC, SBA.",
+    "DEPARTMENT OF STATE, FOREIGN OPERATIONS, AND RELATED PROGRAMS": "State, foreign operations, SFOPS, diplomacy, embassy, USAID, foreign assistance, international security assistance, export/import, Peace Corps.",
+    "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS": "CR, continuing resolution, continuing appropriations, extensions, extenders, technical corrections, Homeland Security, DHS, FEMA, cybersecurity, E-Verify, H-2B, National Flood Insurance Program, NFIP, health care extenders, Medicare extenders, Medicaid extenders, VA extenders, other matters.",
+}
+
+FY2026_SOURCE_PARTS = {
+    "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES": [
+        {"source_file": "2026/FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm", "source_public_law": "P.L. 119-37", "source_division_letter": "B", "source_division_title": "Agriculture, Rural Development, Food and Drug Administration, and Related Agencies Appropriations Act, 2026"}
+    ],
+    "LEGISLATIVE BRANCH": [
+        {"source_file": "2026/FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm", "source_public_law": "P.L. 119-37", "source_division_letter": "C", "source_division_title": "Legislative Branch Appropriations Act, 2026"}
+    ],
+    "MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES": [
+        {"source_file": "2026/FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm", "source_public_law": "P.L. 119-37", "source_division_letter": "D", "source_division_title": "Military Construction, Veterans Affairs, and Related Agencies Appropriations Act, 2026"}
+    ],
+    "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES": [
+        {"source_file": "2026/FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm", "source_public_law": "P.L. 119-74", "source_division_letter": "A", "source_division_title": "Commerce, Justice, Science, and Related Agencies Appropriations Act, 2026"}
+    ],
+    "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES": [
+        {"source_file": "2026/FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm", "source_public_law": "P.L. 119-74", "source_division_letter": "B", "source_division_title": "Energy and Water Development and Related Agencies Appropriations Act, 2026"}
+    ],
+    "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES": [
+        {"source_file": "2026/FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm", "source_public_law": "P.L. 119-74", "source_division_letter": "C", "source_division_title": "Department of the Interior, Environment, and Related Agencies Appropriations Act, 2026"}
+    ],
+    "DEPARTMENT OF DEFENSE": [
+        {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "A", "source_division_title": "Department of Defense Appropriations Act, 2026"}
+    ],
+    "DEPARTMENTS OF LABOR, HEALTH AND HUMAN SERVICES, AND EDUCATION, AND RELATED AGENCIES": [
+        {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "B", "source_division_title": "Departments of Labor, Health and Human Services, and Education, and Related Agencies Appropriations Act, 2026"}
+    ],
+    "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES": [
+        {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "D", "source_division_title": "Transportation, Housing and Urban Development, and Related Agencies Appropriations Act, 2026"}
+    ],
+    "FINANCIAL SERVICES AND GENERAL GOVERNMENT": [
+        {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "E", "source_division_title": "Financial Services and General Government Appropriations Act, 2026"}
+    ],
+    "DEPARTMENT OF STATE, FOREIGN OPERATIONS, AND RELATED PROGRAMS": [
+        {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "F", "source_division_title": "National Security, Department of State, and Related Programs Appropriations Act, 2026"}
+    ],
+    "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS": [
+        {"source_file": "2026/FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm", "source_public_law": "P.L. 119-37", "source_division_letter": "A", "source_division_title": "Continuing Appropriations Act, 2026"},
+        {"source_file": "2026/FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm", "source_public_law": "P.L. 119-37", "source_division_letter": "E", "source_division_title": "Extension of Agricultural Programs"},
+        {"source_file": "2026/FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm", "source_public_law": "P.L. 119-37", "source_division_letter": "F", "source_division_title": "Health Extenders"},
+        {"source_file": "2026/FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm", "source_public_law": "P.L. 119-37", "source_division_letter": "G", "source_division_title": "Department of Veterans Affairs Extenders"},
+        {"source_file": "2026/FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm", "source_public_law": "P.L. 119-37", "source_division_letter": "H", "source_division_title": "Miscellaneous"},
+        {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "G", "source_division_title": "Other Matters"},
+        {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "H", "source_division_title": "Further Continuing Appropriations Act, 2026"},
+        {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "I", "source_division_title": "Authorizing Extenders and Technical Corrections"},
+        {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "J", "source_division_title": "Health Care Extenders"},
+    ],
+}
+
+
 class Settings(BaseSettings):
     """
     Application settings using Pydantic BaseSettings.
@@ -109,23 +219,18 @@ class Settings(BaseSettings):
     
     # === Division/Subcommittee Mapping (from original src/config.py) ===
     subcommittee_stores: Dict[str, str] = Field(
-        default={
-            "MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES": "Consolidated_Appropriations_Act_2024_Public_Law_html_Division_A_MILITARY_CONSTRUCTION_VETERANS_AFFAIRS_AND_RELATED_AGENCIES",
-            "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES": "Consolidated_Appropriations_Act_2024_Public_Law_html_Division_B_AGRICULTURE_RURAL_DEVELOPMENT_FOOD_AND_DRUG_ADMINISTRATION_AND_RELATED_AGENCIES",
-            "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES": "Consolidated_Appropriations_Act_2024_Public_Law_html_Division_C_COMMERCE_JUSTICE_SCIENCE_AND_RELATED_AGENCIES",
-            "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES": "Consolidated_Appropriations_Act_2024_Public_Law_html_Division_D_ENERGY_AND_WATER_DEVELOPMENT_AND_RELATED_AGENCIES",
-            "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES": "Consolidated_Appropriations_Act_2024_Public_Law_html_Division_E_DEPARTMENT_OF_THE_INTERIOR_ENVIRONMENT_AND_RELATED_AGENCIES",
-            "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES": "Consolidated_Appropriations_Act_2024_Public_Law_html_Division_F_TRANSPORTATION_HOUSING_AND_URBAN_DEVELOPMENT_AND_RELATED_AGENCIES",
-            "OTHER MATTERS": "Consolidated_Appropriations_Act_2024_Public_Law_html_Division_G_OTHER_MATTERS",
-            "DEPARTMENT OF DEFENSE": "Further_Consolidated_Appropriations_Act_2024_Public_Law_html_Division_A_DEPARTMENT_OF_DEFENSE",
-            "FINANCIAL SERVICES AND GENERAL GOVERNMENT": "Further_Consolidated_Appropriations_Act_2024_Public_Law_html_Division_B_FINANCIAL_SERVICES_AND_GENERAL_GOVERNMENT",
-            "DEPARTMENT OF HOMELAND SECURITY": "Further_Consolidated_Appropriations_Act_2024_Public_Law_html_Division_C_DEPARTMENT_OF_HOMELAND_SECURITY",
-            "DEPARTMENTS OF LABOR, HEALTH AND HUMAN SERVICES, AND EDUCATION, AND RELATED AGENCIES": "Further_Consolidated_Appropriations_Act_2024_Public_Law_html_Division_D_DEPARTMENTS_OF_LABOR_HEALTH_AND_HUMAN_SERVICES_AND_EDUCATION_AND_RELATED_AGENCIES",
-            "LEGISLATIVE BRANCH": "Further_Consolidated_Appropriations_Act_2024_Public_Law_html_Division_E_LEGISLATIVE_BRANCH",
-            "DEPARTMENT OF STATE, FOREIGN OPERATIONS, AND RELATED PROGRAMS": "Further_Consolidated_Appropriations_Act_2024_Public_Law_html_Division_F_DEPARTMENT_OF_STATE_FOREIGN_OPERATIONS_AND_RELATED_PROGRAMS",
-            "OTHER MATTERS (FURTHER)": "Further_Consolidated_Appropriations_Act_2024_Public_Law_html_Division_G_OTHER_MATTERS"
-        },
+        default=FY2026_SUBCOMMITTEE_STORES,
         description="Mapping of division names to database paths"
+    )
+
+    fy2026_source_parts: Dict[str, List[Dict[str, str]]] = Field(
+        default=FY2026_SOURCE_PARTS,
+        description="FY2026 source-file and source-division manifest"
+    )
+
+    routing_aliases: Dict[str, str] = Field(
+        default=FY2026_ROUTING_ALIASES,
+        description="Routing aliases and hints keyed by canonical division"
     )
     
     # === Routing Prompt (from original src/config.py) ===
@@ -134,26 +239,23 @@ class Settings(BaseSettings):
     You are an expert legislative financial analyst at a premier lobbying firm. 
     Given the question, identify the relevant subcommittees that should be queried.
 
-    ONLY use the EXACT subcommittee names from this list:
-    - MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES
     - AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES
+    - LEGISLATIVE BRANCH
+    - MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES
     - COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES
     - ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES
     - DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES
-    - TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES
-    - OTHER MATTERS
     - DEPARTMENT OF DEFENSE
-    - FINANCIAL SERVICES AND GENERAL GOVERNMENT
-    - DEPARTMENT OF HOMELAND SECURITY
     - DEPARTMENTS OF LABOR, HEALTH AND HUMAN SERVICES, AND EDUCATION, AND RELATED AGENCIES
-    - LEGISLATIVE BRANCH
+    - TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES
+    - FINANCIAL SERVICES AND GENERAL GOVERNMENT
     - DEPARTMENT OF STATE, FOREIGN OPERATIONS, AND RELATED PROGRAMS
-    - OTHER MATTERS (FURTHER)
+    - CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS
     
     Question: {question}
 
     Return ONLY a Python list of strings from the EXACT subcommittee names listed above.
-    Example: ["DEPARTMENT OF HOMELAND SECURITY", "DEPARTMENT OF DEFENSE"]
+    Example: ["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS", "DEPARTMENT OF DEFENSE"]
     Relevant Subcommittees:
     """,
         description="Prompt template for routing queries to subcommittees"

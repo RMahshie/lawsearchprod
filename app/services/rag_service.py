@@ -29,7 +29,7 @@ from langgraph.types import Send
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import TypedDict
 
-from app.core.config import get_settings
+from app.core.config import FY2026_INCOMPATIBLE_QUESTION_ANSWER, get_settings
 from app.db.models import VectorStore
 from app.db.session import SessionLocal, database_available
 from app.models.query import (
@@ -58,6 +58,7 @@ from app.services.storage_registry import (
 from app.services.vector_store_service import VectorStoreService, division_acronym
 
 logger = logging.getLogger(__name__)
+INCOMPATIBLE_QUESTION_ANSWER = FY2026_INCOMPATIBLE_QUESTION_ANSWER
 
 
 ACCOUNTING_SCOPE_POLICY = """Accounting scope policy:
@@ -441,17 +442,21 @@ class RAGService:
             "routing",
             routing_model.reasoning_effort,
         ).with_structured_output(RouteDecision)
-        allowed_divisions = "\n- ".join(valid_divisions)
+        allowed_divisions = "\n".join(
+            f"- {division}: {self.settings.routing_aliases.get(division, '')}"
+            for division in valid_divisions
+        )
         route_messages = [
             SystemMessage(
                 content=(
                     "Select the relevant appropriations divisions for this question. "
-                    "Return only exact division names from the allowed list."
+                    "Return only exact FY2026 division names from the allowed list. "
+                    "Use the aliases only as routing hints, never as returned labels."
                 )
             ),
             HumanMessage(
                 content=(
-                    f"Allowed divisions:\n- {allowed_divisions}\n\n"
+                    f"Allowed FY2026 divisions and routing hints:\n{allowed_divisions}\n\n"
                     f"Question: {state['question']}"
                 )
             ),
@@ -463,8 +468,18 @@ class RAGService:
         )
         selected = [division for division in decision.divisions if division in self.settings.subcommittee_stores]
         if not selected:
-            logger.warning("Router returned no valid divisions; querying all divisions as fallback")
-            selected = valid_divisions
+            logger.info("Router returned no valid FY2026 divisions; ending as incompatible question")
+            self._debug_log(
+                "route query_id=%s source=llm model=%s duration=%.2fs selected=0 incompatible=true raw_divisions=%s",
+                state.get("query_id", "unknown"),
+                format_model_spec(routing_model),
+                time.time() - start_time,
+                decision.divisions,
+            )
+            return {
+                "selected_divisions": [],
+                "final_answer": INCOMPATIBLE_QUESTION_ANSWER,
+            }
         self._debug_log(
             "route query_id=%s source=llm model=%s duration=%.2fs selected=%s divisions=%s",
             state.get("query_id", "unknown"),

@@ -6,26 +6,26 @@ from app.models.storage import CreateVectorStoreRequest
 
 def test_divisions_filter_is_preserved_for_routing_bypass():
     request = QueryRequest(
-        question="How much funding did DHS receive?",
-        divisions_filter=["DEPARTMENT OF HOMELAND SECURITY"],
+        question="How much funding did CRX receive?",
+        divisions_filter=["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"],
         max_results=3,
     )
 
-    assert request.divisions_filter == ["DEPARTMENT OF HOMELAND SECURITY"]
+    assert request.divisions_filter == ["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"]
     assert request.max_results == 3
 
 
 def test_invalid_division_filter_is_rejected():
     with pytest.raises(ValueError):
         QueryRequest(
-            question="How much funding did DHS receive?",
+            question="How much funding did CRX receive?",
             divisions_filter=["NOT A REAL DIVISION"],
         )
 
 
 def test_create_vector_store_request_accepts_overlap():
     request = CreateVectorStoreRequest(
-        name="FY2024 1500 chunks",
+        name="FY2026 1500 chunks",
         embedding_model="text-embedding-3-large",
         chunk_size=1500,
         chunk_overlap=350,

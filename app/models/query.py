@@ -9,6 +9,8 @@ from typing import List, Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 from datetime import datetime
 
+from app.core.config import FY2026_DIVISIONS
+
 
 class QueryRequest(BaseModel):
     """
@@ -21,7 +23,7 @@ class QueryRequest(BaseModel):
         min_length=3,
         max_length=1000,
         description="The question to ask about federal appropriations bills",
-        example="How much funding did FEMA receive in 2024?"
+        example="How much FEMA-related funding is continued in FY2026?"
     )
     
     max_results: Optional[int] = Field(
@@ -41,7 +43,7 @@ class QueryRequest(BaseModel):
     divisions_filter: Optional[List[str]] = Field(
         default=None,
         description="Optional list of specific divisions to search. If None, router will select automatically.",
-        example=["DEPARTMENT OF HOMELAND SECURITY", "DEPARTMENT OF DEFENSE"]
+        example=["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS", "DEPARTMENT OF DEFENSE"]
     )
     
     thinking_speed: Optional[str] = Field(
@@ -86,23 +88,7 @@ class QueryRequest(BaseModel):
         if v is None:
             return v
 
-        # Valid division names from your config
-        valid_divisions = {
-            "MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES",
-            "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
-            "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
-            "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES",
-            "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
-            "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
-            "OTHER MATTERS",
-            "DEPARTMENT OF DEFENSE",
-            "FINANCIAL SERVICES AND GENERAL GOVERNMENT",
-            "DEPARTMENT OF HOMELAND SECURITY",
-            "DEPARTMENTS OF LABOR, HEALTH AND HUMAN SERVICES, AND EDUCATION, AND RELATED AGENCIES",
-            "LEGISLATIVE BRANCH",
-            "DEPARTMENT OF STATE, FOREIGN OPERATIONS, AND RELATED PROGRAMS",
-            "OTHER MATTERS (FURTHER)"
-        }
+        valid_divisions = set(FY2026_DIVISIONS)
 
         invalid_divisions = [div for div in v if div not in valid_divisions]
         if invalid_divisions:
@@ -150,19 +136,19 @@ class SourceDocument(BaseModel):
     division: str = Field(
         ...,
         description="The legislative division this information came from",
-        example="DEPARTMENT OF HOMELAND SECURITY"
+        example="CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"
     )
 
     division_acronym: str = Field(
         ...,
         description="Compact division/committee marker used in inline citations",
-        example="DHS"
+        example="CRX"
     )
 
     chunk_id: str = Field(
         ...,
         description="Stable chunk identifier for UI citation lookup",
-        example="DHS-1-a1b2c3d4"
+        example="CRX-1-a1b2c3d4"
     )
     
     content_snippet: str = Field(
@@ -174,13 +160,13 @@ class SourceDocument(BaseModel):
     chunk_summary: Optional[str] = Field(
         default=None,
         description="One-line LLM-generated summary for source hover UI",
-        example="This chunk lists DHS cybersecurity appropriations and availability."
+        example="This chunk lists FY2026 continuing appropriations and availability."
     )
 
     chunk_snapshot: Optional[str] = Field(
         default=None,
         description="Short LLM-generated label for source excerpt lists",
-        example="DHS cybersecurity funding"
+        example="FY2026 continuing appropriations"
     )
     
     confidence_score: Optional[float] = Field(
@@ -328,7 +314,7 @@ class QueryResponse(BaseModel):
     answer: str = Field(
         ...,
         description="The comprehensive answer synthesized from multiple divisions",
-        example="Based on the 2024 appropriations, FEMA received $19.4 billion for disaster relief operations..."
+        example="Based on the FY2026 appropriations text available in LawSearch, FEMA-related continuation material appears in the CRX catch-all division..."
     )
     
     processing_time: float = Field(
@@ -341,7 +327,7 @@ class QueryResponse(BaseModel):
     selected_divisions: List[str] = Field(
         ...,
         description="List of divisions that were queried for this request",
-        example=["DEPARTMENT OF HOMELAND SECURITY", "OTHER MATTERS"]
+        example=["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"]
     )
 
     division_results: List[DivisionResult] = Field(
@@ -391,13 +377,13 @@ class QueryResponse(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "answer": "Based on the 2024 Consolidated Appropriations Act, FEMA received $19.4 billion for disaster relief operations, including $10.2 billion for the Disaster Relief Fund and $9.2 billion for emergency preparedness activities.",
+                "answer": "Based on the FY2026 appropriations text available in LawSearch, FEMA-related continuation material appears in the CRX catch-all division.",
                 "processing_time": 3.45,
-                "selected_divisions": ["DEPARTMENT OF HOMELAND SECURITY"],
+                "selected_divisions": ["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"],
                 "sources": [
                     {
-                        "division": "DEPARTMENT OF HOMELAND SECURITY",
-                        "content_snippet": "For the Disaster Relief Fund, $10,200,000,000 to remain available until expended...",
+                        "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                        "content_snippet": "Appropriations are continued under the Continuing Appropriations Act, 2026...",
                         "confidence_score": 0.95
                     }
                 ],
