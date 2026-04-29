@@ -62,6 +62,8 @@ INCOMPATIBLE_QUESTION_ANSWER = FY2026_INCOMPATIBLE_QUESTION_ANSWER
 
 
 ACCOUNTING_SCOPE_POLICY = """Accounting scope policy:
+- Answer the question asked, not every related thing found. Use only facts that directly answer the question or are necessary to avoid misleading the user.
+- Default to a concise direct answer for simple account, program, or amount questions. Reserve reconciliation-style detail for questions that ask for a breakdown, combined total, reconciliation, or double-counting analysis.
 - Give direct working totals when the retrieved facts contain apparently top-level additive buckets. Label them as "total found" or "retrieved top-level bucket total", not as an authoritative statutory total.
 - For broad topic questions, provide a topic total found when top-level buckets are present, then show the included buckets and the related figures not added separately.
 - For questions that span agencies, components, accounts, or programs, include the relevant supported buckets and break the answer down by those units by default instead of hiding them inside one opaque number.
@@ -69,6 +71,8 @@ ACCOUNTING_SCOPE_POLICY = """Accounting scope policy:
 - Every calculated total must state exactly what is included and what was not added separately.
 - Do not add subprograms, transfers, component amounts, caps, or availability notes into a parent total unless the facts clearly show they are separate additive appropriations.
 - If a broader parent account and one of its components both appear, include the parent account and explain that the component was not added separately.
+- For account questions, separate internally: main appropriation amount, suballocations within that amount, user fees credited to the account, and separate provisions outside the account. Surface only the categories needed to answer the user.
+- Do not create a "Not added separately" section unless the user asks for reconciliation/breakdown or excluding an amount is necessary to prevent double counting.
 - Distinguish dollar-figure evidence from funding-mechanism evidence. Continuing appropriations, rate-for-operations language, apportionment authority, extensions, and referenced prior laws can explain how funding continues, but they are not dollar amounts.
 - If the requested topic has funding-mechanism evidence but no relevant dollar figure, say that a dollar total was not found in the extracted facts and explain what mechanism was found. Do not substitute unrelated dollar figures from the same division or source bucket."""
 
@@ -94,7 +98,12 @@ Good answer pattern: Report Construction as $1,850,000,000. Keep Mississippi Riv
 Example 4 - Funding mechanism without a dollar figure:
 Question: how much money for FEMA?
 Facts include that amounts made available by continuing appropriations to the Department of Homeland Security under "Federal Emergency Management Agency--Disaster Relief Fund" may be apportioned up to the rate for operations necessary for Stafford Act response and recovery. Facts also include unrelated Indian Health Service amounts.
-Good answer pattern: Say "FEMA total found: no FEMA-specific dollar amount identified in the extracted facts." Then explain under FEMA that the retrieved text provides funding-mechanism evidence for continuing/apportioning Disaster Relief Fund operations, but no explicit FEMA dollar figure. Put the unrelated Indian Health Service amounts outside the FEMA total or omit them as not responsive."""
+Good answer pattern: Say "FEMA total found: no FEMA-specific dollar amount identified in the extracted facts." Then explain under FEMA that the retrieved text provides funding-mechanism evidence for continuing/apportioning Disaster Relief Fund operations, but no explicit FEMA dollar figure. Put the unrelated Indian Health Service amounts outside the FEMA total or omit them as not responsive.
+
+Example 5 - Direct account answer:
+Question: What amount is appropriated for the FDA Salaries and Expenses account in FY2026, and what are the major allowed uses?
+Facts include $6,957,972,000 for FDA Salaries and Expenses, necessary FDA expenses including passenger motor vehicles, space rental and related costs, special-purpose space, and emergency enforcement, program/center activities such as Human Foods, CDER, CBER, CVM, CDRH, NCTR, and Center for Tobacco Products, user fees credited to the account, and a separate nearby $3,000,000 provision.
+Good answer pattern: Give the $6,957,972,000 account amount and a compact summary of major allowed uses. Mention that user fees are credited to the account under applicable laws only if useful for clarity. Do not list every center suballocation, do not include the separate nearby $3,000,000 provision, and do not create a "Not added separately" section unless the user asks for a breakdown or reconciliation."""
 
 
 SYNTHESIS_ACCOUNTING_POLICY = """Accounting synthesis policy:
@@ -939,21 +948,16 @@ class RAGService:
             proposed_derived_count = 0
         else:
             prompt = (
-                "Synthesize the extracted facts into a division-level answer with a fixed structure. "
+                "Synthesize the extracted facts into a division-level answer. "
                 "Return structured output with `answer` markdown and `derived_annotations`.\n\n"
-                "Use this markdown structure, replacing topic placeholders with only the topics relevant to the question and facts:\n"
-                f"### [{state['division_acronym']}] {division}\n"
-                "- **Bottom line:** <direct total found values first; include topic totals and combined total when supported.>\n"
-                "- **<Topic name>:**\n"
-                "  - **Included in <topic> total found:**\n"
-                "    - <top-level account/program/component and exact dollar figure, preserving citation marker>\n"
-                "  - **Not added separately:**\n"
-                "    - <subprogram, transfer, component, cap, availability amount, or related excluded figure and reason; use 'None identified.' if none>\n"
-                "- **Other notes:**\n"
-                "  - <short caveat or limitation; use 'None identified.' if none>\n\n"
+                "Answer shape:\n"
+                f"- Start with a heading exactly like: ### [{state['division_acronym']}] {division}\n"
+                "- Then answer directly and concisely. For simple account/program questions, use short paragraphs or a small bullet list instead of a reconciliation template.\n"
+                "- Use an Included / Not added separately structure only when the user asks for a breakdown, combined total, reconciliation, or when double-counting risk must be made explicit.\n\n"
                 f"{ACCOUNTING_SCOPE_POLICY}\n\n"
                 f"{ACCOUNTING_FEW_SHOT_EXAMPLES}\n\n"
                 "Rules:\n"
+                "- Before writing, classify facts internally as DIRECT, SUPPORTING, or IRRELEVANT. Use DIRECT plus only essential SUPPORTING facts in the final answer.\n"
                 "- Preserve all relevant dollar figures from the extracted facts.\n"
                 "- Preserve existing [[num:...]] markers immediately after their visible source figures.\n"
                 "- If you repeat or restate a marked dollar figure in the bottom line, accounts/programs, or notes, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.\n"
@@ -962,6 +966,8 @@ class RAGService:
                 "- Apply the accounting scope policy before proposing any calculated total.\n"
                 "- The bottom line should lead with '<Topic> total found' values when the retrieved facts support top-level additive buckets.\n"
                 "- Choose topic sections from the user's question and the retrieved facts; do not copy topic names from examples unless they are directly relevant.\n"
+                "- Do not include nearby provisions merely because they were retrieved.\n"
+                "- Do not include long suballocation or user-fee detail unless the user asks for that breakdown or it is essential to answer accurately.\n"
                 "- If the question asks about one topic, use one topic section unless the facts clearly require separate comparable subtopics.\n"
                 "- If an excluded transfer, cap, administrative amount, component, or related figure belongs to the requested topic only as a caveat, put it under that topic's Not added separately subsection rather than creating a new topic section.\n"
                 "- Group breakdown bullets under their topic instead of writing one flat accounts list.\n"

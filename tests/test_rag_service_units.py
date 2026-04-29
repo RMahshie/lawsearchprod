@@ -982,13 +982,18 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     assert "continuing/apportioning Disaster Relief Fund operations" in prompt
     assert "Do not use unrelated dollar figures as substitutes" in prompt
     assert "prior-year baseline or referenced law" in prompt
+    assert "Default to a concise direct answer for simple account, program, or amount questions" in prompt
+    assert "Do not create a \"Not added separately\" section unless the user asks for reconciliation/breakdown" in prompt
+    assert "Example 5 - Direct account answer:" in prompt
+    assert "FDA Salaries and Expenses" in prompt
+    assert "do not include the separate nearby $3,000,000 provision" in prompt
+    assert "classify facts internally as DIRECT, SUPPORTING, or IRRELEVANT" in prompt
+    assert "Do not include nearby provisions merely because they were retrieved" in prompt
+    assert "Do not include long suballocation or user-fee detail unless the user asks" in prompt
     assert "illustrative accounting patterns, not required output headings" in prompt
-    assert "**<Topic name>:**" in prompt
-    assert "**Included in <topic> total found:**" in prompt
     assert "Choose topic sections from the user's question and the retrieved facts" in prompt
     assert "If the question asks about one topic, use one topic section" in prompt
     assert "rather than creating a new topic section" in prompt
-    assert "**Not added separately:**" in prompt
     assert "Group breakdown bullets under their topic" in prompt
 
 
