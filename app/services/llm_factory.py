@@ -39,13 +39,13 @@ MODEL_STRATEGIES = {
     },
     "normal": {
         "map": ModelSpec("gpt-5.4-mini"),
-        "summary": ModelSpec("gpt-5.4-mini"),
+        "summary": ModelSpec("gpt-5.4-nano"),
         "reduce": ModelSpec("gpt-5.4", reasoning_effort="low"),
         "synthesize": ModelSpec("gpt-5.4", reasoning_effort="low"),
     },
     "long": {
         "map": ModelSpec("gpt-5.4-mini"),
-        "summary": ModelSpec("gpt-5.4-mini"),
+        "summary": ModelSpec("gpt-5.4-nano"),
         "reduce": ModelSpec("gpt-5.4", reasoning_effort="medium"),
         "synthesize": ModelSpec("gpt-5.4", reasoning_effort="medium"),
     },
