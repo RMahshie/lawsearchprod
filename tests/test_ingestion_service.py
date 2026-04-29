@@ -70,3 +70,29 @@ def test_crx_chunks_preserve_original_source_division_metadata():
     assert docs[0].metadata["source_bucket"] == "CRX"
     assert docs[0].metadata["source_public_law"] == "P.L. 119-37"
     assert docs[0].metadata["source_division_letter"] == "A"
+
+
+def test_fy2026_consolidated_division_g_extraction_is_a_legitimate_short_part():
+    service = IngestionService()
+    division = "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"
+    source_part = next(
+        part
+        for part in service._source_parts_for_division(division)
+        if part["source_file"] == "2026/FY2026_CONSOLIDATED.htm" and part["source_division_letter"] == "G"
+    )
+    bill_path = service._resolve_source_path(source_part)
+
+    text = service._extract_division_text(bill_path, "G")
+    docs = service._chunk_documents(
+        text,
+        "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+        bill_path.name,
+    )
+
+    assert "DIVISION G--OTHER MATTERS" in text
+    assert "SEC. 101. FUNDING LIMITATION." in text
+    assert "United Nations Relief and" in text
+    assert "Works Agency" in text
+    assert "DIVISION H--" not in text
+    assert len(docs) == 1
+    assert source_part["min_chunks"] == 1

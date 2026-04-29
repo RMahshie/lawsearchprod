@@ -78,7 +78,7 @@ class IngestionService:
             documents: list[Document] = []
             for source_part in self._source_parts_for_division(division):
                 bill_path = self._resolve_source_path(source_part)
-                source_letter = source_part["source_division_letter"]
+                source_letter = str(source_part["source_division_letter"])
                 text = self._extract_division_text(bill_path, source_letter)
                 part_documents = self._chunk_documents(
                     text,
@@ -90,12 +90,13 @@ class IngestionService:
                     metadata_extra=self._metadata_for_source_part(division, source_part),
                     chunk_index_offset=len(documents),
                 )
-                if len(part_documents) < 2:
+                min_chunks = int(source_part.get("min_chunks", 2))
+                if len(part_documents) < min_chunks:
                     raise ValueError(
                         "Suspiciously small FY2026 source part during ingestion: "
                         f"division={division!r}, source_file={source_part['source_file']!r}, "
                         f"source_division_letter={source_letter!r}, extracted_chars={len(text)}, "
-                        f"chunks={len(part_documents)}"
+                        f"chunks={len(part_documents)}, min_chunks={min_chunks}"
                     )
                 documents.extend(part_documents)
             if not documents:
@@ -117,7 +118,7 @@ class IngestionService:
         write_persisted_embedding_model(vectorstore_dir, embedding_model)
         return divisions_processed, partition_counts, total_chunks
 
-    def _source_parts_for_division(self, division: str) -> list[dict[str, str]]:
+    def _source_parts_for_division(self, division: str) -> list[dict[str, object]]:
         """Return configured FY2026 source parts for one routable division.
 
         Args:
@@ -131,7 +132,7 @@ class IngestionService:
             raise ValueError(f"Missing FY2026 source-part configuration for division: {division}")
         return parts
 
-    def _resolve_source_path(self, source_part: dict[str, str]) -> Path:
+    def _resolve_source_path(self, source_part: dict[str, object]) -> Path:
         """Resolve and validate the configured source file for one source part.
 
         Args:
@@ -140,19 +141,19 @@ class IngestionService:
         Returns:
             Existing source HTML path.
         """
-        bill_path = Path(self.settings.data_dir) / source_part["source_file"]
+        bill_path = Path(self.settings.data_dir) / str(source_part["source_file"])
         if not bill_path.exists():
             raise FileNotFoundError(f"Configured FY2026 source file is missing: {bill_path}")
         return bill_path
 
-    def _metadata_for_source_part(self, division: str, source_part: dict[str, str]) -> dict[str, str]:
+    def _metadata_for_source_part(self, division: str, source_part: dict[str, object]) -> dict[str, str]:
         """Return metadata to preserve for chunks from a configured source part."""
         if division_acronym(division) != "CRX":
             return {}
         return {
-            "source_public_law": source_part["source_public_law"],
-            "source_division_letter": source_part["source_division_letter"],
-            "source_division_title": source_part["source_division_title"],
+            "source_public_law": str(source_part["source_public_law"]),
+            "source_division_letter": str(source_part["source_division_letter"]),
+            "source_division_title": str(source_part["source_division_title"]),
             "source_bucket": "CRX",
         }
 

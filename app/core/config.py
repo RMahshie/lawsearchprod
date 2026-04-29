@@ -5,7 +5,7 @@ Uses Pydantic BaseSettings for environment-based configuration with .env file su
 Centralizes all configuration constants from the original src/config.py plus new API settings.
 """
 
-from typing import List, Dict, Optional
+from typing import Any, List, Dict, Optional
 from pathlib import Path
 from pydantic import Field, field_validator, ConfigDict
 from pydantic_settings import BaseSettings
@@ -113,7 +113,7 @@ FY2026_SOURCE_PARTS = {
         {"source_file": "2026/FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm", "source_public_law": "P.L. 119-37", "source_division_letter": "F", "source_division_title": "Health Extenders"},
         {"source_file": "2026/FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm", "source_public_law": "P.L. 119-37", "source_division_letter": "G", "source_division_title": "Department of Veterans Affairs Extenders"},
         {"source_file": "2026/FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm", "source_public_law": "P.L. 119-37", "source_division_letter": "H", "source_division_title": "Miscellaneous"},
-        {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "G", "source_division_title": "Other Matters"},
+        {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "G", "source_division_title": "Other Matters", "min_chunks": 1},
         {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "H", "source_division_title": "Further Continuing Appropriations Act, 2026"},
         {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "I", "source_division_title": "Authorizing Extenders and Technical Corrections"},
         {"source_file": "2026/FY2026_CONSOLIDATED.htm", "source_public_law": "P.L. 119-75", "source_division_letter": "J", "source_division_title": "Health Care Extenders"},
@@ -223,7 +223,7 @@ class Settings(BaseSettings):
         description="Mapping of division names to database paths"
     )
 
-    fy2026_source_parts: Dict[str, List[Dict[str, str]]] = Field(
+    fy2026_source_parts: Dict[str, List[Dict[str, Any]]] = Field(
         default=FY2026_SOURCE_PARTS,
         description="FY2026 source-file and source-division manifest"
     )

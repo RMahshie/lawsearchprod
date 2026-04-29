@@ -280,6 +280,8 @@ After ingestion is available, perform a manual smoke check with `DEBUG=true`:
 - 2026-04-29: Converted focused backend tests to FY2026 behavior and added coverage for FY2026 routing aliases, incompatible routing, FY2026 extraction, and CRX metadata.
 - 2026-04-29: Validation passed: `python3 -m pytest tests/test_ingestion_service.py tests/test_rag_service_units.py tests/test_query_models.py` reported 38 passed; `npm run build:frontend` completed successfully with existing Vite font-resolution and chunk-size warnings.
 - 2026-04-29: Created logical commits `ccced49` (`Convert backend to FY2026 corpus`) and `f5af7c1` (`Update FY2026 division UI`) without assistant attribution or co-author trailers.
+- 2026-04-29: User ingestion surfaced that P.L. 119-75 Division G is a legitimate one-chunk source part. Added an explicit `min_chunks: 1` manifest override only for that source part and kept the default source-part guard at 2 chunks.
+- 2026-04-29: Added regression coverage for the short Division G extraction. Validation passed: `python3 -m pytest tests/test_ingestion_service.py tests/test_rag_service_units.py tests/test_query_models.py` reported 39 passed.
 
 ## Decisions
 - FY2026 is the only supported product corpus for this branch.
@@ -317,10 +319,11 @@ After ingestion is available, perform a manual smoke check with `DEBUG=true`:
 - The three FY2026 source files expected by this plan are already present under `data/bills/2026/`.
 - The FY2026 body headers are compatible with the existing `DIVISION X--` extraction pattern, including body headers that contain stripped `<<NOTE: ...>>` markup.
 - The P.L. 119-37 table-of-contents text contains a typo in `CONTINUING APPROPRIATONS ACT, 2026`, but the body header extraction still locates Division A correctly and no configured source-title behavior was changed.
+- P.L. 119-75 Division G, Other Matters, is only 797 extracted characters and one chunk at the configured chunk size. The extraction stops at Division H and contains the expected funding limitation text, so this is corpus shape rather than a splitter bug.
 
 ## Remaining Work
 - Implementation work is complete.
 - User-owned post-ingestion smoke validation remains as listed in the Validation section: ingest and activate a FY2026 vector store, then verify Agriculture/FDA, DOD, and DHS/FEMA/cybersecurity continuation/extender routing plus persisted `chunk_id`s and CRX original-division display.
 
 ## Diversions From Plan
-- None.
+- The original suspiciously-small guard required every configured source part to produce at least 2 chunks. P.L. 119-75 Division G is a legitimate one-chunk source part, so implementation now supports a per-source-part `min_chunks` override. The only override is Division G at `min_chunks: 1`; all other source parts retain the default minimum of 2.
