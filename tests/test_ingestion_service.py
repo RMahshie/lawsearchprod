@@ -95,4 +95,36 @@ def test_fy2026_consolidated_division_g_extraction_is_a_legitimate_short_part():
     assert "Works Agency" in text
     assert "DIVISION H--" not in text
     assert len(docs) == 1
-    assert source_part["min_chunks"] == 1
+
+
+def test_fy2026_consolidated_division_h_short_extraction_has_required_text():
+    service = IngestionService()
+    division = "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"
+    source_part = next(
+        part
+        for part in service._source_parts_for_division(division)
+        if part["source_file"] == "2026/FY2026_CONSOLIDATED.htm" and part["source_division_letter"] == "H"
+    )
+    bill_path = service._resolve_source_path(source_part)
+
+    text = service._extract_division_text(bill_path, "H")
+    docs = service._chunk_documents(
+        text,
+        division,
+        bill_path.name,
+        chunk_size=2000,
+        chunk_overlap=0,
+    )
+
+    assert "FURTHER CONTINUING APPROPRIATIONS ACT, 2026" in text
+    assert "February 13, 2026" in text
+    assert "DIVISION I--" not in text
+    assert len(docs) == 1
+
+
+def test_source_snapshot_is_compact_single_line():
+    service = IngestionService()
+
+    snapshot = service._source_snapshot("  DIVISION H--MISCELLANEOUS\n\nSEC. 8001. BUDGETARY EFFECTS.  ", limit=40)
+
+    assert snapshot == "DIVISION H--MISCELLANEOUS SEC. 8001. BUD"

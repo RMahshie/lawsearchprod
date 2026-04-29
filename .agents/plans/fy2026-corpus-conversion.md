@@ -280,14 +280,14 @@ After ingestion is available, perform a manual smoke check with `DEBUG=true`:
 - 2026-04-29: Converted focused backend tests to FY2026 behavior and added coverage for FY2026 routing aliases, incompatible routing, FY2026 extraction, and CRX metadata.
 - 2026-04-29: Validation passed: `python3 -m pytest tests/test_ingestion_service.py tests/test_rag_service_units.py tests/test_query_models.py` reported 38 passed; `npm run build:frontend` completed successfully with existing Vite font-resolution and chunk-size warnings.
 - 2026-04-29: Created logical commits `ccced49` (`Convert backend to FY2026 corpus`) and `f5af7c1` (`Update FY2026 division UI`) without assistant attribution or co-author trailers.
-- 2026-04-29: User ingestion surfaced that P.L. 119-75 Division G is a legitimate one-chunk source part. Added an explicit `min_chunks: 1` manifest override only for that source part and kept the default source-part guard at 2 chunks.
-- 2026-04-29: Added regression coverage for the short Division G extraction. Validation passed: `python3 -m pytest tests/test_ingestion_service.py tests/test_rag_service_units.py tests/test_query_models.py` reported 39 passed.
+- 2026-04-29: User ingestion surfaced that P.L. 119-75 Divisions G and H can legitimately produce one chunk depending on chunk size/overlap. Removed the hard suspiciously-small source-part failure and replaced it with a non-blocking warning containing division, source part, extracted size, chunk count, and a compact snapshot.
+- 2026-04-29: Added regression coverage for short Division G/H extraction and compact diagnostic snapshots. Validation passed: `python3 -m pytest tests/test_ingestion_service.py tests/test_rag_service_units.py tests/test_query_models.py` reported 41 passed.
 
 ## Decisions
 - FY2026 is the only supported product corpus for this branch.
 - The catch-all division is routable and canonicalized as `CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS`.
 - The catch-all source badge acronym is `CRX`.
-- Ingestion should fail loudly rather than falling back to full-file ingestion or skipping expected divisions.
+- Ingestion should fail loudly for missing configured files, missing division headers, empty configured divisions, and invalid required runtime state. Short-but-valid source parts should log diagnostics rather than block ingestion.
 - Frontend manual filters should use a static FY2026 list for this change.
 - Store directory names should be sanitized/normalized in the existing uppercase underscore style.
 - The catch-all store directory is `FY2026_OTHER_CONTINUING_APPROPRIATIONS_EXTENDERS_HOMELAND_SECURITY_OTHER_MATTERS`.
@@ -300,8 +300,8 @@ After ingestion is available, perform a manual smoke check with `DEBUG=true`:
 - For catch-all sources, display original source division context and indicate the chunk is grouped under `CRX`.
 - CRX source display should use short public-law labels like `P.L. 119-37` and `P.L. 119-75`, not full public-law titles.
 - Preserve current extraction behavior if tests show it works for FY2026 body headers.
-- Treat any configured source part producing fewer than 2 chunks as an ingestion failure.
-- Do not add expected-keyword validation now; leave it as a possible future hardening idea.
+- Do not use chunk count alone as a failure condition; short source parts are expected in this fixed FY2026 corpus.
+- Do not add expected-keyword validation now; the current guard is missing file/header plus logged snapshots for short extracted parts.
 - If routing returns no valid FY2026 division, return exactly `This question is incompatible with the FY2026 appropriations text available in LawSearch.` instead of querying every division.
 - Treat old 2024 division names as invalid because the product is FY2026-only.
 - Do not change saved conversation history behavior; the user will delete old DB data later.
@@ -319,11 +319,12 @@ After ingestion is available, perform a manual smoke check with `DEBUG=true`:
 - The three FY2026 source files expected by this plan are already present under `data/bills/2026/`.
 - The FY2026 body headers are compatible with the existing `DIVISION X--` extraction pattern, including body headers that contain stripped `<<NOTE: ...>>` markup.
 - The P.L. 119-37 table-of-contents text contains a typo in `CONTINUING APPROPRIATONS ACT, 2026`, but the body header extraction still locates Division A correctly and no configured source-title behavior was changed.
-- P.L. 119-75 Division G, Other Matters, is only 797 extracted characters and one chunk at the configured chunk size. The extraction stops at Division H and contains the expected funding limitation text, so this is corpus shape rather than a splitter bug.
+- P.L. 119-75 Division G, Other Matters, is only 797 extracted characters and one chunk at common chunk settings. The extraction stops at Division H and contains the expected funding limitation text, so this is corpus shape rather than a splitter bug.
+- P.L. 119-75 Division H, Further Continuing Appropriations Act, 2026, is only 1,852 extracted characters and can be one chunk depending on chunk size/overlap. It stops at Division I and contains the expected February 13, 2026 extension text.
 
 ## Remaining Work
 - Implementation work is complete.
 - User-owned post-ingestion smoke validation remains as listed in the Validation section: ingest and activate a FY2026 vector store, then verify Agriculture/FDA, DOD, and DHS/FEMA/cybersecurity continuation/extender routing plus persisted `chunk_id`s and CRX original-division display.
 
 ## Diversions From Plan
-- The original suspiciously-small guard required every configured source part to produce at least 2 chunks. P.L. 119-75 Division G is a legitimate one-chunk source part, so implementation now supports a per-source-part `min_chunks` override. The only override is Division G at `min_chunks: 1`; all other source parts retain the default minimum of 2.
+- The original suspiciously-small guard required every configured source part to produce at least 2 chunks. User ingestion showed legitimate one-chunk FY2026 source parts, so the hard chunk-count failure was removed. Ingestion now logs `INGEST_WARNING small_source_part` with a compact snapshot for source parts below 2 chunks while still failing for missing files, missing division headers, or no documents for a configured division.
