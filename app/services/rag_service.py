@@ -68,7 +68,9 @@ ACCOUNTING_SCOPE_POLICY = """Accounting scope policy:
 - For combined-topic questions, provide one total found per topic and a combined total found when those topic totals are clearly additive.
 - Every calculated total must state exactly what is included and what was not added separately.
 - Do not add subprograms, transfers, component amounts, caps, or availability notes into a parent total unless the facts clearly show they are separate additive appropriations.
-- If a broader parent account and one of its components both appear, include the parent account and explain that the component was not added separately."""
+- If a broader parent account and one of its components both appear, include the parent account and explain that the component was not added separately.
+- Distinguish dollar-figure evidence from funding-mechanism evidence. Continuing appropriations, rate-for-operations language, apportionment authority, extensions, and referenced prior laws can explain how funding continues, but they are not dollar amounts.
+- If the requested topic has funding-mechanism evidence but no relevant dollar figure, say that a dollar total was not found in the extracted facts and explain what mechanism was found. Do not substitute unrelated dollar figures from the same division or source bucket."""
 
 
 ACCOUNTING_FEW_SHOT_EXAMPLES = """Accounting examples:
@@ -87,7 +89,12 @@ Good answer pattern: Start with "FEMA total found", "Immigration-related total f
 Example 3 - Non-FEMA component handling:
 Question: how much for Army Corps construction?
 Facts include Army Corps Construction $1,850,000,000, Mississippi River and Tributaries $368,037,000, and Investigations $142,000,000.
-Good answer pattern: Report Construction as $1,850,000,000. Keep Mississippi River and Tributaries and Investigations as separate accounts unless the user asks for all Army Corps civil works accounts together. Do not add them into Construction just because they are related to water infrastructure."""
+Good answer pattern: Report Construction as $1,850,000,000. Keep Mississippi River and Tributaries and Investigations as separate accounts unless the user asks for all Army Corps civil works accounts together. Do not add them into Construction just because they are related to water infrastructure.
+
+Example 4 - Funding mechanism without a dollar figure:
+Question: how much money for FEMA?
+Facts include that amounts made available by continuing appropriations to the Department of Homeland Security under "Federal Emergency Management Agency--Disaster Relief Fund" may be apportioned up to the rate for operations necessary for Stafford Act response and recovery. Facts also include unrelated Indian Health Service amounts.
+Good answer pattern: Say "FEMA total found: no FEMA-specific dollar amount identified in the extracted facts." Then explain under FEMA that the retrieved text provides funding-mechanism evidence for continuing/apportioning Disaster Relief Fund operations, but no explicit FEMA dollar figure. Put the unrelated Indian Health Service amounts outside the FEMA total or omit them as not responsive."""
 
 
 SYNTHESIS_ACCOUNTING_POLICY = """Accounting synthesis policy:
@@ -717,7 +724,11 @@ class RAGService:
             f"[{chunk['division_acronym']}]\n\n"
             "Rules:\n"
             "- Extract only facts that help answer the question.\n"
+            "- Relevance must be tied to the agency, account, program, authority, or topic in the question, not just the same division or catch-all source bucket.\n"
             "- Preserve exact dollar figures, account names, agencies, fiscal years, and section references.\n"
+            "- If the chunk has relevant funding-mechanism evidence but no relevant dollar figure, extract that mechanism as a fact without a source_numbers item.\n"
+            "- Funding-mechanism evidence includes continuing appropriations, rate-for-operations language, apportionment authority, extensions, and referenced prior laws.\n"
+            "- Do not extract unrelated dollar figures merely because the question asks how much; unrelated figures must not be used as substitutes for missing topic-specific amounts.\n"
             "- One fact per bullet; no paragraphs.\n"
             "- End every substantive bullet with the citation marker.\n"
             "- Add one source_numbers item for each relevant dollar figure used in extracted_facts.\n"
@@ -955,6 +966,9 @@ class RAGService:
                 "- If an excluded transfer, cap, administrative amount, component, or related figure belongs to the requested topic only as a caveat, put it under that topic's Not added separately subsection rather than creating a new topic section.\n"
                 "- Group breakdown bullets under their topic instead of writing one flat accounts list.\n"
                 "- Do not invent totals unless the extracted facts explicitly support the arithmetic.\n"
+                "- Do not use unrelated dollar figures as substitutes when the requested topic has no dollar figure in the extracted facts.\n"
+                "- When relevant facts describe a funding mechanism without a dollar figure, report that mechanism under the requested topic and state that no topic-specific dollar amount was found.\n"
+                "- If answering the dollar amount requires a prior-year baseline or referenced law that is not present in the extracted facts, say that explicitly.\n"
                 "- If a total is provisional because hierarchy is ambiguous, label it as a retrieved top-level bucket total and explain the ambiguity in Not added separately or Other notes.\n"
                 "- For any calculated total, add a new marker like [[num:drv_dhs_1]] immediately after the visible total and add a matching derived annotation.\n"
                 "- Derived annotation input_ids must reference existing source or derived marker ids from the available annotations.\n"

@@ -977,6 +977,11 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     assert "Do not add the ICE enforcement/detention/removal component separately" in prompt
     assert "Example 3 - Non-FEMA component handling:" in prompt
     assert "Army Corps Construction" in prompt
+    assert "Distinguish dollar-figure evidence from funding-mechanism evidence" in prompt
+    assert "Example 4 - Funding mechanism without a dollar figure:" in prompt
+    assert "continuing/apportioning Disaster Relief Fund operations" in prompt
+    assert "Do not use unrelated dollar figures as substitutes" in prompt
+    assert "prior-year baseline or referenced law" in prompt
     assert "illustrative accounting patterns, not required output headings" in prompt
     assert "**<Topic name>:**" in prompt
     assert "**Included in <topic> total found:**" in prompt
@@ -985,6 +990,42 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     assert "rather than creating a new topic section" in prompt
     assert "**Not added separately:**" in prompt
     assert "Group breakdown bullets under their topic" in prompt
+
+
+def test_map_prompt_filters_unrelated_dollars_for_funding_mechanisms(monkeypatch):
+    llm = CapturingStructuredLLM(
+        {
+            "extracted_facts": "- No relevant facts found.",
+            "source_numbers": [],
+        }
+    )
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+
+    service._map_chunk(
+        {
+            "question": "how much money for FEMA?",
+            "query_id": "query-test",
+            "thinking_speed": "normal",
+            "chunk": {
+                "chunk_id": "chunk-1",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "content": (
+                    "FEMA Disaster Relief Fund may be apportioned up to the rate for operations. "
+                    "Indian Health Service receives $72,265,000."
+                ),
+                "chunk_summary": None,
+                "score": 0.1,
+                "metadata": {},
+            },
+        }
+    )
+
+    prompt = llm.prompts[0]
+    assert "Relevance must be tied to the agency, account, program, authority, or topic in the question" in prompt
+    assert "relevant funding-mechanism evidence but no relevant dollar figure" in prompt
+    assert "Do not extract unrelated dollar figures merely because the question asks how much" in prompt
 
 
 def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
