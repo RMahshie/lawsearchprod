@@ -47,8 +47,7 @@ Useful high-level lines:
 - `RAG_DEBUG route`: selected divisions, `answer_mode`, flags, and short classifier reason.
 - `RAG_DEBUG rewrite`: division-specific retrieval rewrites.
 - `VECTOR_DEBUG retrieve`: Chroma collection, embedding model, requested and returned chunk counts.
-- `RAG_DEBUG map`: per-chunk map latency and output sizes.
-- `RAG_DEBUG map`: also includes fact-level responsiveness counts when scope-control prompts are active.
+- Map-stage per-chunk debug logs are intentionally disabled to keep debug output usable.
 - `RAG_DEBUG reduce_relevance`: per-division direct/adjacent/not-responsive fact counts and summary sizes.
 - `RAG_DEBUG answer_budget`: emitted when reduce or synthesize output exceeds target word/bullet budgets.
 - `RAG_DEBUG reduce_start` / `reduce_done`: per-division reduce timing.
@@ -61,7 +60,6 @@ Usually omit `VECTOR_DEBUG retrieved_doc` blocks unless the suspected issue is r
 
 These are the most useful logs for figure hover issues:
 
-- `map_annotation_gaps`: a source-backed figure was extracted but not marked in map output.
 - `reduce_annotation_input_gaps`: unmarked source figures reached reduce.
 - `reduce_annotations_output`: reduce proposed or accepted derived annotations, or emitted unmarked figures.
 - `synthesize_annotations_output`: final synthesis proposed or accepted derived annotations, or emitted unmarked figures.
@@ -70,7 +68,7 @@ These are the most useful logs for figure hover issues:
 
 The path of failure matters:
 
-- Gap appears at `map_annotation_gaps`: fix source extraction or marker insertion.
+- Gap appears at `reduce_annotation_input_gaps`: source extraction or marker insertion produced unmarked figures before reduce.
 - Gap first appears at `reduce_annotations_output`: reduce restated a source figure without its marker, or created a derived marker that failed validation.
 - Gap first appears at `synthesize_annotations_output`: synthesis restated a marked figure without preserving the marker, or proposed an invalid derived annotation.
 - `response_annotations` has returned annotations but UI is not blue: inspect frontend marker parsing and markdown formatting.
@@ -136,7 +134,6 @@ For number hover bugs, paste only:
 - `query_start`
 - `route`
 - relevant `retrieve` summaries
-- any `map_annotation_gaps`
 - any `reduce_annotation_input_gaps`
 - `derived_validation`
 - `reduce_annotations_output`

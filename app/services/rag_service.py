@@ -851,8 +851,6 @@ class RAGService:
                 item["fact"] = self._mark_text_with_source_annotations(item["fact"], number_annotations)
         extracted_facts = self._render_tiered_facts(relevance_facts)
         relevance_counts = self._relevance_counts(relevance_facts)
-        marker_count = self._count_number_markers(extracted_facts)
-        unmarked_figures = self._unmarked_figures(extracted_facts)
 
         mapped: MappedChunkState = {
             "chunk_id": chunk["chunk_id"],
@@ -868,33 +866,6 @@ class RAGService:
             "relevance_facts": relevance_facts,
             "relevance_counts": relevance_counts,
         }
-        self._debug_log(
-            "map query_id=%s chunk_id=%s division=%s map_model=%s summary_model=%s duration=%.2fs "
-            "facts_chars=%s summary_chars=%s snapshot_chars=%s relevance_counts=%s",
-            state.get("query_id", "unknown"),
-            chunk["chunk_id"],
-            chunk["division_acronym"],
-            format_model_spec(map_model),
-            format_model_spec(summary_model),
-            time.time() - start_time,
-            len(extracted_facts),
-            len(chunk_summary),
-            len(chunk_snapshot),
-            relevance_counts,
-        )
-        if unmarked_figures:
-            self._debug_log(
-                "map_annotation_gaps query_id=%s chunk_id=%s division=%s structured_candidates=%s "
-                "source_annotations=%s markers_in_facts=%s unmarked_figures=%s annotation_figures=%s",
-                state.get("query_id", "unknown"),
-                chunk["chunk_id"],
-                chunk["division_acronym"],
-                len(mapped_facts.source_numbers),
-                len(number_annotations),
-                marker_count,
-                unmarked_figures,
-                [annotation.figure for annotation in number_annotations[:8]],
-            )
         return {
             "mapped_chunks": [mapped],
             "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in number_annotations],
