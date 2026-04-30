@@ -147,13 +147,23 @@ SYNTHESIS_BASE_RULES = """Synthesis rules:
 - Do new accounting only when combining comparable division totals.
 - Target 8-12 substantive bullets for broad answers. Exceed that only when more direct responsive accounts truly require it.
 - Avoid duplicating caveats across division sections and final caveats.
+- Do not repeat the same agency, account, bucket, or dollar figure in both the top Answer and By Agency / Account.
+- The top Answer is a summary only; detailed amounts belong in By Agency / Account.
+- Use By Agency / Account for broad topic answers, not full By Division restatements.
+- Use Not Included for routed divisions with no direct responsive evidence or only adjacent evidence.
+- Not Included entries must be one line each.
+- Caveats must be 2-3 bullets max unless the user explicitly asks for reconciliation.
+- Do not create a Caveats section that restates every Not Included or suballocation note.
+- If a caveat belongs to one bucket, put it in that bucket sentence instead of repeating it globally.
+- For broad mixed-financial-type answers, preserve all direct controlling accounts/buckets, but compress suballocations under the parent account.
+- Target 8-12 substantive bullets total across By Agency / Account and Not Included.
 - For any new calculated total, add a new marker like [[num:drv_final_1]] immediately after the visible total and add a matching derived annotation.
 - Derived annotation input_ids must reference existing source or derived marker ids from the available annotations.
 - Use clear language, clear numbers, and no filler."""
 
 
 SYNTHESIS_EXAMPLE = """Synthesis example:
-If two division answers provide comparable additive topic totals, the top summary may state the combined total and name the included divisions. If the division answers contain mixed financial types, summarize the grouped buckets and preserve the warning instead of creating one clean total."""
+For a broad infrastructure question, write one bottom-line paragraph, then group direct responsive buckets by controlling agency/account, such as USDA RUS [AG] and EPA [INT]. Put routed but non-responsive divisions like THUD in Not Included as one-line notes. Use Caveats only for cross-cutting warnings such as mixed financial types; do not repeat each account's hierarchy caveat."""
 
 
 def normalize_answer_mode(mode: str | None) -> AnswerMode:
@@ -239,6 +249,10 @@ def build_reduce_prompt(
         "- For broad answers, group primarily by controlling agency/account, with division labels secondary.\n"
         "- Target 8-12 substantive bullets for broad mixed-topic answers. Exceed that only when more than 12 direct responsive accounts or buckets materially answer the question.\n"
         "- Keep direct suballocations when useful, but group them compactly under the parent account and do not repeat the same caveat elsewhere.\n\n"
+        "Reduce compactness rules:\n"
+        "- Do not write a long Caveats section at reduce. Put local double-counting or hierarchy notes next to the relevant account/bucket.\n"
+        "- For divisions with direct evidence, keep the answer compact enough for synthesis to reuse: controlling account, top-level amount/type, and compact direct suballocations.\n"
+        "- For divisions with no direct facts, return only the heading plus one no-direct-info sentence using the best adjacent reason.\n\n"
         "Rules:\n"
         "- Before writing, classify facts internally as DIRECT, SUPPORTING, or IRRELEVANT. Use DIRECT plus only essential SUPPORTING facts in the final answer.\n"
         "- Preserve all relevant dollar figures from the extracted facts.\n"
@@ -272,11 +286,14 @@ def build_synthesis_prompt(
         "Return structured output with `answer` markdown and `derived_annotations`.\n\n"
         "Use this markdown structure:\n"
         "## Answer\n"
-        "- <short top-level summary; include combined totals only when comparable division totals support them.>\n\n"
-        "## By Division\n"
-        "<preserve or compactly append each division answer without dropping divisions.>\n\n"
+        "<1 short paragraph with the bottom line. State whether a clean total is available.>\n\n"
+        "## By Agency / Account\n"
+        "- **<Agency or account> [ACRONYM]:** <top-level responsive amount(s) and control point. Include compact direct suballocations only when they materially answer the question.>\n"
+        "- **<Agency or account> [ACRONYM]:** <same pattern>\n\n"
+        "## Not Included\n"
+        "- **<Division/acronym>:** <one-line reason when a routed division has no direct responsive funding or only adjacent material.>\n\n"
         "## Caveats\n"
-        "- <only important caveats about totals, transfers, offsets, mixed financial types, or incomplete comparability. Use '- None identified.' if none.>\n\n"
+        "- <2-3 bullets max. Only caveats needed to prevent misreading or double counting. Do not repeat caveats already stated beside a bucket.>\n\n"
         f"Selected answer_mode: {normalize_answer_mode(answer_mode)}\n"
         f"Active safety flags: {mode_flags_text(answer_mode_flags)}\n\n"
         f"{INVARIANT_RULES}\n\n"

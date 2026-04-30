@@ -1047,6 +1047,9 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     assert "Do not use Not responsive facts in the answer" in prompt
     assert "no Direct facts, write a short no-direct-info line" in prompt
     assert "Target 8-12 substantive bullets" in prompt
+    assert "Reduce compactness rules:" in prompt
+    assert "Do not write a long Caveats section at reduce" in prompt
+    assert "keep the answer compact enough for synthesis to reuse" in prompt
     assert "Use Included / Not added separately structure" in prompt
     assert "For combined-topic questions, provide one total found per topic" in prompt
     assert "Reconciliation example:" in prompt
@@ -1304,11 +1307,18 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     assert "Active safety flags: mixed_financial_types" in prompt
     assert "Synthesis rules:" in prompt
     assert "Write a short top-level summary first" in prompt
+    assert "## By Agency / Account" in prompt
+    assert "## Not Included" in prompt
+    assert "## By Division" not in prompt
     assert "Combine already-short division results rather than appending dense sections" in prompt
     assert "divisions with no direct evidence should appear only as short no-direct-info lines" in prompt
     assert "Group broad answers primarily by controlling agency/account" in prompt
     assert "Target 8-12 substantive bullets for broad answers" in prompt
     assert "Avoid duplicating caveats" in prompt
+    assert "Do not repeat the same agency, account, bucket, or dollar figure" in prompt
+    assert "The top Answer is a summary only" in prompt
+    assert "Caveats must be 2-3 bullets max" in prompt
+    assert "do not repeat each account's hierarchy caveat" in prompt
     assert "Do new accounting only when combining comparable division totals" in prompt
     assert "Mixed financial-type safety rules:" in prompt
     assert "Do not add account totals plus suballocations" in prompt
