@@ -69,16 +69,48 @@ def test_division_acronym_is_stable():
     assert division_acronym("CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS") == "CRX"
 
 
-def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
-    from app.services.rag_service import AnswerModeFlags, RouteDecision
+def test_classify_prompt_uses_answer_mode_examples(monkeypatch):
+    from app.services.rag_service import AnswerModeDecision, AnswerModeFlags
 
     llm = CapturingStructuredLLM(
-        RouteDecision(
-            divisions=["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"],
+        AnswerModeDecision(
             answer_mode="funding_mechanism_no_amount",
             answer_mode_flags=AnswerModeFlags(mixed_financial_types=False),
             answer_mode_reason="FEMA continuation question.",
         )
+    )
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+    service.settings = get_settings()
+
+    result = service._classify_answer_mode(
+        {
+            "query_id": "query-test",
+            "question": "How much FEMA funding is continued?",
+            "thinking_speed": "normal",
+        }
+    )
+
+    prompt = llm.prompts[0]
+    assert result["answer_mode"] == "funding_mechanism_no_amount"
+    assert result["answer_mode_flags"] == {"mixed_financial_types": False}
+    assert result["answer_mode_reason"] == "FEMA continuation question."
+    assert "Set answer_mode to one of" in prompt[0].content
+    assert "The mode examples below are illustrative, not exhaustive" in prompt[0].content
+    assert "asking for major allowed uses does not by itself mean reconciliation_breakdown" in prompt[0].content
+    assert "Use reconciliation_breakdown only when the user asks for breakdown, allocation, line items" in prompt[0].content
+    assert "What amount is appropriated for the FDA Salaries and Expenses account" in prompt[0].content
+    assert "Break down FDA Salaries and Expenses by center and user-fee source" in prompt[0].content
+    assert "If the best mode is ambiguous, use broad_topic_total" in prompt[0].content
+    assert "answer_mode_flags.mixed_financial_types=true" in prompt[0].content
+    assert "Allowed FY2026 divisions and routing hints:" not in prompt[0].content
+
+
+def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
+    from app.services.rag_service import RouteDecision
+
+    llm = CapturingStructuredLLM(
+        RouteDecision(divisions=["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"])
     )
     monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
@@ -89,6 +121,9 @@ def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
             "query_id": "query-test",
             "question": "How much FEMA funding is continued?",
             "thinking_speed": "normal",
+            "answer_mode": "funding_mechanism_no_amount",
+            "answer_mode_flags": {"mixed_financial_types": False},
+            "answer_mode_reason": "FEMA continuation question.",
         }
     )
 
@@ -96,29 +131,21 @@ def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
     assert result["selected_divisions"] == [
         "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"
     ]
-    assert result["answer_mode"] == "funding_mechanism_no_amount"
-    assert result["answer_mode_flags"] == {"mixed_financial_types": False}
-    assert result["answer_mode_reason"] == "FEMA continuation question."
+    assert "answer_mode" not in result
     assert "Allowed FY2026 divisions and routing hints:" in prompt[1].content
     assert "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS" in prompt[1].content
     assert "FEMA" in prompt[1].content
     assert "DEPARTMENT OF HOMELAND SECURITY" not in prompt[1].content
-    assert "Set answer_mode to one of" in prompt[0].content
-    assert "The mode examples below are illustrative, not exhaustive" in prompt[0].content
-    assert "asking for major allowed uses does not by itself mean reconciliation_breakdown" in prompt[0].content
-    assert "Use reconciliation_breakdown only when the user asks for breakdown, allocation, line items" in prompt[0].content
-    assert "What amount is appropriated for the FDA Salaries and Expenses account" in prompt[0].content
-    assert "Break down FDA Salaries and Expenses by center and user-fee source" in prompt[0].content
-    assert "If the best mode is ambiguous, use broad_topic_total" in prompt[0].content
-    assert "answer_mode_flags.mixed_financial_types=true" in prompt[0].content
+    assert "Select the relevant appropriations divisions" in prompt[0].content
+    assert "Do not classify the answer style" in prompt[0].content
+    assert "Set answer_mode to one of" not in prompt[0].content
+    assert "What amount is appropriated for the FDA Salaries and Expenses account" not in prompt[0].content
 
 
 def test_route_returns_incompatible_answer_when_no_valid_fy2026_division(monkeypatch):
     from app.services.rag_service import RouteDecision
 
-    llm = CapturingStructuredLLM(
-        RouteDecision(divisions=["DEPARTMENT OF HOMELAND SECURITY"], answer_mode="general_summary")
-    )
+    llm = CapturingStructuredLLM(RouteDecision(divisions=["DEPARTMENT OF HOMELAND SECURITY"]))
     monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
     service.settings = get_settings()
@@ -133,20 +160,14 @@ def test_route_returns_incompatible_answer_when_no_valid_fy2026_division(monkeyp
 
     assert result["selected_divisions"] == []
     assert result["final_answer"] == FY2026_INCOMPATIBLE_QUESTION_ANSWER
-    assert result["answer_mode"] == "general_summary"
+    assert "answer_mode" not in result
 
 
 def test_route_normalizes_known_division_acronyms(monkeypatch):
     from app.core.config import FY2026_DIVISIONS
     from app.services.rag_service import RouteDecision
 
-    llm = CapturingStructuredLLM(
-        RouteDecision(
-            divisions=["AG"],
-            answer_mode="direct_account_amount",
-            answer_mode_reason="FDA Salaries and Expenses is in the Agriculture division.",
-        )
-    )
+    llm = CapturingStructuredLLM(RouteDecision(divisions=["AG"]))
     monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
     service.settings = get_settings()
@@ -160,7 +181,7 @@ def test_route_normalizes_known_division_acronyms(monkeypatch):
     )
 
     assert result["selected_divisions"] == [FY2026_DIVISIONS[0]]
-    assert result["answer_mode"] == "direct_account_amount"
+    assert "answer_mode" not in result
     assert "final_answer" not in result
 
 
@@ -863,17 +884,18 @@ def test_unmarked_figures_allows_markdown_closer_before_marker():
 
 
 def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
-    from app.services.rag_service import DivisionQueryDecision, DivisionQueryPlan, RouteDecision
+    from app.services.rag_service import AnswerModeDecision, DivisionQueryDecision, DivisionQueryPlan, RouteDecision
 
     def fake_create_chat_model(model, task, reasoning_effort=None):
-        if task == "routing":
+        if task == "classify":
             return FakeRewriteLLM(
-                RouteDecision(
-                    divisions=["AAA", "BBB"],
+                AnswerModeDecision(
                     answer_mode="broad_topic_total",
                     answer_mode_flags={"mixed_financial_types": False},
                 )
             )
+        if task == "routing":
+            return FakeRewriteLLM(RouteDecision(divisions=["AAA", "BBB"]))
         if task == "division_query_rewrite":
             return FakeRewriteLLM(
                 DivisionQueryPlan(
