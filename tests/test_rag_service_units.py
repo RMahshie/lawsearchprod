@@ -104,6 +104,11 @@ def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
     assert "FEMA" in prompt[1].content
     assert "DEPARTMENT OF HOMELAND SECURITY" not in prompt[1].content
     assert "Set answer_mode to one of" in prompt[0].content
+    assert "The mode examples below are illustrative, not exhaustive" in prompt[0].content
+    assert "asking for major allowed uses does not by itself mean reconciliation_breakdown" in prompt[0].content
+    assert "Use reconciliation_breakdown only when the user asks for breakdown, allocation, line items" in prompt[0].content
+    assert "What amount is appropriated for the FDA Salaries and Expenses account" in prompt[0].content
+    assert "Break down FDA Salaries and Expenses by center and user-fee source" in prompt[0].content
     assert "If the best mode is ambiguous, use broad_topic_total" in prompt[0].content
     assert "answer_mode_flags.mixed_financial_types=true" in prompt[0].content
 
