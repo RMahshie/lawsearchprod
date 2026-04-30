@@ -1038,26 +1038,22 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     )
 
     prompt = llm.prompts[0]
-    assert "Invariant source and accounting rules:" in prompt
     assert "Selected answer_mode: reconciliation_breakdown" in prompt
     assert "Active safety flags: none" in prompt
-    assert "Reconciliation and breakdown rules:" in prompt
-    assert "Responsiveness rules:" in prompt
-    assert "Build substantive answer content from Direct facts" in prompt
+    assert "Reconciliation and breakdown reduce prompt:" in prompt
+    assert "Use Direct facts for substantive answer content" in prompt
     assert "Do not use Not responsive facts in the answer" in prompt
-    assert "no Direct facts, write a short no-direct-info line" in prompt
-    assert "Target 8-12 substantive bullets" in prompt
-    assert "Reduce compactness rules:" in prompt
-    assert "Do not write a long Caveats section at reduce" in prompt
-    assert "keep the answer compact enough for synthesis to reuse" in prompt
+    assert "Preserve enough detail to audit the math" in prompt
     assert "Use Included / Not added separately structure" in prompt
     assert "For combined-topic questions, provide one total found per topic" in prompt
     assert "Reconciliation example:" in prompt
     assert "Immigration-related total found" in prompt
     assert "Combined FEMA + immigration-related total found" in prompt
     assert "Do not add the ICE enforcement/detention/removal component separately" in prompt
-    assert "Do not substitute unrelated dollar figures" in prompt
-    assert "classify facts internally as DIRECT, SUPPORTING, or IRRELEVANT" in prompt
+    assert "Direct account reduce prompt:" not in prompt
+    assert "Responsiveness rules:" not in prompt
+    assert "Reduce compactness rules:" not in prompt
+    assert "classify facts internally as DIRECT, SUPPORTING, or IRRELEVANT" not in prompt
     assert "FDA Salaries and Expenses" not in prompt
     assert "Mixed financial types example:" not in prompt
 
@@ -1098,15 +1094,20 @@ def test_reduce_prompt_uses_direct_account_module_without_unrelated_examples(mon
 
     prompt = llm.prompts[0]
     assert "Selected answer_mode: direct_account_amount" in prompt
-    assert "Direct account answer rules:" in prompt
+    assert "Direct account reduce prompt:" in prompt
     assert "Direct account example:" in prompt
+    assert "Default shape: main amount first, then 1-2 short paragraphs or up to 4 bullets" in prompt
+    assert "do not list every center, activity, rent line, transfer, limitation, or user-fee amount" in prompt
+    assert "Do not create Included / Not added separately sections" in prompt
     assert "FDA Salaries and Expenses" in prompt
     assert "do not include the separate nearby $3,000,000 provision" in prompt
     assert "Reconciliation example:" not in prompt
     assert "Mixed financial types example:" not in prompt
+    assert "Preserve all relevant dollar figures from the extracted facts" not in prompt
+    assert "Do not omit relevant accounts or programs just to be concise" not in prompt
 
 
-def test_reduce_prompt_adds_mixed_financial_type_module_when_flagged(monkeypatch):
+def test_reduce_prompt_uses_broad_topic_mode_owned_mixed_financial_rules(monkeypatch):
     from app.services.rag_service import MarkedAnswer
 
     llm = CapturingStructuredLLM(MarkedAnswer(answer="Answer"))
@@ -1143,11 +1144,14 @@ def test_reduce_prompt_adds_mixed_financial_type_module_when_flagged(monkeypatch
     prompt = llm.prompts[0]
     assert "Selected answer_mode: broad_topic_total" in prompt
     assert "Active safety flags: mixed_financial_types" in prompt
-    assert "Broad topic total rules:" in prompt
-    assert "Mixed financial-type safety rules:" in prompt
+    assert "Broad topic total reduce prompt:" in prompt
+    assert "Before aggregating, classify each amount internally by financial type" in prompt
+    assert "Do not add account totals plus suballocations" in prompt
     assert "rural water/wastewater infrastructure" in prompt
     assert "direct loan authority, guaranteed loan authority, subsidy/grant/program funding" in prompt
     assert "Do not present X+Y+Z+A+B as a clean grant pool" in prompt
+    assert "Mixed financial-type safety rules:" not in prompt
+    assert "Reconciliation and breakdown reduce prompt:" not in prompt
 
 
 def test_map_prompt_filters_unrelated_dollars_for_funding_mechanisms(monkeypatch):
@@ -1305,25 +1309,50 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     prompt = llm.prompts[0]
     assert "Selected answer_mode: broad_topic_total" in prompt
     assert "Active safety flags: mixed_financial_types" in prompt
-    assert "Synthesis rules:" in prompt
-    assert "Write a short top-level summary first" in prompt
+    assert "Broad topic synthesis prompt:" in prompt
     assert "## By Agency / Account" in prompt
     assert "## Not Included" in prompt
     assert "## By Division" not in prompt
-    assert "Combine already-short division results rather than appending dense sections" in prompt
-    assert "divisions with no direct evidence should appear only as short no-direct-info lines" in prompt
-    assert "Group broad answers primarily by controlling agency/account" in prompt
-    assert "Target 8-12 substantive bullets for broad answers" in prompt
-    assert "Avoid duplicating caveats" in prompt
+    assert "Do not append full division answers. Combine already-shaped division results." in prompt
+    assert "if it has no direct evidence, put it in Not Included as one line" in prompt
+    assert "Group broad answers by controlling agency/account" in prompt
+    assert "Target 8-12 substantive bullets total across By Agency / Account and Not Included" in prompt
     assert "Do not repeat the same agency, account, bucket, or dollar figure" in prompt
-    assert "The top Answer is a summary only" in prompt
-    assert "Caveats must be 2-3 bullets max" in prompt
+    assert "Caveats must be cross-cutting only" in prompt
     assert "do not repeat each account's hierarchy caveat" in prompt
-    assert "Do new accounting only when combining comparable division totals" in prompt
-    assert "Mixed financial-type safety rules:" in prompt
     assert "Do not add account totals plus suballocations" in prompt
     assert "Mixed identified total" in prompt
     assert "Synthesis example:" in prompt
+    assert "Synthesis rules:" not in prompt
+    assert "Mixed financial-type safety rules:" not in prompt
+
+
+def test_synthesis_prompts_are_mode_owned():
+    from app.services.rag_prompting import build_synthesis_prompt
+
+    cases = {
+        "direct_account_amount": ["Direct account synthesis prompt:", "## Source Scope", "Do not introduce By Agency / Account"],
+        "broad_topic_total": ["Broad topic synthesis prompt:", "## By Agency / Account", "## Not Included"],
+        "funding_mechanism_no_amount": ["Funding mechanism synthesis prompt:", "## Mechanism Found", "## Missing Amount"],
+        "reconciliation_breakdown": ["Reconciliation synthesis prompt:", "## Included", "## Not Added Separately"],
+        "general_summary": ["General summary synthesis prompt:", "Do not force accounting sections"],
+    }
+
+    for mode, expected_fragments in cases.items():
+        prompt = build_synthesis_prompt(
+            question="test question",
+            answer_mode=mode,
+            answer_mode_flags={"mixed_financial_types": mode == "broad_topic_total"},
+            annotation_context="none",
+            division_context="division answer",
+        )
+
+        assert f"Selected answer_mode: {mode}" in prompt
+        assert "Use only the division answers. Do not invent facts, dollar figures, or totals." in prompt
+        assert "SYNTHESIS_BASE_RULES" not in prompt
+        assert "Synthesis rules:" not in prompt
+        for fragment in expected_fragments:
+            assert fragment in prompt
 
 
 def test_division_fanout_preserves_vector_store_context():
