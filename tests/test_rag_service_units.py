@@ -1151,7 +1151,10 @@ def test_reduce_prompt_uses_direct_account_module_without_unrelated_examples(mon
     assert "Selected answer_mode: direct_account_amount" in prompt
     assert "Direct account reduce prompt:" in prompt
     assert "Direct account example:" in prompt
-    assert "Default shape: main amount first, then 1-2 short paragraphs" in prompt
+    assert "Default shape: main amount first, then 1 short paragraph" in prompt
+    assert "use a short bullet list for readability" in prompt
+    assert 'write "Major allowed uses include:"' in prompt
+    assert "category-only bullets" in prompt
     assert "do not list every center, activity, rent line, transfer, limitation, or user-fee amount" in prompt
     assert "name categories only" in prompt
     assert "do not include center-by-center dollar figures" in prompt
