@@ -138,6 +138,11 @@ def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
     assert "DEPARTMENT OF HOMELAND SECURITY" not in prompt[1].content
     assert "Select the relevant appropriations divisions" in prompt[0].content
     assert "Do not classify the answer style" in prompt[0].content
+    assert "Appropriations routing follows bill-division jurisdiction" in prompt[0].content
+    assert "FDA Salaries and Expenses" in prompt[0].content
+    assert "not LHHS" in prompt[0].content
+    assert "NIH, CDC, CMS" in prompt[0].content
+    assert "EPA routes to DEPARTMENT OF THE INTERIOR" in prompt[0].content
     assert "Set answer_mode to one of" not in prompt[0].content
     assert "What amount is appropriated for the FDA Salaries and Expenses account" not in prompt[0].content
 

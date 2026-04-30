@@ -550,7 +550,16 @@ class RAGService:
                     "Use the aliases only as routing hints, never as returned labels. "
                     "Do not classify the answer style. Do not return aliases, acronyms, agencies, accounts, "
                     "or shortened division names. Return no divisions only when the question is outside the "
-                    "available FY2026 appropriations divisions."
+                    "available FY2026 appropriations divisions. "
+                    "Appropriations routing follows bill-division jurisdiction, not cabinet department organization. "
+                    "Important jurisdiction notes: FDA, Food and Drug Administration, FDA Salaries and Expenses, "
+                    "food safety, and tobacco product user fees route to AGRICULTURE, RURAL DEVELOPMENT, FOOD "
+                    "AND DRUG ADMINISTRATION, AND RELATED AGENCIES, not LHHS. NIH, CDC, CMS, HRSA, SAMHSA, "
+                    "ACF, ACL, and general HHS accounts route to LHHS. FEMA, DHS, continuing appropriations, "
+                    "extenders, and disaster relief continuation language route to CONTINUING APPROPRIATIONS, "
+                    "EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS. EPA routes to DEPARTMENT OF THE INTERIOR, "
+                    "ENVIRONMENT, AND RELATED AGENCIES, not ENERGY AND WATER DEVELOPMENT, unless the question "
+                    "is about Corps of Engineers, Bureau of Reclamation, or DOE water accounts."
                 )
             ),
             HumanMessage(
