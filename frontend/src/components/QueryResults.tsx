@@ -15,6 +15,7 @@ interface QueryResultsProps {
 }
 
 const POPOVER_COLLISION_PADDING = 12;
+const SOURCE_CONTEXT_WORDS = 80;
 const SOURCE_POPOVER_CLASS = 'w-[min(640px,calc(100vw-2rem))] max-w-[var(--radix-popover-content-available-width)] rounded-sm';
 const DERIVED_POPOVER_CLASS = 'w-[min(720px,calc(100vw-2rem))] max-w-[var(--radix-popover-content-available-width)] rounded-sm';
 
@@ -276,7 +277,7 @@ function FigurePopover({
                     <p className="mb-2 text-sm text-muted-foreground">{source.chunk_summary}</p>
                   )}
                   <pre className="whitespace-pre-wrap text-xs leading-relaxed">
-                    <HighlightedSourceSnippet content={source.content_snippet} figure={figure} />
+                    <HighlightedSourceSnippet content={source.content_snippet} figure={figure} trimToMatchContext />
                   </pre>
                 </div>
               ))}
@@ -328,7 +329,7 @@ function SourceAnnotationPopover({
             </div>
             {source && <OriginalDivisionLine source={source} />}
             <pre className="whitespace-pre-wrap text-xs leading-relaxed">
-              {content ? <HighlightedSourceSnippet content={content} figure={annotation.figure} /> : 'Source chunk unavailable.'}
+              {content ? <HighlightedSourceSnippet content={content} figure={annotation.figure} trimToMatchContext /> : 'Source chunk unavailable.'}
             </pre>
           </div>
         </div>
@@ -435,7 +436,7 @@ function DerivedInputRow({ input, result }: { input: NumberAnnotation & { kind: 
           {source && <OriginalDivisionLine source={source} />}
           {summary && <p className="mb-2 text-xs text-muted-foreground">{summary}</p>}
           <pre className="whitespace-pre-wrap border bg-background p-3 text-xs leading-relaxed">
-            {content ? <HighlightedSourceSnippet content={content} figure={input.figure} /> : 'Source chunk unavailable.'}
+            {content ? <HighlightedSourceSnippet content={content} figure={input.figure} trimToMatchContext /> : 'Source chunk unavailable.'}
           </pre>
         </div>
       )}
@@ -565,16 +566,20 @@ function sourcesForNearbyDivisionMarker(
 interface HighlightedSourceSnippetProps {
   content: string;
   figure: string;
+  trimToMatchContext?: boolean;
 }
 
-function HighlightedSourceSnippet({ content, figure }: HighlightedSourceSnippetProps) {
+function HighlightedSourceSnippet({ content, figure, trimToMatchContext = false }: HighlightedSourceSnippetProps) {
   const normalizedFigure = normalizeFigure(figure);
   const parts: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   const figurePattern = createFigurePattern();
+  const sourceContent = trimToMatchContext
+    ? sourceContextAroundFigure(content, figure)
+    : content;
 
-  while ((match = figurePattern.exec(content)) !== null) {
+  while ((match = figurePattern.exec(sourceContent)) !== null) {
     const matchedFigure = match[0];
     const isMatch = normalizedFigure
       ? normalizeFigure(matchedFigure) === normalizedFigure
@@ -583,7 +588,7 @@ function HighlightedSourceSnippet({ content, figure }: HighlightedSourceSnippetP
     if (!isMatch) continue;
 
     if (match.index > lastIndex) {
-      parts.push(content.slice(lastIndex, match.index));
+      parts.push(sourceContent.slice(lastIndex, match.index));
     }
 
     parts.push(
@@ -597,13 +602,70 @@ function HighlightedSourceSnippet({ content, figure }: HighlightedSourceSnippetP
     lastIndex = match.index + matchedFigure.length;
   }
 
-  if (parts.length === 0) return <>{content}</>;
+  if (parts.length === 0) return <>{sourceContent}</>;
 
-  if (lastIndex < content.length) {
-    parts.push(content.slice(lastIndex));
+  if (lastIndex < sourceContent.length) {
+    parts.push(sourceContent.slice(lastIndex));
   }
 
   return <>{parts}</>;
+}
+
+function sourceContextAroundFigure(content: string, figure: string) {
+  const match = findFigureMatch(content, figure);
+  if (!match) return content;
+
+  const before = content.slice(0, match.index);
+  const after = content.slice(match.index + match.text.length);
+  const beforeContext = lastWords(before, SOURCE_CONTEXT_WORDS);
+  const afterContext = firstWords(after, SOURCE_CONTEXT_WORDS);
+
+  return [
+    beforeContext.truncated ? '...' : '',
+    beforeContext.text,
+    match.text,
+    afterContext.text,
+    afterContext.truncated ? '...' : '',
+  ].filter(Boolean).join('');
+}
+
+function findFigureMatch(content: string, figure: string) {
+  const normalizedFigure = normalizeFigure(figure);
+  const figurePattern = createFigurePattern();
+  let match: RegExpExecArray | null;
+
+  while ((match = figurePattern.exec(content)) !== null) {
+    const matchedFigure = match[0];
+    const isMatch = normalizedFigure
+      ? normalizeFigure(matchedFigure) === normalizedFigure
+      : matchedFigure === figure;
+
+    if (isMatch) {
+      return { index: match.index, text: matchedFigure };
+    }
+  }
+
+  return null;
+}
+
+function lastWords(text: string, count: number) {
+  const matches = [...text.matchAll(/\S+\s*/g)];
+  const selected = matches.slice(Math.max(0, matches.length - count));
+
+  return {
+    text: selected.map((match) => match[0]).join(''),
+    truncated: selected.length < matches.length,
+  };
+}
+
+function firstWords(text: string, count: number) {
+  const matches = [...text.matchAll(/\s*\S+/g)];
+  const selected = matches.slice(0, count);
+
+  return {
+    text: selected.map((match) => match[0]).join(''),
+    truncated: selected.length < matches.length,
+  };
 }
 
 const FIGURE_PATTERN_SOURCE = String.raw`\$([\d,]+(?:\.\d+)?)(?:\s*(thousand|million|billion|trillion))?`;
