@@ -10,7 +10,6 @@ from .config import (
     get_vectorstore_dir,
     get_data_dir,
     get_subcommittee_stores,
-    get_routing_prompt
 )
 
 __all__ = [
@@ -19,5 +18,4 @@ __all__ = [
     "get_vectorstore_dir", 
     "get_data_dir",
     "get_subcommittee_stores",
-    "get_routing_prompt"
 ]
