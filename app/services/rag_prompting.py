@@ -66,9 +66,10 @@ REDUCE_MODE_PROMPTS: dict[str, str] = {
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
 - Do not invent facts, dollar figures, or totals. If the facts do not answer the question, say that directly.
 - Answer the specific account/program question directly and compactly.
-- Default shape: main amount first, then 1-2 short paragraphs or up to 4 bullets for requested uses/context.
+- Default shape: main amount first, then 1-2 short paragraphs. Use bullets only when the user asks for a list.
 - Identify the account, give the main appropriation amount, and summarize major allowed uses when asked.
 - For "major allowed uses", summarize categories of use; do not list every center, activity, rent line, transfer, limitation, or user-fee amount unless the user asks for a detailed allocation, breakdown, or reconciliation.
+- For "major allowed uses", name categories only. Do not attach dollar figures to internal centers, activities, rent lines, or other suballocations unless the user asks for allocation, breakdown, line items, or "how much for each".
 - Separate internally: main appropriation amount, suballocations within that amount, user fees credited to the account, separate provisions outside the account, and limitations/transfers.
 - Surface only categories needed to answer the user.
 - Mention user fees as credited to the account only when useful for clarity; do not list each user-fee dollar amount unless the user asks for user fees or a funding-source breakdown.
@@ -81,7 +82,9 @@ REDUCE_MODE_PROMPTS: dict[str, str] = {
 Direct account example:
 Question: What amount is appropriated for the FDA Salaries and Expenses account in FY2026, and what are the major allowed uses?
 Facts include $6,957,972,000 for FDA Salaries and Expenses, necessary FDA expenses including passenger motor vehicles, space rental and related costs, special-purpose space, and emergency enforcement, program/center activities such as Human Foods, CDER, CBER, CVM, CDRH, NCTR, and Center for Tobacco Products, user fees credited to the account, and a separate nearby $3,000,000 provision.
-Good answer pattern: Give the $6,957,972,000 account amount and a compact summary of major allowed uses. Mention that user fees are credited to the account under applicable laws only if useful for clarity. Do not list every center suballocation, do not include the separate nearby $3,000,000 provision, and do not create a "Not added separately" section unless the user asks for a breakdown or reconciliation.""",
+Good answer pattern: Give the $6,957,972,000 account amount and a compact summary of major allowed uses. Mention that the account supports FDA operations such as the Human Foods Program, CDER, CBER, CVM, CDRH, NCTR, the Center for Tobacco Products, rent and related activities, enforcement, and field/import operations. Mention that user fees are credited to the account under applicable laws only if useful for clarity. Do not list every center suballocation, do not include center-by-center dollar figures, do not list individual user-fee dollar figures, do not include the separate nearby $3,000,000 provision, and do not create a "Not added separately" section unless the user asks for a breakdown or reconciliation.
+Bad answer pattern: "Human Foods Program $1,171,319,000; CDER $2,496,766,000; CBER $601,291,000..." unless the user asks for allocations.
+Bad answer pattern: "Prescription drug user fees $1,556,039,000; medical device user fees $478,166,000..." unless the user asks for a user-fee breakdown.""",
     "broad_topic_total": """Broad topic total reduce prompt:
 - Use only Direct facts for substantive answer content. Use Adjacent facts only for short not-included or scope notes. Do not use Not responsive facts in the answer.
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
