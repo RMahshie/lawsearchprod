@@ -136,6 +136,34 @@ def test_route_returns_incompatible_answer_when_no_valid_fy2026_division(monkeyp
     assert result["answer_mode"] == "general_summary"
 
 
+def test_route_normalizes_known_division_acronyms(monkeypatch):
+    from app.core.config import FY2026_DIVISIONS
+    from app.services.rag_service import RouteDecision
+
+    llm = CapturingStructuredLLM(
+        RouteDecision(
+            divisions=["AG"],
+            answer_mode="direct_account_amount",
+            answer_mode_reason="FDA Salaries and Expenses is in the Agriculture division.",
+        )
+    )
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+    service.settings = get_settings()
+
+    result = service._route_divisions(
+        {
+            "query_id": "query-test",
+            "question": "What amount is appropriated for FDA Salaries and Expenses?",
+            "thinking_speed": "normal",
+        }
+    )
+
+    assert result["selected_divisions"] == [FY2026_DIVISIONS[0]]
+    assert result["answer_mode"] == "direct_account_amount"
+    assert "final_answer" not in result
+
+
 def test_query_source_model_does_not_persist_source_text_or_scores():
     from app.db.models import QuerySource
 

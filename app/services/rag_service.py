@@ -29,7 +29,7 @@ from langgraph.types import Send
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import TypedDict
 
-from app.core.config import FY2026_INCOMPATIBLE_QUESTION_ANSWER, get_settings
+from app.core.config import FY2026_DIVISION_ACRONYMS, FY2026_INCOMPATIBLE_QUESTION_ANSWER, get_settings
 from app.db.models import VectorStore
 from app.db.session import SessionLocal, database_available
 from app.models.query import (
@@ -534,7 +534,7 @@ class RAGService:
             )
             return {"selected_divisions": requested_filter, **answer_mode_update}
 
-        selected = [division for division in decision.divisions if division in settings.subcommittee_stores]
+        selected = self._normalize_route_divisions(decision.divisions, settings.subcommittee_stores)
         if not selected:
             logger.info("Router returned no valid FY2026 divisions; ending as incompatible question")
             self._debug_log(
@@ -566,6 +566,32 @@ class RAGService:
             answer_mode_update["answer_mode_reason"],
         )
         return {"selected_divisions": selected, **answer_mode_update}
+
+    def _normalize_route_divisions(self, divisions: list[str], valid_divisions: dict[str, str]) -> list[str]:
+        """Normalize route outputs to canonical division names.
+
+        The router is instructed to return exact division names, but small routing
+        models sometimes return stable FY2026 acronyms such as AG. Treat known
+        acronyms and case variants as the same canonical division; do not infer
+        fuzzy matches outside the configured division/acronym set.
+        """
+        canonical_by_upper = {division.upper(): division for division in valid_divisions}
+        acronym_to_division = {
+            acronym.upper(): division
+            for division, acronym in FY2026_DIVISION_ACRONYMS.items()
+            if division in valid_divisions
+        }
+        selected: list[str] = []
+        seen: set[str] = set()
+
+        for raw_division in divisions:
+            normalized_key = str(raw_division or "").strip().strip("[]").upper()
+            division = canonical_by_upper.get(normalized_key) or acronym_to_division.get(normalized_key)
+            if division and division not in seen:
+                selected.append(division)
+                seen.add(division)
+
+        return selected
 
     def _answer_mode_update(self, decision: Any) -> dict[str, Any]:
         """Normalize route-classifier answer-mode metadata for graph state."""
