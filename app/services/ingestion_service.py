@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import logging
 import re
 import shutil
 import uuid
@@ -19,6 +20,8 @@ from app.services.vector_store_service import (
     division_acronym,
     write_persisted_embedding_model,
 )
+
+logger = logging.getLogger(__name__)
 
 
 DIVISION_PATTERN = re.compile(
@@ -75,18 +78,37 @@ class IngestionService:
         total_chunks = 0
 
         for division, store_name in self.settings.subcommittee_stores.items():
-            bill_path = self._bill_path_for_store(store_name)
-            text = self._extract_division_text(bill_path, self._division_letter(store_name))
-            documents = self._chunk_documents(
-                text,
-                division,
-                bill_path.name,
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
-                vector_store_id=vector_store_id,
-            )
+            documents: list[Document] = []
+            for source_part in self._source_parts_for_division(division):
+                bill_path = self._resolve_source_path(source_part)
+                source_letter = str(source_part["source_division_letter"])
+                text = self._extract_division_text(bill_path, source_letter)
+                part_documents = self._chunk_documents(
+                    text,
+                    division,
+                    bill_path.name,
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    vector_store_id=vector_store_id,
+                    metadata_extra=self._metadata_for_source_part(division, source_part),
+                    chunk_index_offset=len(documents),
+                )
+                if len(part_documents) < 2:
+                    logger.warning(
+                        "INGEST_WARNING small_source_part division=%r source_file=%r "
+                        "source_division_letter=%r source_division_title=%r extracted_chars=%s "
+                        "chunks=%s snapshot=%r",
+                        division,
+                        source_part["source_file"],
+                        source_letter,
+                        source_part["source_division_title"],
+                        len(text),
+                        len(part_documents),
+                        self._source_snapshot(text),
+                    )
+                documents.extend(part_documents)
             if not documents:
-                continue
+                raise ValueError(f"No documents produced for configured FY2026 division: {division}")
 
             persist_directory = vectorstore_dir / store_name
             persist_directory.mkdir(parents=True, exist_ok=True)
@@ -104,32 +126,49 @@ class IngestionService:
         write_persisted_embedding_model(vectorstore_dir, embedding_model)
         return divisions_processed, partition_counts, total_chunks
 
-    def _bill_path_for_store(self, store_name: str) -> Path:
-        """Resolve the source bill file for a configured division store.
+    def _source_parts_for_division(self, division: str) -> list[dict[str, str]]:
+        """Return configured FY2026 source parts for one routable division.
 
         Args:
-            store_name: Configured Chroma store directory name for a division.
+            division: Canonical FY2026 division label.
 
         Returns:
-            Path to the source bill HTML file.
+            Source-part dictionaries from settings.
         """
-        if store_name.startswith("Consolidated_Appropriations"):
-            return Path(self.settings.data_dir) / "Consolidated_Appropriations_Act_2024_Public_Law.html"
-        return Path(self.settings.data_dir) / "Further_Consolidated_Appropriations_Act_2024_Public_Law.html"
+        parts = self.settings.fy2026_source_parts.get(division)
+        if not parts:
+            raise ValueError(f"Missing FY2026 source-part configuration for division: {division}")
+        return parts
 
-    def _division_letter(self, store_name: str) -> str:
-        """Extract the division letter from a configured store name.
+    def _resolve_source_path(self, source_part: dict[str, str]) -> Path:
+        """Resolve and validate the configured source file for one source part.
 
         Args:
-            store_name: Configured Chroma store directory name for a division.
+            source_part: Source-part manifest entry.
 
         Returns:
-            Single-letter division marker.
+            Existing source HTML path.
         """
-        match = re.search(r"_Division_([A-G])_", store_name)
-        if not match:
-            raise ValueError(f"Could not determine division letter from store name: {store_name}")
-        return match.group(1)
+        bill_path = Path(self.settings.data_dir) / source_part["source_file"]
+        if not bill_path.exists():
+            raise FileNotFoundError(f"Configured FY2026 source file is missing: {bill_path}")
+        return bill_path
+
+    def _metadata_for_source_part(self, division: str, source_part: dict[str, str]) -> dict[str, str]:
+        """Return metadata to preserve for chunks from a configured source part."""
+        if division_acronym(division) != "CRX":
+            return {}
+        return {
+            "source_public_law": source_part["source_public_law"],
+            "source_division_letter": source_part["source_division_letter"],
+            "source_division_title": source_part["source_division_title"],
+            "source_bucket": "CRX",
+        }
+
+    def _source_snapshot(self, text: str, limit: int = 240) -> str:
+        """Return a compact one-line extraction preview for ingestion diagnostics."""
+        snapshot = re.sub(r"\s+", " ", text).strip()
+        return snapshot[:limit]
 
     def _extract_division_text(self, bill_path: Path, letter: str) -> str:
         """Extract the text for one division from a bill HTML file.
@@ -139,8 +178,10 @@ class IngestionService:
             letter: Division letter to extract.
 
         Returns:
-            Cleaned text for the matching division, or full bill text if no match is found.
+            Cleaned text for the matching division.
         """
+        if not bill_path.exists():
+            raise FileNotFoundError(f"Configured FY2026 source file is missing: {bill_path}")
         html = bill_path.read_text(encoding="utf-8", errors="ignore")
         text = BeautifulSoup(html, "html.parser").get_text("\n")
         text = re.sub(r"<<NOTE:[^>]+>>", "", text)
@@ -148,11 +189,14 @@ class IngestionService:
 
         matches = list(DIVISION_PATTERN.finditer(text))
         if not matches:
-            return text
+            raise ValueError(f"No division headers found in configured FY2026 source file: {bill_path}")
 
-        matching_indexes = [index for index, match in enumerate(matches) if match.group(1).upper() == letter]
+        requested_letter = letter.upper()
+        matching_indexes = [index for index, match in enumerate(matches) if match.group(1).upper() == requested_letter]
         if not matching_indexes:
-            return text
+            raise ValueError(
+                f"Division {requested_letter} header not found in configured FY2026 source file: {bill_path}"
+            )
 
         match_index = matching_indexes[-1]
         start = matches[match_index].start()
@@ -167,6 +211,8 @@ class IngestionService:
         chunk_size: int | None = None,
         chunk_overlap: int | None = None,
         vector_store_id: str | None = None,
+        metadata_extra: dict[str, str] | None = None,
+        chunk_index_offset: int = 0,
     ) -> list[Document]:
         """Split division text into LangChain documents with stable metadata.
 
@@ -177,6 +223,8 @@ class IngestionService:
             chunk_size: Optional character count per chunk.
             chunk_overlap: Optional character overlap between adjacent chunks.
             vector_store_id: Optional vector store registry id for metadata.
+            metadata_extra: Optional source-part metadata to carry into Chroma.
+            chunk_index_offset: Offset used when combining multiple source parts in one store.
 
         Returns:
             List of LangChain Document objects ready for Chroma ingestion.
@@ -199,7 +247,8 @@ class IngestionService:
                             "division": division,
                             "division_acronym": division_acronym(division),
                             "source_file": source_file,
-                            "chunk_index": len(docs),
+                            "chunk_index": chunk_index_offset + len(docs),
+                            **(metadata_extra or {}),
                         },
                     )
                 )

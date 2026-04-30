@@ -1,3 +1,4 @@
+from app.core.config import FY2026_INCOMPATIBLE_QUESTION_ANSWER, get_settings
 from app.services.llm_factory import describe_model_strategy, resolve_model
 from app.services.rag_service import RAGService
 from app.services.vector_store_service import VectorStoreService, division_acronym
@@ -11,10 +12,10 @@ class FakeMessage:
 class FakeLLM:
     def invoke(self, prompt):
         if "UI excerpt label" in str(prompt):
-            return FakeMessage("DHS cybersecurity funding")
+            return FakeMessage("CRX cybersecurity funding")
         if "source hover summary" in str(prompt):
-            return FakeMessage("Chunk summarizes DHS cybersecurity funding.")
-        return FakeMessage("Extracted $10,000,000 for cybersecurity [DHS].")
+            return FakeMessage("Chunk summarizes CRX cybersecurity funding.")
+        return FakeMessage("Extracted $10,000,000 for cybersecurity [CRX].")
 
 
 class FakeStatusError(Exception):
@@ -65,7 +66,69 @@ class CapturingStructuredLLM:
 
 
 def test_division_acronym_is_stable():
-    assert division_acronym("DEPARTMENT OF HOMELAND SECURITY") == "DHS"
+    assert division_acronym("CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS") == "CRX"
+
+
+def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
+    from app.services.rag_service import AnswerModeFlags, RouteDecision
+
+    llm = CapturingStructuredLLM(
+        RouteDecision(
+            divisions=["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"],
+            answer_mode="funding_mechanism_no_amount",
+            answer_mode_flags=AnswerModeFlags(mixed_financial_types=False),
+            answer_mode_reason="FEMA continuation question.",
+        )
+    )
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+    service.settings = get_settings()
+
+    result = service._route_divisions(
+        {
+            "query_id": "query-test",
+            "question": "How much FEMA funding is continued?",
+            "thinking_speed": "normal",
+        }
+    )
+
+    prompt = llm.prompts[0]
+    assert result["selected_divisions"] == [
+        "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"
+    ]
+    assert result["answer_mode"] == "funding_mechanism_no_amount"
+    assert result["answer_mode_flags"] == {"mixed_financial_types": False}
+    assert result["answer_mode_reason"] == "FEMA continuation question."
+    assert "Allowed FY2026 divisions and routing hints:" in prompt[1].content
+    assert "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS" in prompt[1].content
+    assert "FEMA" in prompt[1].content
+    assert "DEPARTMENT OF HOMELAND SECURITY" not in prompt[1].content
+    assert "Set answer_mode to one of" in prompt[0].content
+    assert "If the best mode is ambiguous, use broad_topic_total" in prompt[0].content
+    assert "answer_mode_flags.mixed_financial_types=true" in prompt[0].content
+
+
+def test_route_returns_incompatible_answer_when_no_valid_fy2026_division(monkeypatch):
+    from app.services.rag_service import RouteDecision
+
+    llm = CapturingStructuredLLM(
+        RouteDecision(divisions=["DEPARTMENT OF HOMELAND SECURITY"], answer_mode="general_summary")
+    )
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+    service.settings = get_settings()
+
+    result = service._route_divisions(
+        {
+            "query_id": "query-test",
+            "question": "Who won the World Series?",
+            "thinking_speed": "normal",
+        }
+    )
+
+    assert result["selected_divisions"] == []
+    assert result["final_answer"] == FY2026_INCOMPATIBLE_QUESTION_ANSWER
+    assert result["answer_mode"] == "general_summary"
 
 
 def test_query_source_model_does_not_persist_source_text_or_scores():
@@ -123,7 +186,7 @@ def test_load_conversation_hydrates_sources_from_chroma_only():
     db.add(
         QueryRun(
             id="query",
-            question="How much DHS funding?",
+            question="How much CRX funding?",
             answer="Answer",
             vector_store_id="store",
             processing_time=1.0,
@@ -133,7 +196,7 @@ def test_load_conversation_hydrates_sources_from_chroma_only():
         QueryDivisionResult(
             id="division",
             query_run_id="query",
-            division_key="DEPARTMENT OF HOMELAND SECURITY",
+            division_key="CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
             answer="Division answer",
             chunks_retrieved=2,
             sort_order=0,
@@ -192,18 +255,18 @@ def test_load_conversation_returns_saved_number_annotations():
         QueryRun(
             id="query",
             question="How much funding?",
-            answer="Answer $10 [[num:src_dhs_1]]",
+            answer="Answer $10 [[num:src_crx_1]]",
             processing_time=1.0,
             number_annotations=[
                 {
-                    "id": "src_dhs_1",
+                    "id": "src_crx_1",
                     "kind": "source",
                     "figure": "$10",
                     "normalized_value": 10,
-                    "label": "DHS funding",
+                    "label": "CRX funding",
                     "targets": [{"scope": "answer"}],
-                    "division": "DEPARTMENT OF HOMELAND SECURITY",
-                    "division_acronym": "DHS",
+                    "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                    "division_acronym": "CRX",
                     "chunk_id": "chunk-1",
                     "input_ids": [],
                     "inputs": [],
@@ -215,7 +278,7 @@ def test_load_conversation_returns_saved_number_annotations():
 
     response = load_conversation(db, "query", lambda *_args: None)
 
-    assert response.number_annotations[0].id == "src_dhs_1"
+    assert response.number_annotations[0].id == "src_crx_1"
     assert response.number_annotations[0].targets[0].scope == "answer"
     assert response.number_annotations[0].value == 10
     assert response.number_annotations[0].source.chunk_id == "chunk-1"
@@ -238,7 +301,7 @@ def test_list_conversations_strips_hidden_number_markers_from_preview():
         QueryRun(
             id="query",
             question="How much funding?",
-            answer="Answer $10 [[num:src_dhs_1]] for DHS",
+            answer="Answer $10 [[num:src_crx_1]] for CRX",
             processing_time=1.0,
         )
     )
@@ -246,7 +309,55 @@ def test_list_conversations_strips_hidden_number_markers_from_preview():
 
     summaries = list_conversations(db)
 
-    assert summaries[0]["answer_preview"] == "Answer $10 for DHS"
+    assert summaries[0]["answer_preview"] == "Answer $10 for CRX"
+
+
+def test_save_query_response_persists_answer_mode_debug_metadata():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.db.models import QueryRun
+    from app.db.session import Base
+    from app.models.query import QueryResponse
+    from app.services.storage_registry import save_query_response
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    response = QueryResponse(
+        answer="Answer",
+        processing_time=1.0,
+        selected_divisions=[],
+        division_results=[],
+        sources=[],
+        query_id="query",
+    )
+
+    save_query_response(
+        db,
+        response=response,
+        question="How much funding?",
+        vector_store=None,
+        answer_mode="broad_topic_total",
+        answer_mode_flags={"mixed_financial_types": True},
+        answer_mode_reason="Broad infrastructure funding question.",
+        relevance_metadata=[
+            {
+                "scope": "division",
+                "division_acronym": "AG",
+                "counts": {"direct": 2, "adjacent": 1, "not_responsive": 0},
+            }
+        ],
+    )
+    db.commit()
+
+    run = db.get(QueryRun, "query")
+    assert run.answer_mode == "broad_topic_total"
+    assert run.answer_mode_flags == {"mixed_financial_types": True}
+    assert run.answer_mode_reason == "Broad infrastructure funding question."
+    assert run.relevance_metadata[0]["counts"] == {"direct": 2, "adjacent": 1, "not_responsive": 0}
 
 
 def test_map_chunk_returns_facts_and_summary(monkeypatch):
@@ -258,9 +369,9 @@ def test_map_chunk_returns_facts_and_summary(monkeypatch):
             "question": "How much cybersecurity funding is provided?",
             "model_used": "gpt-4o",
             "chunk": {
-                "chunk_id": "DHS-1-test",
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
+                "chunk_id": "CRX-1-test",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
                 "content": "For cybersecurity, $10,000,000 shall be available.",
                 "chunk_summary": None,
                 "score": 0.1,
@@ -270,9 +381,9 @@ def test_map_chunk_returns_facts_and_summary(monkeypatch):
     )
 
     mapped = result["mapped_chunks"][0]
-    assert mapped["division"] == "DEPARTMENT OF HOMELAND SECURITY"
-    assert mapped["chunk_summary"] == "Chunk summarizes DHS cybersecurity funding."
-    assert mapped["chunk_snapshot"] == "DHS cybersecurity funding"
+    assert mapped["division"] == "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"
+    assert mapped["chunk_summary"] == "Chunk summarizes CRX cybersecurity funding."
+    assert mapped["chunk_snapshot"] == "CRX cybersecurity funding"
     assert "$10,000,000" in mapped["extracted_facts"]
 
 
@@ -305,23 +416,23 @@ def test_invoke_text_does_not_retry_non_transient_error(monkeypatch):
 def test_response_includes_sources_and_division_results():
     service = RAGService.__new__(RAGService)
     result = {
-        "final_answer": "DHS receives $10,000,000 [DHS].",
-        "selected_divisions": ["DEPARTMENT OF HOMELAND SECURITY"],
+        "final_answer": "CRX receives $10,000,000 [CRX].",
+        "selected_divisions": ["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"],
         "include_sources": True,
         "thinking_speed": "normal",
         "model_used": "gpt-4o",
         "division_queries": [
             {
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
-                "query": "How much funding is provided for DHS cybersecurity?",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "query": "How much funding is provided for CRX cybersecurity?",
             }
         ],
         "retrieved_chunks": [
             {
-                "chunk_id": "DHS-1-test",
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
+                "chunk_id": "CRX-1-test",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
                 "content": "For cybersecurity, $10,000,000 shall be available.",
                 "chunk_summary": None,
                 "score": 0.1,
@@ -330,12 +441,12 @@ def test_response_includes_sources_and_division_results():
         ],
         "mapped_chunks": [
             {
-                "chunk_id": "DHS-1-test",
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
-                "extracted_facts": "Extracted $10,000,000 for cybersecurity [DHS].",
-                "chunk_summary": "Chunk summarizes DHS cybersecurity funding.",
-                "chunk_snapshot": "DHS cybersecurity funding",
+                "chunk_id": "CRX-1-test",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "extracted_facts": "Extracted $10,000,000 for cybersecurity [CRX].",
+                "chunk_summary": "Chunk summarizes CRX cybersecurity funding.",
+                "chunk_snapshot": "CRX cybersecurity funding",
                 "source_content": "For cybersecurity, $10,000,000 shall be available.",
                 "score": 0.1,
                 "metadata": {"source_file": "bill.html"},
@@ -343,10 +454,10 @@ def test_response_includes_sources_and_division_results():
         ],
         "division_answers": [
             {
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
-                "answer": "DHS receives $10,000,000 [DHS].",
-                "source_chunk_ids": ["DHS-1-test"],
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "answer": "CRX receives $10,000,000 [CRX].",
+                "source_chunk_ids": ["CRX-1-test"],
                 "chunks_retrieved": 1,
             }
         ],
@@ -355,23 +466,23 @@ def test_response_includes_sources_and_division_results():
     response = service._to_response(result, 1.2, "query-test")
 
     assert response.sources is not None
-    assert response.sources[0].chunk_summary == "Chunk summarizes DHS cybersecurity funding."
-    assert response.sources[0].chunk_snapshot == "DHS cybersecurity funding"
+    assert response.sources[0].chunk_summary == "Chunk summarizes CRX cybersecurity funding."
+    assert response.sources[0].chunk_snapshot == "CRX cybersecurity funding"
     assert response.debug_division_queries is None
-    assert response.division_results[0].source_chunk_ids == ["DHS-1-test"]
+    assert response.division_results[0].source_chunk_ids == ["CRX-1-test"]
 
 
 def test_response_includes_source_number_annotations_when_markers_are_used():
     service = RAGService.__new__(RAGService)
     result = {
-        "final_answer": "DHS receives $10,000,000 [[num:src_dhs_dhs_1_test_1]] [DHS].",
-        "selected_divisions": ["DEPARTMENT OF HOMELAND SECURITY"],
+        "final_answer": "CRX receives $10,000,000 [[num:src_crx_dhs_1_test_1]] [CRX].",
+        "selected_divisions": ["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"],
         "include_sources": True,
         "retrieved_chunks": [
             {
-                "chunk_id": "DHS-1-test",
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
+                "chunk_id": "CRX-1-test",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
                 "content": "For cybersecurity, $10,000,000 shall be available.",
                 "chunk_summary": None,
                 "score": 0.1,
@@ -380,54 +491,54 @@ def test_response_includes_source_number_annotations_when_markers_are_used():
         ],
         "mapped_chunks": [
             {
-                "chunk_id": "DHS-1-test",
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
-                "extracted_facts": "Extracted $10,000,000 [[num:src_dhs_dhs_1_test_1]] for cybersecurity [DHS].",
-                "chunk_summary": "Chunk summarizes DHS cybersecurity funding.",
-                "chunk_snapshot": "DHS cybersecurity funding",
+                "chunk_id": "CRX-1-test",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "extracted_facts": "Extracted $10,000,000 [[num:src_crx_dhs_1_test_1]] for cybersecurity [CRX].",
+                "chunk_summary": "Chunk summarizes CRX cybersecurity funding.",
+                "chunk_snapshot": "CRX cybersecurity funding",
                 "source_content": "For cybersecurity, $10,000,000 shall be available.",
                 "score": 0.1,
                 "metadata": {"source_file": "bill.html"},
                 "number_annotations": [
                     {
-                        "id": "src_dhs_dhs_1_test_1",
+                        "id": "src_crx_dhs_1_test_1",
                         "kind": "source",
                         "figure": "$10,000,000",
                         "value": 10_000_000,
-                        "label": "DHS cybersecurity funding",
+                        "label": "CRX cybersecurity funding",
                         "targets": [],
-                        "source": {"chunk_id": "DHS-1-test"},
+                        "source": {"chunk_id": "CRX-1-test"},
                     }
                 ],
             }
         ],
         "division_answers": [
             {
-                "division": "DEPARTMENT OF HOMELAND SECURITY",
-                "division_acronym": "DHS",
-                "answer": "DHS receives $10,000,000 [[num:src_dhs_dhs_1_test_1]] [DHS].",
-                "source_chunk_ids": ["DHS-1-test"],
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "answer": "CRX receives $10,000,000 [[num:src_crx_dhs_1_test_1]] [CRX].",
+                "source_chunk_ids": ["CRX-1-test"],
                 "chunks_retrieved": 1,
                 "number_annotations": [],
             }
         ],
         "number_annotations": [
             {
-                "id": "src_dhs_dhs_1_test_1",
+                "id": "src_crx_dhs_1_test_1",
                 "kind": "source",
                 "figure": "$10,000,000",
                 "value": 10_000_000,
-                "label": "DHS cybersecurity funding",
+                "label": "CRX cybersecurity funding",
                 "targets": [],
-                "source": {"chunk_id": "DHS-1-test"},
+                "source": {"chunk_id": "CRX-1-test"},
             }
         ],
     }
 
     response = service._to_response(result, 1.2, "query-test")
 
-    assert response.number_annotations[0].id == "src_dhs_dhs_1_test_1"
+    assert response.number_annotations[0].id == "src_crx_dhs_1_test_1"
     assert {target.scope for target in response.number_annotations[0].targets} == {"answer", "division"}
 
 
@@ -575,7 +686,7 @@ def test_derived_number_validation_uses_visible_marker_figure_when_structured_fi
         ],
         target_answer="**FEMA total:** **$5,080,537,369** [[num:drv_dhs_1]]",
         available=[source_a, source_b, source_c],
-        target=NumberAnnotationTarget(scope="division", division="DHS"),
+        target=NumberAnnotationTarget(scope="division", division="CRX"),
     )
 
     assert accepted[0].id == "drv_dhs_1"
@@ -719,9 +830,17 @@ def test_unmarked_figures_allows_markdown_closer_before_marker():
 
 
 def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
-    from app.services.rag_service import DivisionQueryDecision, DivisionQueryPlan
+    from app.services.rag_service import DivisionQueryDecision, DivisionQueryPlan, RouteDecision
 
     def fake_create_chat_model(model, task, reasoning_effort=None):
+        if task == "routing":
+            return FakeRewriteLLM(
+                RouteDecision(
+                    divisions=["AAA", "BBB"],
+                    answer_mode="broad_topic_total",
+                    answer_mode_flags={"mixed_financial_types": False},
+                )
+            )
         if task == "division_query_rewrite":
             return FakeRewriteLLM(
                 DivisionQueryPlan(
@@ -770,6 +889,9 @@ def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
             "vector_store_id": "store",
             "vector_store_root": "/tmp/store",
             "vector_store_embedding_model": "text-embedding-3-large",
+            "answer_mode": "broad_topic_total",
+            "answer_mode_flags": {"mixed_financial_types": False},
+            "answer_mode_reason": "",
             "selected_divisions": [],
             "retrieved_chunks": [],
             "mapped_chunks": [],
@@ -887,18 +1009,18 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
         {
             "question": "how much for fema and immigration combined",
             "query_id": "query-test",
-            "division": "DEPARTMENT OF HOMELAND SECURITY",
-            "division_acronym": "DHS",
+            "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+            "division_acronym": "CRX",
             "mapped_items": [
                 {
                     "chunk_id": "chunk-1",
-                    "division": "DEPARTMENT OF HOMELAND SECURITY",
-                    "division_acronym": "DHS",
+                    "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                    "division_acronym": "CRX",
                     "extracted_facts": (
-                        "- FEMA Federal Assistance $3,497,019,369 [[num:src_fema]] [DHS]\n"
-                        "- CBP operations and support $18,426,870,000 [[num:src_cbp]] [DHS]\n"
-                        "- ICE operations and support $9,501,542,000 [[num:src_ice]] [DHS]\n"
-                        "- USCIS operations and support $271,140,000 [[num:src_uscis]] [DHS]"
+                        "- FEMA Federal Assistance $3,497,019,369 [[num:src_fema]] [CRX]\n"
+                        "- CBP operations and support $18,426,870,000 [[num:src_cbp]] [CRX]\n"
+                        "- ICE operations and support $9,501,542,000 [[num:src_ice]] [CRX]\n"
+                        "- USCIS operations and support $271,140,000 [[num:src_uscis]] [CRX]"
                     ),
                     "chunk_summary": "summary",
                     "chunk_snapshot": "snapshot",
@@ -910,34 +1032,235 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
             ],
             "chunks_retrieved": 1,
             "thinking_speed": "normal",
+            "answer_mode": "reconciliation_breakdown",
+            "answer_mode_flags": {"mixed_financial_types": False},
         }
     )
 
     prompt = llm.prompts[0]
-    assert "Accounting scope policy:" in prompt
-    assert "Give direct working totals" in prompt
-    assert "For broad topic questions, provide a topic total found" in prompt
-    assert "span agencies, components, accounts, or programs" in prompt
-    assert "total found" in prompt
-    assert "Example 1 - FEMA scoped buckets:" in prompt
-    assert "FEMA total found: $25,581,520,369" in prompt
-    assert "$20,261,000,000" in prompt
-    assert "Example 2 - Immigration buckets:" in prompt
-    assert "Under Immigration-related, include CBP, ICE, USCIS" in prompt
-    assert "break the answer down by those units by default" in prompt
+    assert "Selected answer_mode: reconciliation_breakdown" in prompt
+    assert "Active safety flags: none" in prompt
+    assert "Reconciliation and breakdown reduce prompt:" in prompt
+    assert "Use Direct facts for substantive answer content" in prompt
+    assert "Do not use Not responsive facts in the answer" in prompt
+    assert "Preserve enough detail to audit the math" in prompt
+    assert "Use Included / Not added separately structure" in prompt
+    assert "For combined-topic questions, provide one total found per topic" in prompt
+    assert "Reconciliation example:" in prompt
     assert "Immigration-related total found" in prompt
     assert "Combined FEMA + immigration-related total found" in prompt
     assert "Do not add the ICE enforcement/detention/removal component separately" in prompt
-    assert "Example 3 - Non-FEMA component handling:" in prompt
-    assert "Army Corps Construction" in prompt
-    assert "illustrative accounting patterns, not required output headings" in prompt
-    assert "**<Topic name>:**" in prompt
-    assert "**Included in <topic> total found:**" in prompt
-    assert "Choose topic sections from the user's question and the retrieved facts" in prompt
-    assert "If the question asks about one topic, use one topic section" in prompt
-    assert "rather than creating a new topic section" in prompt
-    assert "**Not added separately:**" in prompt
-    assert "Group breakdown bullets under their topic" in prompt
+    assert "Direct account reduce prompt:" not in prompt
+    assert "Responsiveness rules:" not in prompt
+    assert "Reduce compactness rules:" not in prompt
+    assert "classify facts internally as DIRECT, SUPPORTING, or IRRELEVANT" not in prompt
+    assert "FDA Salaries and Expenses" not in prompt
+    assert "Mixed financial types example:" not in prompt
+
+
+def test_reduce_prompt_uses_direct_account_module_without_unrelated_examples(monkeypatch):
+    from app.services.rag_service import MarkedAnswer
+
+    llm = CapturingStructuredLLM(MarkedAnswer(answer="Answer"))
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+
+    service._reduce_division(
+        {
+            "question": "What amount is appropriated for FDA Salaries and Expenses?",
+            "query_id": "query-test",
+            "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+            "division_acronym": "AG",
+            "mapped_items": [
+                {
+                    "chunk_id": "chunk-1",
+                    "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+                    "division_acronym": "AG",
+                    "extracted_facts": "- FDA Salaries and Expenses receives $6,957,972,000 [[num:src_fda]] [AG]",
+                    "chunk_summary": "summary",
+                    "chunk_snapshot": "snapshot",
+                    "source_content": "content",
+                    "score": 0.1,
+                    "metadata": {},
+                    "number_annotations": [],
+                }
+            ],
+            "chunks_retrieved": 1,
+            "thinking_speed": "normal",
+            "answer_mode": "direct_account_amount",
+            "answer_mode_flags": {"mixed_financial_types": False},
+        }
+    )
+
+    prompt = llm.prompts[0]
+    assert "Selected answer_mode: direct_account_amount" in prompt
+    assert "Direct account reduce prompt:" in prompt
+    assert "Direct account example:" in prompt
+    assert "Default shape: main amount first, then 1-2 short paragraphs or up to 4 bullets" in prompt
+    assert "do not list every center, activity, rent line, transfer, limitation, or user-fee amount" in prompt
+    assert "Do not create Included / Not added separately sections" in prompt
+    assert "FDA Salaries and Expenses" in prompt
+    assert "do not include the separate nearby $3,000,000 provision" in prompt
+    assert "Reconciliation example:" not in prompt
+    assert "Mixed financial types example:" not in prompt
+    assert "Preserve all relevant dollar figures from the extracted facts" not in prompt
+    assert "Do not omit relevant accounts or programs just to be concise" not in prompt
+
+
+def test_reduce_prompt_uses_broad_topic_mode_owned_mixed_financial_rules(monkeypatch):
+    from app.services.rag_service import MarkedAnswer
+
+    llm = CapturingStructuredLLM(MarkedAnswer(answer="Answer"))
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+
+    service._reduce_division(
+        {
+            "question": "What FY2026 funding is available for rural water/wastewater infrastructure?",
+            "query_id": "query-test",
+            "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+            "division_acronym": "AG",
+            "mapped_items": [
+                {
+                    "chunk_id": "chunk-1",
+                    "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+                    "division_acronym": "AG",
+                    "extracted_facts": "- RUS direct loan authority is $X and grant funding is $Z [AG]",
+                    "chunk_summary": "summary",
+                    "chunk_snapshot": "snapshot",
+                    "source_content": "content",
+                    "score": 0.1,
+                    "metadata": {},
+                    "number_annotations": [],
+                }
+            ],
+            "chunks_retrieved": 1,
+            "thinking_speed": "normal",
+            "answer_mode": "broad_topic_total",
+            "answer_mode_flags": {"mixed_financial_types": True},
+        }
+    )
+
+    prompt = llm.prompts[0]
+    assert "Selected answer_mode: broad_topic_total" in prompt
+    assert "Active safety flags: mixed_financial_types" in prompt
+    assert "Broad topic total reduce prompt:" in prompt
+    assert "Before aggregating, classify each amount internally by financial type" in prompt
+    assert "Do not add account totals plus suballocations" in prompt
+    assert "rural water/wastewater infrastructure" in prompt
+    assert "direct loan authority, guaranteed loan authority, subsidy/grant/program funding" in prompt
+    assert "Do not present X+Y+Z+A+B as a clean grant pool" in prompt
+    assert "Mixed financial-type safety rules:" not in prompt
+    assert "Reconciliation and breakdown reduce prompt:" not in prompt
+
+
+def test_map_prompt_filters_unrelated_dollars_for_funding_mechanisms(monkeypatch):
+    llm = CapturingStructuredLLM(
+        {
+            "extracted_facts": "- No relevant facts found.",
+            "source_numbers": [],
+        }
+    )
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+
+    service._map_chunk(
+        {
+            "question": "how much money for FEMA?",
+            "query_id": "query-test",
+            "thinking_speed": "normal",
+            "chunk": {
+                "chunk_id": "chunk-1",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "content": (
+                    "FEMA Disaster Relief Fund may be apportioned up to the rate for operations. "
+                    "Indian Health Service receives $72,265,000."
+                ),
+                "chunk_summary": None,
+                "score": 0.1,
+                "metadata": {},
+            },
+        }
+    )
+
+    prompt = llm.prompts[0]
+    assert "Relevance must be tied to the agency, account, program, authority, or topic in the question" in prompt
+    assert "relevant funding-mechanism evidence but no relevant dollar figure" in prompt
+    assert "Do not extract unrelated dollar figures merely because the question asks how much" in prompt
+    assert "Preserve financial-type language around each dollar figure" in prompt
+    assert "direct loan authority, guaranteed loan authority, loan subsidy cost" in prompt
+    assert "Preserve relationship language such as 'of which', 'to remain available', 'derived from fees'" in prompt
+    assert "Return fact-level responsiveness tiers: direct, adjacent, or not_responsive" in prompt
+    assert "A single chunk may contain a mix of direct, adjacent, and not_responsive facts" in prompt
+
+
+def test_map_chunk_tracks_fact_level_relevance_and_marks_direct_numbers_only(monkeypatch):
+    response = {
+        "facts": [
+            {
+                "fact": "- Direct rural water program receives $10,000,000 [AG]",
+                "responsiveness_tier": "direct",
+                "reason": "Directly answers rural water funding.",
+                "source_numbers": [
+                    {
+                        "figure": "$10,000,000",
+                        "value": 10_000_000,
+                        "label": "Direct rural water program",
+                    }
+                ],
+            },
+            {
+                "fact": "- Adjacent community development account receives $20,000,000 [AG]",
+                "responsiveness_tier": "adjacent",
+                "reason": "Related infrastructure account but not identified as rural water.",
+                "source_numbers": [
+                    {
+                        "figure": "$20,000,000",
+                        "value": 20_000_000,
+                        "label": "Adjacent community development",
+                    }
+                ],
+            },
+        ],
+        "source_numbers": [],
+    }
+    llm = CapturingStructuredLLM(response)
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+
+    result = service._map_chunk(
+        {
+            "question": "What rural water funding is available?",
+            "query_id": "query-test",
+            "thinking_speed": "normal",
+            "answer_mode": "broad_topic_total",
+            "answer_mode_flags": {"mixed_financial_types": False},
+            "chunk": {
+                "chunk_id": "chunk-1",
+                "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+                "division_acronym": "AG",
+                "content": (
+                    "Direct rural water program receives $10,000,000. "
+                    "Adjacent community development account receives $20,000,000."
+                ),
+                "chunk_summary": None,
+                "score": 0.1,
+                "metadata": {},
+            },
+        }
+    )
+
+    mapped = result["mapped_chunks"][0]
+    assert mapped["relevance_counts"] == {"direct": 1, "adjacent": 1, "not_responsive": 0}
+    assert "Direct facts:" in mapped["extracted_facts"]
+    assert "Adjacent facts:" in mapped["extracted_facts"]
+    assert "$10,000,000 [[num:" in mapped["extracted_facts"]
+    assert "$20,000,000 [[num:" not in mapped["extracted_facts"]
+    assert len(result["number_annotations"]) == 1
+    assert result["number_annotations"][0]["figure"] == "$10,000,000"
+    assert result["relevance_metadata"][0]["scope"] == "chunk"
+    assert result["relevance_metadata"][0]["counts"] == {"direct": 1, "adjacent": 1, "not_responsive": 0}
 
 
 def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
@@ -952,13 +1275,15 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
             "question": "how much for fema and immigration combined",
             "query_id": "query-test",
             "thinking_speed": "normal",
+            "answer_mode": "broad_topic_total",
+            "answer_mode_flags": {"mixed_financial_types": True},
             "number_annotations": [],
             "division_answers": [
                 {
-                    "division": "DEPARTMENT OF HOMELAND SECURITY",
-                    "division_acronym": "DHS",
+                    "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                    "division_acronym": "CRX",
                     "answer": (
-                        "### [DHS] DEPARTMENT OF HOMELAND SECURITY\n"
+                        "### [CRX] CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS\n"
                         "- **Bottom line:** Separate buckets are safer than a grand total.\n"
                         "- **Notes:** CBP is kept separate."
                     ),
@@ -982,17 +1307,52 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     )
 
     prompt = llm.prompts[0]
-    assert "Accounting synthesis policy:" in prompt
-    assert "Preserve division-level \"total found\" values" in prompt
-    assert "topic sections" in prompt
-    assert "Preserve notes about excluded transfers, component amounts" in prompt
-    assert "preserve that breakdown even when also reporting a topic subtotal" in prompt
-    assert "Do not introduce topic sections that were not requested" in prompt
-    assert "**<Topic name>:**" in prompt
-    assert "**Included in <topic> total found:**" in prompt
-    assert "do not introduce unrelated example topics" in prompt
-    assert "do not add unrelated topic sections unless a division answer makes them directly responsive" in prompt
-    assert "A combined total found is acceptable" in prompt
+    assert "Selected answer_mode: broad_topic_total" in prompt
+    assert "Active safety flags: mixed_financial_types" in prompt
+    assert "Broad topic synthesis prompt:" in prompt
+    assert "## By Agency / Account" in prompt
+    assert "## Not Included" in prompt
+    assert "## By Division" not in prompt
+    assert "Do not append full division answers. Combine already-shaped division results." in prompt
+    assert "if it has no direct evidence, put it in Not Included as one line" in prompt
+    assert "Group broad answers by controlling agency/account" in prompt
+    assert "Target 8-12 substantive bullets total across By Agency / Account and Not Included" in prompt
+    assert "Do not repeat the same agency, account, bucket, or dollar figure" in prompt
+    assert "Caveats must be cross-cutting only" in prompt
+    assert "do not repeat each account's hierarchy caveat" in prompt
+    assert "Do not add account totals plus suballocations" in prompt
+    assert "Mixed identified total" in prompt
+    assert "Synthesis example:" in prompt
+    assert "Synthesis rules:" not in prompt
+    assert "Mixed financial-type safety rules:" not in prompt
+
+
+def test_synthesis_prompts_are_mode_owned():
+    from app.services.rag_prompting import build_synthesis_prompt
+
+    cases = {
+        "direct_account_amount": ["Direct account synthesis prompt:", "## Source Scope", "Do not introduce By Agency / Account"],
+        "broad_topic_total": ["Broad topic synthesis prompt:", "## By Agency / Account", "## Not Included"],
+        "funding_mechanism_no_amount": ["Funding mechanism synthesis prompt:", "## Mechanism Found", "## Missing Amount"],
+        "reconciliation_breakdown": ["Reconciliation synthesis prompt:", "## Included", "## Not Added Separately"],
+        "general_summary": ["General summary synthesis prompt:", "Do not force accounting sections"],
+    }
+
+    for mode, expected_fragments in cases.items():
+        prompt = build_synthesis_prompt(
+            question="test question",
+            answer_mode=mode,
+            answer_mode_flags={"mixed_financial_types": mode == "broad_topic_total"},
+            annotation_context="none",
+            division_context="division answer",
+        )
+
+        assert f"Selected answer_mode: {mode}" in prompt
+        assert "Use only the division answers. Do not invent facts, dollar figures, or totals." in prompt
+        assert "SYNTHESIS_BASE_RULES" not in prompt
+        assert "Synthesis rules:" not in prompt
+        for fragment in expected_fragments:
+            assert fragment in prompt
 
 
 def test_division_fanout_preserves_vector_store_context():

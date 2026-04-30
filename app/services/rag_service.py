@@ -12,7 +12,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from threading import Lock
-from typing import Annotated, Any, Callable, Optional
+from typing import Annotated, Any, Callable, Literal, Optional
 
 # In local development, Chroma may need the pysqlite3 shim. Docker uses system sqlite.
 if os.getenv("ENVIRONMENT") != "production" and not os.path.exists("/.dockerenv"):
@@ -29,7 +29,7 @@ from langgraph.types import Send
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import TypedDict
 
-from app.core.config import get_settings
+from app.core.config import FY2026_INCOMPATIBLE_QUESTION_ANSWER, get_settings
 from app.db.models import VectorStore
 from app.db.session import SessionLocal, database_available
 from app.models.query import (
@@ -46,6 +46,13 @@ from app.models.query import (
 )
 from app.services.ingestion_service import IngestionService
 from app.services.llm_factory import create_chat_model, describe_model_strategy, format_model_spec, resolve_model
+from app.services.rag_prompting import (
+    DEFAULT_ANSWER_MODE,
+    build_map_prompt,
+    build_reduce_prompt,
+    build_synthesis_prompt,
+    normalize_answer_mode,
+)
 from app.services.storage_registry import (
     create_vector_store_record,
     ensure_storage_ready,
@@ -58,49 +65,28 @@ from app.services.storage_registry import (
 from app.services.vector_store_service import VectorStoreService, division_acronym
 
 logger = logging.getLogger(__name__)
+INCOMPATIBLE_QUESTION_ANSWER = FY2026_INCOMPATIBLE_QUESTION_ANSWER
 
 
-ACCOUNTING_SCOPE_POLICY = """Accounting scope policy:
-- Give direct working totals when the retrieved facts contain apparently top-level additive buckets. Label them as "total found" or "retrieved top-level bucket total", not as an authoritative statutory total.
-- For broad topic questions, provide a topic total found when top-level buckets are present, then show the included buckets and the related figures not added separately.
-- For questions that span agencies, components, accounts, or programs, include the relevant supported buckets and break the answer down by those units by default instead of hiding them inside one opaque number.
-- For combined-topic questions, provide one total found per topic and a combined total found when those topic totals are clearly additive.
-- Every calculated total must state exactly what is included and what was not added separately.
-- Do not add subprograms, transfers, component amounts, caps, or availability notes into a parent total unless the facts clearly show they are separate additive appropriations.
-- If a broader parent account and one of its components both appear, include the parent account and explain that the component was not added separately."""
+class AnswerModeFlags(BaseModel):
+    """Safety flags selected with the route decision."""
 
-
-ACCOUNTING_FEW_SHOT_EXAMPLES = """Accounting examples:
-These examples are illustrative accounting patterns, not required output headings. Do not copy example topic names unless the user's question asks about that topic or the retrieved facts make that topic directly relevant.
-
-Example 1 - FEMA scoped buckets:
-Question: how much for FEMA?
-Facts include FEMA operations and support $1,483,990,000, FEMA procurement/construction/improvements $99,528,000, FEMA Federal Assistance $3,497,019,369, Disaster Relief Fund $20,261,000,000, National Flood Insurance Fund $239,983,000, and a $33,000,000 transfer to FEMA Federal Assistance.
-Good answer pattern: Start with "FEMA total found: $25,581,520,369" when adding those retrieved top-level buckets. Then use a "FEMA" section with "Included in FEMA total found" bullets for operations/support, procurement/construction/improvements, Federal Assistance, Disaster Relief Fund, and National Flood Insurance Fund. Use "Not added separately" bullets for the $33,000,000 transfer and any subprograms, caps, or availability amounts that appear to sit within broader FEMA buckets.
-
-Example 2 - Immigration buckets:
-Question: how much for FEMA and immigration combined?
-Facts include FEMA Federal Assistance $3,497,019,369, ICE operations and support $9,501,542,000, ICE enforcement/detention/removal $5,082,218,000, USCIS operations and support $271,140,000, USCIS Citizenship and Integration grants $10,000,000, and CBP operations and support $18,426,870,000.
-Good answer pattern: Start with "FEMA total found", "Immigration-related total found", and "Combined FEMA + immigration-related total found" when the arithmetic is source-backed. Then use separate "FEMA" and "Immigration-related" sections. Under Immigration-related, include CBP, ICE, USCIS, and DHS-wide immigration-related buckets that are supported by facts. Do not add the ICE enforcement/detention/removal component separately when the broader ICE operations/support amount is included.
-
-Example 3 - Non-FEMA component handling:
-Question: how much for Army Corps construction?
-Facts include Army Corps Construction $1,850,000,000, Mississippi River and Tributaries $368,037,000, and Investigations $142,000,000.
-Good answer pattern: Report Construction as $1,850,000,000. Keep Mississippi River and Tributaries and Investigations as separate accounts unless the user asks for all Army Corps civil works accounts together. Do not add them into Construction just because they are related to water infrastructure."""
-
-
-SYNTHESIS_ACCOUNTING_POLICY = """Accounting synthesis policy:
-- Preserve division-level "total found" values, topic sections, included buckets, and not-added caveats.
-- If combining division totals, state exactly which scoped totals are included.
-- Preserve notes about excluded transfers, component amounts, caps, and non-comparable accounts.
-- If the division answers separate agencies, components, accounts, or programs under a topic, preserve that breakdown even when also reporting a topic subtotal.
-- Do not introduce topic sections that were not requested by the question and are not directly relevant to the division answers."""
+    mixed_financial_types: bool = False
 
 
 class RouteDecision(BaseModel):
     """Structured routing response."""
 
     divisions: list[str] = Field(default_factory=list)
+    answer_mode: Literal[
+        "direct_account_amount",
+        "broad_topic_total",
+        "funding_mechanism_no_amount",
+        "reconciliation_breakdown",
+        "general_summary",
+    ] = DEFAULT_ANSWER_MODE
+    answer_mode_flags: AnswerModeFlags = Field(default_factory=AnswerModeFlags)
+    answer_mode_reason: str = ""
 
 
 class DivisionQueryDecision(BaseModel):
@@ -157,11 +143,38 @@ class SourceNumberCandidate(BaseModel):
     label: str
 
 
+class MappedFact(BaseModel):
+    """One mapped fact with scope responsiveness metadata."""
+
+    fact: str
+    responsiveness_tier: Literal["direct", "adjacent", "not_responsive"] = "direct"
+    reason: str = ""
+    source_numbers: list[SourceNumberCandidate] = Field(default_factory=list)
+
+
 class MappedFacts(BaseModel):
     """Structured map output with facts and relevant source-backed numbers."""
 
-    extracted_facts: str
+    extracted_facts: str = ""
+    facts: list[MappedFact] = Field(default_factory=list)
     source_numbers: list[SourceNumberCandidate] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def normalize_fact_objects(self):
+        """Keep legacy extracted_facts/source_numbers output compatible with tiered facts."""
+        if not self.facts and self.extracted_facts.strip() and self.extracted_facts.strip() != "- No relevant facts found.":
+            self.facts = [
+                MappedFact(
+                    fact=line.strip(),
+                    responsiveness_tier="direct",
+                    source_numbers=self.source_numbers,
+                )
+                for line in self.extracted_facts.splitlines()
+                if line.strip()
+            ]
+        if not self.extracted_facts.strip() and self.facts:
+            self.extracted_facts = "\n".join(fact.fact for fact in self.facts)
+        return self
 
 
 class DivisionQueryState(TypedDict):
@@ -191,6 +204,8 @@ class MappedChunkState(TypedDict):
     score: float | None
     metadata: dict[str, Any]
     number_annotations: list[dict[str, Any]]
+    relevance_facts: list[dict[str, Any]]
+    relevance_counts: dict[str, int]
 
 
 class DivisionAnswerState(TypedDict):
@@ -200,6 +215,8 @@ class DivisionAnswerState(TypedDict):
     source_chunk_ids: list[str]
     chunks_retrieved: int
     number_annotations: list[dict[str, Any]]
+    relevance_counts: dict[str, int]
+    relevance_summary: dict[str, Any]
 
 
 class RAGState(TypedDict, total=False):
@@ -213,12 +230,16 @@ class RAGState(TypedDict, total=False):
     vector_store_id: str | None
     vector_store_root: str | None
     vector_store_embedding_model: str | None
+    answer_mode: str
+    answer_mode_flags: dict[str, Any]
+    answer_mode_reason: str
     selected_divisions: list[str]
     division_queries: list[DivisionQueryState]
     retrieved_chunks: Annotated[list[RetrievedChunkState], operator.add]
     mapped_chunks: Annotated[list[MappedChunkState], operator.add]
     division_answers: Annotated[list[DivisionAnswerState], operator.add]
     number_annotations: Annotated[list[dict[str, Any]], operator.add]
+    relevance_metadata: Annotated[list[dict[str, Any]], operator.add]
     final_answer: str
 
 
@@ -353,12 +374,16 @@ class RAGService:
             "vector_store_id": active_store_id,
             "vector_store_root": active_store_root,
             "vector_store_embedding_model": active_embedding_model,
+            "answer_mode": DEFAULT_ANSWER_MODE,
+            "answer_mode_flags": {"mixed_financial_types": False},
+            "answer_mode_reason": "",
             "selected_divisions": [],
             "division_queries": [],
             "retrieved_chunks": [],
             "mapped_chunks": [],
             "division_answers": [],
             "number_annotations": [],
+            "relevance_metadata": [],
             "final_answer": "",
         }
         self._debug_log(
@@ -390,13 +415,15 @@ class RAGService:
         processing_time = time.time() - start_time
         self._debug_log(
             "query_done query_id=%s duration=%.2fs selected_divisions=%s retrieved_chunks=%s "
-            "mapped_chunks=%s division_answers=%s",
+            "mapped_chunks=%s division_answers=%s answer_mode=%s flags=%s",
             query_id,
             processing_time,
             len(result.get("selected_divisions", [])),
             len(result.get("retrieved_chunks", [])),
             len(result.get("mapped_chunks", [])),
             len(result.get("division_answers", [])),
+            result.get("answer_mode"),
+            result.get("answer_mode_flags"),
         )
         self._emit_progress(query_id, "done", "Done")
         if progress_callback:
@@ -407,7 +434,16 @@ class RAGService:
             try:
                 with SessionLocal() as db:
                     vector_store = db.get(VectorStore, result.get("vector_store_id")) if result.get("vector_store_id") else None
-                    save_query_response(db, response=response, question=request.question, vector_store=vector_store)
+                    save_query_response(
+                        db,
+                        response=response,
+                        question=request.question,
+                        vector_store=vector_store,
+                        answer_mode=result.get("answer_mode"),
+                        answer_mode_flags=result.get("answer_mode_flags"),
+                        answer_mode_reason=result.get("answer_mode_reason"),
+                        relevance_metadata=result.get("relevance_metadata"),
+                    )
                     db.commit()
             except Exception as exc:
                 logger.warning("Query result was not persisted: %s", exc)
@@ -425,33 +461,36 @@ class RAGService:
         start_time = time.time()
         self._emit_progress(state, "routing", "Finding relevant divisions")
         requested_filter = state.get("divisions_filter")
-        if requested_filter:
-            self._debug_log(
-                "route query_id=%s source=filter duration=%.2fs selected=%s",
-                state.get("query_id", "unknown"),
-                time.time() - start_time,
-                len(requested_filter),
-            )
-            return {"selected_divisions": requested_filter}
-
-        valid_divisions = list(self.settings.subcommittee_stores.keys())
+        settings = getattr(self, "settings", get_settings())
+        valid_divisions = list(settings.subcommittee_stores.keys())
         routing_model = resolve_model(state.get("thinking_speed", "normal"), "routing")
         routing_llm = create_chat_model(
             routing_model.model,
             "routing",
             routing_model.reasoning_effort,
         ).with_structured_output(RouteDecision)
-        allowed_divisions = "\n- ".join(valid_divisions)
+        allowed_divisions = "\n".join(
+            f"- {division}: {settings.routing_aliases.get(division, '')}"
+            for division in valid_divisions
+        )
         route_messages = [
             SystemMessage(
                 content=(
-                    "Select the relevant appropriations divisions for this question. "
-                    "Return only exact division names from the allowed list."
+                    "Select the relevant appropriations divisions and classify the answer style for this question. "
+                    "Return only exact FY2026 division names from the allowed list. "
+                    "Use the aliases only as routing hints, never as returned labels. "
+                    "Set answer_mode to one of: direct_account_amount, broad_topic_total, "
+                    "funding_mechanism_no_amount, reconciliation_breakdown, general_summary. "
+                    "If the best mode is ambiguous, use broad_topic_total. "
+                    "Set answer_mode_flags.mixed_financial_types=true when relevant figures may include "
+                    "non-comparable financial types such as grants, loan authority, subsidy costs, user fees, "
+                    "transfers, rescissions, caps, limitations, or set-asides. "
+                    "Keep answer_mode_reason short."
                 )
             ),
             HumanMessage(
                 content=(
-                    f"Allowed divisions:\n- {allowed_divisions}\n\n"
+                    f"Allowed FY2026 divisions and routing hints:\n{allowed_divisions}\n\n"
                     f"Question: {state['question']}"
                 )
             ),
@@ -461,19 +500,70 @@ class RAGService:
             stage="route",
             query_id=state.get("query_id", "unknown"),
         )
-        selected = [division for division in decision.divisions if division in self.settings.subcommittee_stores]
+        answer_mode_update = self._answer_mode_update(decision)
+        if requested_filter:
+            self._debug_log(
+                "route query_id=%s source=filter model=%s duration=%.2fs selected=%s answer_mode=%s flags=%s reason=%s",
+                state.get("query_id", "unknown"),
+                format_model_spec(routing_model),
+                time.time() - start_time,
+                len(requested_filter),
+                answer_mode_update["answer_mode"],
+                answer_mode_update["answer_mode_flags"],
+                answer_mode_update["answer_mode_reason"],
+            )
+            return {"selected_divisions": requested_filter, **answer_mode_update}
+
+        selected = [division for division in decision.divisions if division in settings.subcommittee_stores]
         if not selected:
-            logger.warning("Router returned no valid divisions; querying all divisions as fallback")
-            selected = valid_divisions
+            logger.info("Router returned no valid FY2026 divisions; ending as incompatible question")
+            self._debug_log(
+                "route query_id=%s source=llm model=%s duration=%.2fs selected=0 incompatible=true "
+                "answer_mode=%s flags=%s reason=%s raw_divisions=%s",
+                state.get("query_id", "unknown"),
+                format_model_spec(routing_model),
+                time.time() - start_time,
+                answer_mode_update["answer_mode"],
+                answer_mode_update["answer_mode_flags"],
+                answer_mode_update["answer_mode_reason"],
+                decision.divisions,
+            )
+            return {
+                "selected_divisions": [],
+                "final_answer": INCOMPATIBLE_QUESTION_ANSWER,
+                **answer_mode_update,
+            }
         self._debug_log(
-            "route query_id=%s source=llm model=%s duration=%.2fs selected=%s divisions=%s",
+            "route query_id=%s source=llm model=%s duration=%.2fs selected=%s divisions=%s "
+            "answer_mode=%s flags=%s reason=%s",
             state.get("query_id", "unknown"),
             format_model_spec(routing_model),
             time.time() - start_time,
             len(selected),
             [division_acronym(division) for division in selected],
+            answer_mode_update["answer_mode"],
+            answer_mode_update["answer_mode_flags"],
+            answer_mode_update["answer_mode_reason"],
         )
-        return {"selected_divisions": selected}
+        return {"selected_divisions": selected, **answer_mode_update}
+
+    def _answer_mode_update(self, decision: Any) -> dict[str, Any]:
+        """Normalize route-classifier answer-mode metadata for graph state."""
+        raw_mode = getattr(decision, "answer_mode", DEFAULT_ANSWER_MODE)
+        flags = getattr(decision, "answer_mode_flags", None)
+        if isinstance(flags, AnswerModeFlags):
+            flags_dict = flags.model_dump()
+        elif isinstance(flags, dict):
+            flags_dict = {"mixed_financial_types": bool(flags.get("mixed_financial_types"))}
+        else:
+            flags_dict = {
+                "mixed_financial_types": bool(getattr(flags, "mixed_financial_types", False)),
+            }
+        return {
+            "answer_mode": normalize_answer_mode(raw_mode),
+            "answer_mode_flags": flags_dict,
+            "answer_mode_reason": str(getattr(decision, "answer_mode_reason", "") or "").strip(),
+        }
 
     def _rewrite_division_queries(self, state: RAGState) -> dict[str, Any]:
         """Rewrite the original question into division-specific retrieval queries.
@@ -596,6 +686,8 @@ class RAGService:
                     "vector_store_id": state.get("vector_store_id"),
                     "vector_store_root": state.get("vector_store_root"),
                     "vector_store_embedding_model": state.get("vector_store_embedding_model"),
+                    "answer_mode": state.get("answer_mode", DEFAULT_ANSWER_MODE),
+                    "answer_mode_flags": state.get("answer_mode_flags", {}),
                 },
             )
             for item in division_queries
@@ -665,6 +757,8 @@ class RAGService:
                     "query_id": state.get("query_id", "unknown"),
                     "chunk": chunk,
                     "thinking_speed": state.get("thinking_speed", "normal"),
+                    "answer_mode": state.get("answer_mode", DEFAULT_ANSWER_MODE),
+                    "answer_mode_flags": state.get("answer_mode_flags", {}),
                 },
             )
             for chunk in state.get("retrieved_chunks", [])
@@ -694,22 +788,12 @@ class RAGService:
         summary_llm = create_chat_model(summary_model.model, "summary", summary_model.reasoning_effort)
         question = state["question"]
 
-        extraction_prompt = (
-            "You are a legislative financial analyst extracting evidence from one source chunk.\n\n"
-            "Return structured output with `extracted_facts` markdown bullets and `source_numbers` for the dollar figures used in those facts.\n\n"
-            "Use this markdown bullet format in extracted_facts:\n"
-            "- <specific fact with exact dollar figure/account/program/agency/fiscal year if present> "
-            f"[{chunk['division_acronym']}]\n\n"
-            "Rules:\n"
-            "- Extract only facts that help answer the question.\n"
-            "- Preserve exact dollar figures, account names, agencies, fiscal years, and section references.\n"
-            "- One fact per bullet; no paragraphs.\n"
-            "- End every substantive bullet with the citation marker.\n"
-            "- Add one source_numbers item for each relevant dollar figure used in extracted_facts.\n"
-            "- Each source_numbers item must include the exact displayed figure, normalized dollar value, and a short account/program label.\n"
-            "- If the chunk has no relevant evidence, return exactly: - No relevant facts found.\n\n"
-            f"Question:\n{question}\n\n"
-            f"Source chunk:\n{chunk['content']}"
+        extraction_prompt = build_map_prompt(
+            question=question,
+            chunk_content=chunk["content"],
+            division_acronym=chunk["division_acronym"],
+            answer_mode=state.get("answer_mode", DEFAULT_ANSWER_MODE),
+            answer_mode_flags=state.get("answer_mode_flags", {}),
         )
         summary_prompt = (
             "Write exactly one plain-English sentence for a source hover summary. "
@@ -750,12 +834,23 @@ class RAGService:
                 query_id=query_id,
             )
             mapped_facts = facts_future.result()
-            extracted_facts = mapped_facts.extracted_facts
             chunk_summary = summary_future.result()
             chunk_snapshot = snapshot_future.result()
 
-        number_annotations = self._source_number_annotations(chunk, extracted_facts, mapped_facts.source_numbers)
-        extracted_facts = self._mark_text_with_source_annotations(extracted_facts, number_annotations)
+        relevance_facts = self._normalize_mapped_fact_records(mapped_facts)
+        direct_text = "\n".join(item["fact"] for item in relevance_facts if item["responsiveness_tier"] == "direct")
+        direct_candidates = [
+            candidate
+            for fact in mapped_facts.facts
+            if fact.responsiveness_tier == "direct"
+            for candidate in fact.source_numbers
+        ] or mapped_facts.source_numbers
+        number_annotations = self._source_number_annotations(chunk, direct_text, direct_candidates)
+        for item in relevance_facts:
+            if item["responsiveness_tier"] == "direct":
+                item["fact"] = self._mark_text_with_source_annotations(item["fact"], number_annotations)
+        extracted_facts = self._render_tiered_facts(relevance_facts)
+        relevance_counts = self._relevance_counts(relevance_facts)
         marker_count = self._count_number_markers(extracted_facts)
         unmarked_figures = self._unmarked_figures(extracted_facts)
 
@@ -770,9 +865,12 @@ class RAGService:
             "score": chunk.get("score"),
             "metadata": chunk.get("metadata", {}),
             "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in number_annotations],
+            "relevance_facts": relevance_facts,
+            "relevance_counts": relevance_counts,
         }
         self._debug_log(
-            "map query_id=%s chunk_id=%s division=%s map_model=%s summary_model=%s duration=%.2fs facts_chars=%s summary_chars=%s snapshot_chars=%s",
+            "map query_id=%s chunk_id=%s division=%s map_model=%s summary_model=%s duration=%.2fs "
+            "facts_chars=%s summary_chars=%s snapshot_chars=%s relevance_counts=%s",
             state.get("query_id", "unknown"),
             chunk["chunk_id"],
             chunk["division_acronym"],
@@ -782,6 +880,7 @@ class RAGService:
             len(extracted_facts),
             len(chunk_summary),
             len(chunk_snapshot),
+            relevance_counts,
         )
         if unmarked_figures:
             self._debug_log(
@@ -799,6 +898,16 @@ class RAGService:
         return {
             "mapped_chunks": [mapped],
             "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in number_annotations],
+            "relevance_metadata": [
+                {
+                    "scope": "chunk",
+                    "chunk_id": chunk["chunk_id"],
+                    "division": chunk["division"],
+                    "division_acronym": chunk["division_acronym"],
+                    "counts": relevance_counts,
+                    "facts": relevance_facts,
+                }
+            ],
         }
 
     def _fan_out_reduce_divisions(self, state: RAGState) -> dict[str, Any]:
@@ -849,6 +958,8 @@ class RAGService:
                     "mapped_items": by_division.get(division, []),
                     "chunks_retrieved": retrieved_counts.get(division, 0),
                     "thinking_speed": state.get("thinking_speed", "normal"),
+                    "answer_mode": state.get("answer_mode", DEFAULT_ANSWER_MODE),
+                    "answer_mode_flags": state.get("answer_mode_flags", {}),
                 },
             )
             for division in state.get("selected_divisions", [])
@@ -890,6 +1001,24 @@ class RAGService:
         llm = create_chat_model(reduce_model.model, "reduce", reduce_model.reasoning_effort)
 
         facts = "\n\n".join(item["extracted_facts"] for item in mapped_items)
+        relevance_facts = [
+            fact
+            for item in mapped_items
+            for fact in item.get("relevance_facts", [])
+            if isinstance(fact, dict)
+        ]
+        relevance_counts = self._merge_relevance_counts(
+            [item.get("relevance_counts", {}) for item in mapped_items]
+        )
+        relevance_summary = self._summarize_relevance(relevance_facts)
+        self._debug_log(
+            "reduce_relevance query_id=%s division=%s counts=%s direct_examples=%s adjacent_examples=%s",
+            state.get("query_id", "unknown"),
+            state["division_acronym"],  # type: ignore[typeddict-item]
+            relevance_counts,
+            len(relevance_summary.get("direct_examples", [])),
+            len(relevance_summary.get("adjacent_examples", [])),
+        )
         source_annotations = self._annotations_from_dicts(
             annotation
             for item in mapped_items
@@ -912,43 +1041,14 @@ class RAGService:
             derived_annotations: list[NumberAnnotation] = []
             proposed_derived_count = 0
         else:
-            prompt = (
-                "Synthesize the extracted facts into a division-level answer with a fixed structure. "
-                "Return structured output with `answer` markdown and `derived_annotations`.\n\n"
-                "Use this markdown structure, replacing topic placeholders with only the topics relevant to the question and facts:\n"
-                f"### [{state['division_acronym']}] {division}\n"
-                "- **Bottom line:** <direct total found values first; include topic totals and combined total when supported.>\n"
-                "- **<Topic name>:**\n"
-                "  - **Included in <topic> total found:**\n"
-                "    - <top-level account/program/component and exact dollar figure, preserving citation marker>\n"
-                "  - **Not added separately:**\n"
-                "    - <subprogram, transfer, component, cap, availability amount, or related excluded figure and reason; use 'None identified.' if none>\n"
-                "- **Other notes:**\n"
-                "  - <short caveat or limitation; use 'None identified.' if none>\n\n"
-                f"{ACCOUNTING_SCOPE_POLICY}\n\n"
-                f"{ACCOUNTING_FEW_SHOT_EXAMPLES}\n\n"
-                "Rules:\n"
-                "- Preserve all relevant dollar figures from the extracted facts.\n"
-                "- Preserve existing [[num:...]] markers immediately after their visible source figures.\n"
-                "- If you repeat or restate a marked dollar figure in the bottom line, accounts/programs, or notes, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.\n"
-                "- Do not write a source-backed dollar figure without its existing marker when that figure appears in the extracted facts with a marker.\n"
-                "- Keep citation markers immediately after the figure or clause they support.\n"
-                "- Apply the accounting scope policy before proposing any calculated total.\n"
-                "- The bottom line should lead with '<Topic> total found' values when the retrieved facts support top-level additive buckets.\n"
-                "- Choose topic sections from the user's question and the retrieved facts; do not copy topic names from examples unless they are directly relevant.\n"
-                "- If the question asks about one topic, use one topic section unless the facts clearly require separate comparable subtopics.\n"
-                "- If an excluded transfer, cap, administrative amount, component, or related figure belongs to the requested topic only as a caveat, put it under that topic's Not added separately subsection rather than creating a new topic section.\n"
-                "- Group breakdown bullets under their topic instead of writing one flat accounts list.\n"
-                "- Do not invent totals unless the extracted facts explicitly support the arithmetic.\n"
-                "- If a total is provisional because hierarchy is ambiguous, label it as a retrieved top-level bucket total and explain the ambiguity in Not added separately or Other notes.\n"
-                "- For any calculated total, add a new marker like [[num:drv_dhs_1]] immediately after the visible total and add a matching derived annotation.\n"
-                "- Derived annotation input_ids must reference existing source or derived marker ids from the available annotations.\n"
-                "- Do not omit relevant accounts or programs just to be concise.\n"
-                "- If the facts do not answer the question, say so in the bottom line.\n\n"
-                f"Question:\n{state['question']}\n\n"
-                f"Division: {division}\n\n"
-                f"Available annotations:\n{self._annotation_prompt_context(source_annotations)}\n\n"
-                f"Extracted facts:\n{facts}"
+            prompt = build_reduce_prompt(
+                question=state["question"],
+                division=division,
+                division_acronym=state["division_acronym"],  # type: ignore[typeddict-item]
+                answer_mode=state.get("answer_mode", DEFAULT_ANSWER_MODE),
+                answer_mode_flags=state.get("answer_mode_flags", {}),
+                annotation_context=self._annotation_prompt_context(source_annotations),
+                facts=facts,
             )
             marked = self._invoke_marked_answer(
                 llm,
@@ -978,7 +1078,15 @@ class RAGService:
             "source_chunk_ids": [item["chunk_id"] for item in mapped_items if item["chunk_id"]],
             "chunks_retrieved": chunks_retrieved,
             "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in derived_annotations],
+            "relevance_counts": relevance_counts,
+            "relevance_summary": relevance_summary,
         }
+        self._log_answer_budget(
+            query_id=state.get("query_id", "unknown"),
+            stage="reduce",
+            label=state["division_acronym"],  # type: ignore[typeddict-item]
+            text=answer,
+        )
         self._debug_log(
             "reduce_done query_id=%s division=%s model=%s mapped_items=%s input_chars=%s duration=%.2fs answer_chars=%s",
             state.get("query_id", "unknown"),
@@ -1006,6 +1114,15 @@ class RAGService:
         return {
             "division_answers": [division_answer],
             "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in derived_annotations],
+            "relevance_metadata": [
+                {
+                    "scope": "division",
+                    "division": division,
+                    "division_acronym": state["division_acronym"],  # type: ignore[typeddict-item]
+                    "counts": relevance_counts,
+                    "summary": relevance_summary,
+                }
+            ],
         }
 
     def _synthesize_final(self, state: RAGState) -> dict[str, Any]:
@@ -1020,6 +1137,14 @@ class RAGService:
         start_time = time.time()
         division_answers = state.get("division_answers", [])
         if not division_answers:
+            existing_answer = state.get("final_answer")
+            if existing_answer:
+                self._debug_log(
+                    "synthesize_skip query_id=%s reason=existing_final_answer answer_chars=%s",
+                    state.get("query_id", "unknown"),
+                    len(existing_answer),
+                )
+                return {"final_answer": existing_answer}
             self._debug_log(
                 "synthesize_skip query_id=%s reason=no_division_answers",
                 state.get("query_id", "unknown"),
@@ -1059,7 +1184,10 @@ class RAGService:
             synthesize_model.reasoning_effort,
         )
         context = "\n\n".join(
-            f"## {item['division']} [{item['division_acronym']}]\n{item['answer']}"
+            f"## {item['division']} [{item['division_acronym']}]\n"
+            f"Relevance counts: {item.get('relevance_counts', {})}\n"
+            f"Relevance summary: {item.get('relevance_summary', {})}\n"
+            f"{item['answer']}"
             for item in division_answers
         )
         available_annotations = self._annotations_from_dicts(state.get("number_annotations", []))
@@ -1074,41 +1202,12 @@ class RAGService:
             self._unmarked_figures(context),
             [annotation.id for annotation in available_annotations[:16]],
         )
-        prompt = (
-            "Create the final answer from the division-level answers using a stable structure. "
-            "Return structured output with `answer` markdown and `derived_annotations`.\n\n"
-            "Use this markdown structure, preserving only the topic sections relevant to the question and division answers:\n"
-            "## Answer\n"
-            "- <direct total found values first; include topic totals and combined total when supported.>\n\n"
-            "## By Division\n"
-            "### [ACRONYM] Division Name\n"
-            "- **Bottom line:** <division bottom line>\n"
-            "- **<Topic name>:**\n"
-            "  - **Included in <topic> total found:**\n"
-            "    - <top-level account/program/component and exact dollar figure with citation marker>\n"
-            "  - **Not added separately:**\n"
-            "    - <subprogram, transfer, component, cap, availability amount, or related excluded figure and reason; use 'None identified.' if none>\n\n"
-            "## Caveats\n"
-            "- <only include important caveats about totals, transfers, offsets, or incomplete comparability.>\n\n"
-            f"{SYNTHESIS_ACCOUNTING_POLICY}\n\n"
-            "Rules:\n"
-            "- Include every division answer provided below; do not drop a division.\n"
-            "- Preserve relevant dollar figures and citation markers from division answers.\n"
-            "- Preserve existing [[num:...]] markers immediately after their visible source or derived figures.\n"
-            "- If you repeat or restate a marked dollar figure in the answer, by-division section, or caveats, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.\n"
-            "- Do not write a source-backed or derived dollar figure without its existing marker when that figure appears in the division answers with a marker.\n"
-            "- Keep citation markers immediately after the figure or clause they support.\n"
-            "- Combine figures only when they are clearly comparable and supported by the division answers.\n"
-            "- Preserve topic sections that are present in division answers, but do not introduce unrelated example topics.\n"
-            "- If the question asks about one topic, do not add unrelated topic sections unless a division answer makes them directly responsive to that question.\n"
-            "- A combined total found is acceptable when it adds clearly labeled topic totals; state exactly which topic totals are included.\n"
-            "- For any new calculated total, add a new marker like [[num:drv_final_1]] immediately after the visible total and add a matching derived annotation.\n"
-            "- Derived annotation input_ids must reference existing source or derived marker ids from the available annotations.\n"
-            "- If no caveats are needed, write '- None identified.'\n"
-            "- Use clear language, clear numbers, and no filler.\n\n"
-            f"Question:\n{state['question']}\n\n"
-            f"Available annotations:\n{self._annotation_prompt_context(available_annotations)}\n\n"
-            f"Division answers:\n{context}"
+        prompt = build_synthesis_prompt(
+            question=state["question"],
+            answer_mode=state.get("answer_mode", DEFAULT_ANSWER_MODE),
+            answer_mode_flags=state.get("answer_mode_flags", {}),
+            annotation_context=self._annotation_prompt_context(available_annotations),
+            division_context=context,
         )
         marked = self._invoke_marked_answer(
             llm,
@@ -1117,6 +1216,12 @@ class RAGService:
             query_id=state.get("query_id", "unknown"),
         )
         final_answer = marked.answer
+        self._log_answer_budget(
+            query_id=state.get("query_id", "unknown"),
+            stage="synthesize",
+            label="answer",
+            text=final_answer,
+        )
         derived_annotations = self._validate_derived_annotations(
             proposed=marked.derived_annotations,
             target_answer=final_answer,
@@ -1249,6 +1354,118 @@ class RAGService:
     def _count_number_markers(self, text: str) -> int:
         """Count hidden number markers in markdown text."""
         return len(NUMBER_MARKER_PATTERN.findall(text or ""))
+
+    def _normalize_mapped_fact_records(self, mapped_facts: MappedFacts) -> list[dict[str, Any]]:
+        """Return JSON-ready mapped facts with responsiveness tiers."""
+        records: list[dict[str, Any]] = []
+        facts = mapped_facts.facts or []
+        if not facts and mapped_facts.extracted_facts.strip():
+            facts = [
+                MappedFact(fact=line.strip(), responsiveness_tier="direct")
+                for line in mapped_facts.extracted_facts.splitlines()
+                if line.strip()
+            ]
+
+        for fact in facts:
+            text = fact.fact.strip()
+            if not text:
+                continue
+            tier = fact.responsiveness_tier
+            records.append(
+                {
+                    "fact": text,
+                    "responsiveness_tier": tier if tier in {"direct", "adjacent", "not_responsive"} else "direct",
+                    "reason": fact.reason.strip(),
+                    "source_numbers": [
+                        candidate.model_dump(mode="json", exclude_none=True)
+                        for candidate in fact.source_numbers
+                    ],
+                }
+            )
+
+        if not records:
+            records.append(
+                {
+                    "fact": "- No relevant facts found.",
+                    "responsiveness_tier": "not_responsive",
+                    "reason": "No relevant evidence extracted from this chunk.",
+                    "source_numbers": [],
+                }
+            )
+        return records
+
+    def _relevance_counts(self, facts: list[dict[str, Any]]) -> dict[str, int]:
+        """Count mapped facts by responsiveness tier."""
+        counts = {"direct": 0, "adjacent": 0, "not_responsive": 0}
+        for fact in facts:
+            tier = fact.get("responsiveness_tier")
+            if tier in counts:
+                counts[tier] += 1
+        return counts
+
+    def _merge_relevance_counts(self, counts_list: list[dict[str, int]]) -> dict[str, int]:
+        """Merge responsiveness tier count dictionaries."""
+        merged = {"direct": 0, "adjacent": 0, "not_responsive": 0}
+        for counts in counts_list:
+            for key in merged:
+                merged[key] += int(counts.get(key, 0))
+        return merged
+
+    def _render_tiered_facts(self, facts: list[dict[str, Any]]) -> str:
+        """Render mapped facts for reduce prompts while preserving tier metadata."""
+        groups = [
+            ("Direct facts", "direct"),
+            ("Adjacent facts", "adjacent"),
+            ("Not responsive facts", "not_responsive"),
+        ]
+        sections: list[str] = []
+        for label, tier in groups:
+            tier_facts = [fact for fact in facts if fact.get("responsiveness_tier") == tier]
+            if not tier_facts:
+                continue
+            lines = [f"{label}:"]
+            for fact in tier_facts:
+                reason = fact.get("reason")
+                suffix = f" (scope note: {reason})" if reason else ""
+                lines.append(f"- {fact.get('fact', '').strip()}{suffix}")
+            sections.append("\n".join(lines))
+        return "\n\n".join(sections) or "Not responsive facts:\n- No relevant facts found."
+
+    def _summarize_relevance(self, facts: list[dict[str, Any]], limit: int = 3) -> dict[str, Any]:
+        """Build a compact relevance summary for logging and persistence."""
+        direct = [fact.get("fact", "").strip() for fact in facts if fact.get("responsiveness_tier") == "direct"]
+        adjacent = [
+            {
+                "fact": fact.get("fact", "").strip(),
+                "reason": fact.get("reason", "").strip(),
+            }
+            for fact in facts
+            if fact.get("responsiveness_tier") == "adjacent"
+        ]
+        return {
+            "direct_examples": direct[:limit],
+            "adjacent_examples": adjacent[:limit],
+        }
+
+    def _answer_budget_counts(self, text: str) -> dict[str, int]:
+        """Return approximate word and bullet counts for generated answer budget logs."""
+        return {
+            "words": len(re.findall(r"\b\w+\b", text or "")),
+            "bullets": len(re.findall(r"(?m)^\s*(?:[-*]|\d+\.)\s+", text or "")),
+        }
+
+    def _log_answer_budget(self, *, query_id: str, stage: str, label: str, text: str) -> None:
+        """Log answers that exceed broad-answer budget targets."""
+        counts = self._answer_budget_counts(text)
+        if counts["words"] > 900 or counts["bullets"] > 14:
+            self._debug_log(
+                "answer_budget query_id=%s stage=%s label=%s words=%s bullets=%s target_words<=900 target_bullets<=14",
+                query_id,
+                stage,
+                label,
+                counts["words"],
+                counts["bullets"],
+            )
 
     def _unmarked_figures(self, text: str, limit: int = 12) -> list[str]:
         """Return displayed dollar figures that are not immediately followed by a marker."""
