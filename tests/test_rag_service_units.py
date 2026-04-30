@@ -1212,11 +1212,18 @@ def test_reduce_prompt_uses_broad_topic_mode_owned_mixed_financial_rules(monkeyp
     assert "Selected answer_mode: broad_topic_total" in prompt
     assert "Active safety flags: mixed_financial_types" in prompt
     assert "Broad topic total reduce prompt:" in prompt
+    assert "Output a compact division brief for synthesis, not a full ledger" in prompt
+    assert "Key buckets: <2-4 bullets max" in prompt
+    assert "Do not create separate bullets for suballocations within the same parent account" in prompt
+    assert "Omit tiny sub-set-asides, internal earmarks, administrative amounts" in prompt
+    assert "Do not compute or lead with a mixed identified total unless the user explicitly asks" in prompt
     assert "Before aggregating, classify each amount internally by financial type" in prompt
     assert "Do not add account totals plus suballocations" in prompt
     assert "rural water/wastewater infrastructure" in prompt
-    assert "direct loan authority, guaranteed loan authority, subsidy/grant/program funding" in prompt
-    assert "Do not present X+Y+Z+A+B as a clean grant pool" in prompt
+    assert "one Rural Water and Waste Disposal Program Account bullet" in prompt
+    assert "Do not split every section 306 set-aside into separate bullets" in prompt
+    assert "Do not present direct loans plus guarantees plus grants as one clean total" in prompt
+    assert "Target 8-12 substantive bullets" not in prompt
     assert "Mixed financial-type safety rules:" not in prompt
     assert "Reconciliation and breakdown reduce prompt:" not in prompt
 

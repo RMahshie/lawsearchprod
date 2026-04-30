@@ -89,19 +89,18 @@ Bad answer pattern: "Prescription drug user fees $1,556,039,000; medical device 
 - Use only Direct facts for substantive answer content. Use Adjacent facts only for short not-included or scope notes. Do not use Not responsive facts in the answer.
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
 - Do not invent facts, dollar figures, or totals. If the facts do not answer the question, say that directly.
-- Group primarily by controlling agency/account/program, with the division label secondary.
-- Use one bullet or short paragraph per controlling bucket. Merge duplicate same-account material instead of creating repeated bullets for the same account.
+- Output a compact division brief for synthesis, not a full ledger.
+- Default shape for divisions with direct evidence: Bottom line: <1 sentence naming the controlling agency/account(s) and whether a clean total is available>; Key buckets: <2-4 bullets max, grouped by controlling agency/account/program>; Local caveat: <optional 1 sentence only if needed to prevent double counting>.
+- Use one bullet per controlling account/program. Do not create separate bullets for suballocations within the same parent account.
+- Include only top-level amounts and the most decision-useful sub-buckets. Omit tiny sub-set-asides, internal earmarks, administrative amounts, and repeated duplicate figures unless the user asks for detail.
 - Provide a "total found" only when top-level comparable additive buckets are present in the same scope.
+- Do not compute or lead with a mixed identified total unless the user explicitly asks for a summed identified amount.
 - If figures mix financial types or hierarchy is unclear, lead with grouped buckets instead of one clean headline total.
 - Before aggregating, classify each amount internally by financial type and additive relationship: account total, suballocation, grant, direct loan authority, guaranteed loan authority, loan subsidy cost, user fee, offsetting collection, transfer, rescission, set-aside, cap, or limitation.
 - Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
-- Preserve direct top-level controlling accounts/buckets. Compress suballocations under the parent account and keep only those that materially answer the question.
-- Target 8-12 substantive bullets for broad mixed-topic answers. Exceed that only when more than 12 direct responsive accounts or buckets materially answer the question.
 - For routed divisions with no Direct facts, return only the heading plus one no-direct-info sentence using the best Adjacent reason.
-- Put local double-counting or hierarchy notes beside the relevant bucket. Do not write a long Caveats section at reduce.
-- If arithmetic across mixed types is useful, label it as "Mixed identified total" and state that it combines different financial types and should not be treated as one clean funding pool.
 - If you repeat or restate a marked dollar figure, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.
-- For any calculated total, add a new marker like [[num:drv_broad_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
+- For any calculated comparable total, add a new marker like [[num:drv_broad_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
 
 Broad total example:
 Question: how much for FEMA?
@@ -111,7 +110,7 @@ Good answer pattern: Start with "FEMA total found: $25,581,520,369" when adding 
 Mixed financial types example:
 Question: What FY2026 funding is available for rural water/wastewater infrastructure?
 Facts include USDA Rural Utilities Service direct loan authority $X, USDA Rural Utilities Service guaranteed loan authority $Y, USDA Rural Utilities Service subsidy/grant/program funding $Z, USDA technical assistance/circuit rider funding $A, and EPA targeted grant funding $B.
-Good answer pattern: Group the answer by financial type: direct loan authority, guaranteed loan authority, subsidy/grant/program funding, technical assistance, and targeted grants. Do not present X+Y+Z+A+B as a clean grant pool or top-line appropriation.""",
+Good answer pattern: For USDA RUS, use one Rural Water and Waste Disposal Program Account bullet that names direct loan authority, guaranteed loan authority, and program-cost/grant funding. Mention key technical-assistance or grant buckets compactly only if they materially help the user locate the funding. Do not split every section 306 set-aside into separate bullets. Do not present direct loans plus guarantees plus grants as one clean total.""",
     "funding_mechanism_no_amount": """Funding mechanism reduce prompt:
 - Use only Direct facts to answer. Use Adjacent facts only for one short scope note when necessary. Do not use Not responsive facts in the answer.
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
