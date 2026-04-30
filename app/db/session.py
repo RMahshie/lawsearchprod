@@ -89,6 +89,8 @@ def _add_query_run_columns() -> None:
             connection.execute(text("ALTER TABLE query_runs ADD COLUMN answer_mode_flags JSON"))
         if "answer_mode_reason" not in existing_columns:
             connection.execute(text("ALTER TABLE query_runs ADD COLUMN answer_mode_reason TEXT"))
+        if "relevance_metadata" not in existing_columns:
+            connection.execute(text("ALTER TABLE query_runs ADD COLUMN relevance_metadata JSON"))
 
 
 def _drop_removed_query_source_columns() -> None:

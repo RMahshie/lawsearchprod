@@ -87,6 +87,7 @@ class QueryRun(Base):
     answer_mode: Mapped[str | None] = mapped_column(String(64), nullable=True)
     answer_mode_flags: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     answer_mode_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    relevance_metadata: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

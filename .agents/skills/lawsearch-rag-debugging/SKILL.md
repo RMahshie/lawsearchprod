@@ -48,6 +48,9 @@ Useful high-level lines:
 - `RAG_DEBUG rewrite`: division-specific retrieval rewrites.
 - `VECTOR_DEBUG retrieve`: Chroma collection, embedding model, requested and returned chunk counts.
 - `RAG_DEBUG map`: per-chunk map latency and output sizes.
+- `RAG_DEBUG map`: also includes fact-level responsiveness counts when scope-control prompts are active.
+- `RAG_DEBUG reduce_relevance`: per-division direct/adjacent/not-responsive fact counts and summary sizes.
+- `RAG_DEBUG answer_budget`: emitted when reduce or synthesize output exceeds target word/bullet budgets.
 - `RAG_DEBUG reduce_start` / `reduce_done`: per-division reduce timing.
 - `RAG_DEBUG synthesize_start` / `synthesize_done` / `synthesize_skip`: final synthesis behavior.
 - `RAG_DEBUG query_done`: total query timing and stage counts.

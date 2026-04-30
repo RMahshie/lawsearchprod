@@ -343,6 +343,13 @@ def test_save_query_response_persists_answer_mode_debug_metadata():
         answer_mode="broad_topic_total",
         answer_mode_flags={"mixed_financial_types": True},
         answer_mode_reason="Broad infrastructure funding question.",
+        relevance_metadata=[
+            {
+                "scope": "division",
+                "division_acronym": "AG",
+                "counts": {"direct": 2, "adjacent": 1, "not_responsive": 0},
+            }
+        ],
     )
     db.commit()
 
@@ -350,6 +357,7 @@ def test_save_query_response_persists_answer_mode_debug_metadata():
     assert run.answer_mode == "broad_topic_total"
     assert run.answer_mode_flags == {"mixed_financial_types": True}
     assert run.answer_mode_reason == "Broad infrastructure funding question."
+    assert run.relevance_metadata[0]["counts"] == {"direct": 2, "adjacent": 1, "not_responsive": 0}
 
 
 def test_map_chunk_returns_facts_and_summary(monkeypatch):
@@ -1034,6 +1042,11 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     assert "Selected answer_mode: reconciliation_breakdown" in prompt
     assert "Active safety flags: none" in prompt
     assert "Reconciliation and breakdown rules:" in prompt
+    assert "Responsiveness rules:" in prompt
+    assert "Build substantive answer content from Direct facts" in prompt
+    assert "Do not use Not responsive facts in the answer" in prompt
+    assert "no Direct facts, write a short no-direct-info line" in prompt
+    assert "Target 8-12 substantive bullets" in prompt
     assert "Use Included / Not added separately structure" in prompt
     assert "For combined-topic questions, provide one total found per topic" in prompt
     assert "Reconciliation example:" in prompt
@@ -1171,6 +1184,76 @@ def test_map_prompt_filters_unrelated_dollars_for_funding_mechanisms(monkeypatch
     assert "Preserve financial-type language around each dollar figure" in prompt
     assert "direct loan authority, guaranteed loan authority, loan subsidy cost" in prompt
     assert "Preserve relationship language such as 'of which', 'to remain available', 'derived from fees'" in prompt
+    assert "Return fact-level responsiveness tiers: direct, adjacent, or not_responsive" in prompt
+    assert "A single chunk may contain a mix of direct, adjacent, and not_responsive facts" in prompt
+
+
+def test_map_chunk_tracks_fact_level_relevance_and_marks_direct_numbers_only(monkeypatch):
+    response = {
+        "facts": [
+            {
+                "fact": "- Direct rural water program receives $10,000,000 [AG]",
+                "responsiveness_tier": "direct",
+                "reason": "Directly answers rural water funding.",
+                "source_numbers": [
+                    {
+                        "figure": "$10,000,000",
+                        "value": 10_000_000,
+                        "label": "Direct rural water program",
+                    }
+                ],
+            },
+            {
+                "fact": "- Adjacent community development account receives $20,000,000 [AG]",
+                "responsiveness_tier": "adjacent",
+                "reason": "Related infrastructure account but not identified as rural water.",
+                "source_numbers": [
+                    {
+                        "figure": "$20,000,000",
+                        "value": 20_000_000,
+                        "label": "Adjacent community development",
+                    }
+                ],
+            },
+        ],
+        "source_numbers": [],
+    }
+    llm = CapturingStructuredLLM(response)
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+
+    result = service._map_chunk(
+        {
+            "question": "What rural water funding is available?",
+            "query_id": "query-test",
+            "thinking_speed": "normal",
+            "answer_mode": "broad_topic_total",
+            "answer_mode_flags": {"mixed_financial_types": False},
+            "chunk": {
+                "chunk_id": "chunk-1",
+                "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+                "division_acronym": "AG",
+                "content": (
+                    "Direct rural water program receives $10,000,000. "
+                    "Adjacent community development account receives $20,000,000."
+                ),
+                "chunk_summary": None,
+                "score": 0.1,
+                "metadata": {},
+            },
+        }
+    )
+
+    mapped = result["mapped_chunks"][0]
+    assert mapped["relevance_counts"] == {"direct": 1, "adjacent": 1, "not_responsive": 0}
+    assert "Direct facts:" in mapped["extracted_facts"]
+    assert "Adjacent facts:" in mapped["extracted_facts"]
+    assert "$10,000,000 [[num:" in mapped["extracted_facts"]
+    assert "$20,000,000 [[num:" not in mapped["extracted_facts"]
+    assert len(result["number_annotations"]) == 1
+    assert result["number_annotations"][0]["figure"] == "$10,000,000"
+    assert result["relevance_metadata"][0]["scope"] == "chunk"
+    assert result["relevance_metadata"][0]["counts"] == {"direct": 1, "adjacent": 1, "not_responsive": 0}
 
 
 def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
@@ -1221,7 +1304,11 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     assert "Active safety flags: mixed_financial_types" in prompt
     assert "Synthesis rules:" in prompt
     assert "Write a short top-level summary first" in prompt
-    assert "Preserve or append the division-level results" in prompt
+    assert "Combine already-short division results rather than appending dense sections" in prompt
+    assert "divisions with no direct evidence should appear only as short no-direct-info lines" in prompt
+    assert "Group broad answers primarily by controlling agency/account" in prompt
+    assert "Target 8-12 substantive bullets for broad answers" in prompt
+    assert "Avoid duplicating caveats" in prompt
     assert "Do new accounting only when combining comparable division totals" in prompt
     assert "Mixed financial-type safety rules:" in prompt
     assert "Do not add account totals plus suballocations" in prompt

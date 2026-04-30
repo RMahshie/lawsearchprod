@@ -298,6 +298,7 @@ def save_query_response(
     answer_mode: str | None = None,
     answer_mode_flags: dict[str, Any] | None = None,
     answer_mode_reason: str | None = None,
+    relevance_metadata: list[dict[str, Any]] | None = None,
 ) -> None:
     """Persist a successful query response as a saved question result snapshot.
 
@@ -321,6 +322,7 @@ def save_query_response(
         answer_mode=answer_mode,
         answer_mode_flags=answer_mode_flags,
         answer_mode_reason=answer_mode_reason,
+        relevance_metadata=relevance_metadata,
         created_at=response.timestamp,
         completed_at=datetime.utcnow(),
     )

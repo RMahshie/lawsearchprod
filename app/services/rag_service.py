@@ -143,11 +143,38 @@ class SourceNumberCandidate(BaseModel):
     label: str
 
 
+class MappedFact(BaseModel):
+    """One mapped fact with scope responsiveness metadata."""
+
+    fact: str
+    responsiveness_tier: Literal["direct", "adjacent", "not_responsive"] = "direct"
+    reason: str = ""
+    source_numbers: list[SourceNumberCandidate] = Field(default_factory=list)
+
+
 class MappedFacts(BaseModel):
     """Structured map output with facts and relevant source-backed numbers."""
 
-    extracted_facts: str
+    extracted_facts: str = ""
+    facts: list[MappedFact] = Field(default_factory=list)
     source_numbers: list[SourceNumberCandidate] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def normalize_fact_objects(self):
+        """Keep legacy extracted_facts/source_numbers output compatible with tiered facts."""
+        if not self.facts and self.extracted_facts.strip() and self.extracted_facts.strip() != "- No relevant facts found.":
+            self.facts = [
+                MappedFact(
+                    fact=line.strip(),
+                    responsiveness_tier="direct",
+                    source_numbers=self.source_numbers,
+                )
+                for line in self.extracted_facts.splitlines()
+                if line.strip()
+            ]
+        if not self.extracted_facts.strip() and self.facts:
+            self.extracted_facts = "\n".join(fact.fact for fact in self.facts)
+        return self
 
 
 class DivisionQueryState(TypedDict):
@@ -177,6 +204,8 @@ class MappedChunkState(TypedDict):
     score: float | None
     metadata: dict[str, Any]
     number_annotations: list[dict[str, Any]]
+    relevance_facts: list[dict[str, Any]]
+    relevance_counts: dict[str, int]
 
 
 class DivisionAnswerState(TypedDict):
@@ -186,6 +215,8 @@ class DivisionAnswerState(TypedDict):
     source_chunk_ids: list[str]
     chunks_retrieved: int
     number_annotations: list[dict[str, Any]]
+    relevance_counts: dict[str, int]
+    relevance_summary: dict[str, Any]
 
 
 class RAGState(TypedDict, total=False):
@@ -208,6 +239,7 @@ class RAGState(TypedDict, total=False):
     mapped_chunks: Annotated[list[MappedChunkState], operator.add]
     division_answers: Annotated[list[DivisionAnswerState], operator.add]
     number_annotations: Annotated[list[dict[str, Any]], operator.add]
+    relevance_metadata: Annotated[list[dict[str, Any]], operator.add]
     final_answer: str
 
 
@@ -351,6 +383,7 @@ class RAGService:
             "mapped_chunks": [],
             "division_answers": [],
             "number_annotations": [],
+            "relevance_metadata": [],
             "final_answer": "",
         }
         self._debug_log(
@@ -409,6 +442,7 @@ class RAGService:
                         answer_mode=result.get("answer_mode"),
                         answer_mode_flags=result.get("answer_mode_flags"),
                         answer_mode_reason=result.get("answer_mode_reason"),
+                        relevance_metadata=result.get("relevance_metadata"),
                     )
                     db.commit()
             except Exception as exc:
@@ -800,12 +834,23 @@ class RAGService:
                 query_id=query_id,
             )
             mapped_facts = facts_future.result()
-            extracted_facts = mapped_facts.extracted_facts
             chunk_summary = summary_future.result()
             chunk_snapshot = snapshot_future.result()
 
-        number_annotations = self._source_number_annotations(chunk, extracted_facts, mapped_facts.source_numbers)
-        extracted_facts = self._mark_text_with_source_annotations(extracted_facts, number_annotations)
+        relevance_facts = self._normalize_mapped_fact_records(mapped_facts)
+        direct_text = "\n".join(item["fact"] for item in relevance_facts if item["responsiveness_tier"] == "direct")
+        direct_candidates = [
+            candidate
+            for fact in mapped_facts.facts
+            if fact.responsiveness_tier == "direct"
+            for candidate in fact.source_numbers
+        ] or mapped_facts.source_numbers
+        number_annotations = self._source_number_annotations(chunk, direct_text, direct_candidates)
+        for item in relevance_facts:
+            if item["responsiveness_tier"] == "direct":
+                item["fact"] = self._mark_text_with_source_annotations(item["fact"], number_annotations)
+        extracted_facts = self._render_tiered_facts(relevance_facts)
+        relevance_counts = self._relevance_counts(relevance_facts)
         marker_count = self._count_number_markers(extracted_facts)
         unmarked_figures = self._unmarked_figures(extracted_facts)
 
@@ -820,9 +865,12 @@ class RAGService:
             "score": chunk.get("score"),
             "metadata": chunk.get("metadata", {}),
             "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in number_annotations],
+            "relevance_facts": relevance_facts,
+            "relevance_counts": relevance_counts,
         }
         self._debug_log(
-            "map query_id=%s chunk_id=%s division=%s map_model=%s summary_model=%s duration=%.2fs facts_chars=%s summary_chars=%s snapshot_chars=%s",
+            "map query_id=%s chunk_id=%s division=%s map_model=%s summary_model=%s duration=%.2fs "
+            "facts_chars=%s summary_chars=%s snapshot_chars=%s relevance_counts=%s",
             state.get("query_id", "unknown"),
             chunk["chunk_id"],
             chunk["division_acronym"],
@@ -832,6 +880,7 @@ class RAGService:
             len(extracted_facts),
             len(chunk_summary),
             len(chunk_snapshot),
+            relevance_counts,
         )
         if unmarked_figures:
             self._debug_log(
@@ -849,6 +898,16 @@ class RAGService:
         return {
             "mapped_chunks": [mapped],
             "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in number_annotations],
+            "relevance_metadata": [
+                {
+                    "scope": "chunk",
+                    "chunk_id": chunk["chunk_id"],
+                    "division": chunk["division"],
+                    "division_acronym": chunk["division_acronym"],
+                    "counts": relevance_counts,
+                    "facts": relevance_facts,
+                }
+            ],
         }
 
     def _fan_out_reduce_divisions(self, state: RAGState) -> dict[str, Any]:
@@ -942,6 +1001,24 @@ class RAGService:
         llm = create_chat_model(reduce_model.model, "reduce", reduce_model.reasoning_effort)
 
         facts = "\n\n".join(item["extracted_facts"] for item in mapped_items)
+        relevance_facts = [
+            fact
+            for item in mapped_items
+            for fact in item.get("relevance_facts", [])
+            if isinstance(fact, dict)
+        ]
+        relevance_counts = self._merge_relevance_counts(
+            [item.get("relevance_counts", {}) for item in mapped_items]
+        )
+        relevance_summary = self._summarize_relevance(relevance_facts)
+        self._debug_log(
+            "reduce_relevance query_id=%s division=%s counts=%s direct_examples=%s adjacent_examples=%s",
+            state.get("query_id", "unknown"),
+            state["division_acronym"],  # type: ignore[typeddict-item]
+            relevance_counts,
+            len(relevance_summary.get("direct_examples", [])),
+            len(relevance_summary.get("adjacent_examples", [])),
+        )
         source_annotations = self._annotations_from_dicts(
             annotation
             for item in mapped_items
@@ -1001,7 +1078,15 @@ class RAGService:
             "source_chunk_ids": [item["chunk_id"] for item in mapped_items if item["chunk_id"]],
             "chunks_retrieved": chunks_retrieved,
             "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in derived_annotations],
+            "relevance_counts": relevance_counts,
+            "relevance_summary": relevance_summary,
         }
+        self._log_answer_budget(
+            query_id=state.get("query_id", "unknown"),
+            stage="reduce",
+            label=state["division_acronym"],  # type: ignore[typeddict-item]
+            text=answer,
+        )
         self._debug_log(
             "reduce_done query_id=%s division=%s model=%s mapped_items=%s input_chars=%s duration=%.2fs answer_chars=%s",
             state.get("query_id", "unknown"),
@@ -1029,6 +1114,15 @@ class RAGService:
         return {
             "division_answers": [division_answer],
             "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in derived_annotations],
+            "relevance_metadata": [
+                {
+                    "scope": "division",
+                    "division": division,
+                    "division_acronym": state["division_acronym"],  # type: ignore[typeddict-item]
+                    "counts": relevance_counts,
+                    "summary": relevance_summary,
+                }
+            ],
         }
 
     def _synthesize_final(self, state: RAGState) -> dict[str, Any]:
@@ -1090,7 +1184,10 @@ class RAGService:
             synthesize_model.reasoning_effort,
         )
         context = "\n\n".join(
-            f"## {item['division']} [{item['division_acronym']}]\n{item['answer']}"
+            f"## {item['division']} [{item['division_acronym']}]\n"
+            f"Relevance counts: {item.get('relevance_counts', {})}\n"
+            f"Relevance summary: {item.get('relevance_summary', {})}\n"
+            f"{item['answer']}"
             for item in division_answers
         )
         available_annotations = self._annotations_from_dicts(state.get("number_annotations", []))
@@ -1119,6 +1216,12 @@ class RAGService:
             query_id=state.get("query_id", "unknown"),
         )
         final_answer = marked.answer
+        self._log_answer_budget(
+            query_id=state.get("query_id", "unknown"),
+            stage="synthesize",
+            label="answer",
+            text=final_answer,
+        )
         derived_annotations = self._validate_derived_annotations(
             proposed=marked.derived_annotations,
             target_answer=final_answer,
@@ -1251,6 +1354,118 @@ class RAGService:
     def _count_number_markers(self, text: str) -> int:
         """Count hidden number markers in markdown text."""
         return len(NUMBER_MARKER_PATTERN.findall(text or ""))
+
+    def _normalize_mapped_fact_records(self, mapped_facts: MappedFacts) -> list[dict[str, Any]]:
+        """Return JSON-ready mapped facts with responsiveness tiers."""
+        records: list[dict[str, Any]] = []
+        facts = mapped_facts.facts or []
+        if not facts and mapped_facts.extracted_facts.strip():
+            facts = [
+                MappedFact(fact=line.strip(), responsiveness_tier="direct")
+                for line in mapped_facts.extracted_facts.splitlines()
+                if line.strip()
+            ]
+
+        for fact in facts:
+            text = fact.fact.strip()
+            if not text:
+                continue
+            tier = fact.responsiveness_tier
+            records.append(
+                {
+                    "fact": text,
+                    "responsiveness_tier": tier if tier in {"direct", "adjacent", "not_responsive"} else "direct",
+                    "reason": fact.reason.strip(),
+                    "source_numbers": [
+                        candidate.model_dump(mode="json", exclude_none=True)
+                        for candidate in fact.source_numbers
+                    ],
+                }
+            )
+
+        if not records:
+            records.append(
+                {
+                    "fact": "- No relevant facts found.",
+                    "responsiveness_tier": "not_responsive",
+                    "reason": "No relevant evidence extracted from this chunk.",
+                    "source_numbers": [],
+                }
+            )
+        return records
+
+    def _relevance_counts(self, facts: list[dict[str, Any]]) -> dict[str, int]:
+        """Count mapped facts by responsiveness tier."""
+        counts = {"direct": 0, "adjacent": 0, "not_responsive": 0}
+        for fact in facts:
+            tier = fact.get("responsiveness_tier")
+            if tier in counts:
+                counts[tier] += 1
+        return counts
+
+    def _merge_relevance_counts(self, counts_list: list[dict[str, int]]) -> dict[str, int]:
+        """Merge responsiveness tier count dictionaries."""
+        merged = {"direct": 0, "adjacent": 0, "not_responsive": 0}
+        for counts in counts_list:
+            for key in merged:
+                merged[key] += int(counts.get(key, 0))
+        return merged
+
+    def _render_tiered_facts(self, facts: list[dict[str, Any]]) -> str:
+        """Render mapped facts for reduce prompts while preserving tier metadata."""
+        groups = [
+            ("Direct facts", "direct"),
+            ("Adjacent facts", "adjacent"),
+            ("Not responsive facts", "not_responsive"),
+        ]
+        sections: list[str] = []
+        for label, tier in groups:
+            tier_facts = [fact for fact in facts if fact.get("responsiveness_tier") == tier]
+            if not tier_facts:
+                continue
+            lines = [f"{label}:"]
+            for fact in tier_facts:
+                reason = fact.get("reason")
+                suffix = f" (scope note: {reason})" if reason else ""
+                lines.append(f"- {fact.get('fact', '').strip()}{suffix}")
+            sections.append("\n".join(lines))
+        return "\n\n".join(sections) or "Not responsive facts:\n- No relevant facts found."
+
+    def _summarize_relevance(self, facts: list[dict[str, Any]], limit: int = 3) -> dict[str, Any]:
+        """Build a compact relevance summary for logging and persistence."""
+        direct = [fact.get("fact", "").strip() for fact in facts if fact.get("responsiveness_tier") == "direct"]
+        adjacent = [
+            {
+                "fact": fact.get("fact", "").strip(),
+                "reason": fact.get("reason", "").strip(),
+            }
+            for fact in facts
+            if fact.get("responsiveness_tier") == "adjacent"
+        ]
+        return {
+            "direct_examples": direct[:limit],
+            "adjacent_examples": adjacent[:limit],
+        }
+
+    def _answer_budget_counts(self, text: str) -> dict[str, int]:
+        """Return approximate word and bullet counts for generated answer budget logs."""
+        return {
+            "words": len(re.findall(r"\b\w+\b", text or "")),
+            "bullets": len(re.findall(r"(?m)^\s*(?:[-*]|\d+\.)\s+", text or "")),
+        }
+
+    def _log_answer_budget(self, *, query_id: str, stage: str, label: str, text: str) -> None:
+        """Log answers that exceed broad-answer budget targets."""
+        counts = self._answer_budget_counts(text)
+        if counts["words"] > 900 or counts["bullets"] > 14:
+            self._debug_log(
+                "answer_budget query_id=%s stage=%s label=%s words=%s bullets=%s target_words<=900 target_bullets<=14",
+                query_id,
+                stage,
+                label,
+                counts["words"],
+                counts["bullets"],
+            )
 
     def _unmarked_figures(self, text: str, limit: int = 12) -> list[str]:
         """Return displayed dollar figures that are not immediately followed by a marker."""

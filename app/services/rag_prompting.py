@@ -35,6 +35,11 @@ INVARIANT_RULES = """Invariant source and accounting rules:
 MAP_BASE_RULES = """Map extraction rules:
 - Extract only facts that help answer the question.
 - Relevance must be tied to the agency, account, program, authority, or topic in the question, not just the same division or catch-all source bucket.
+- Return fact-level responsiveness tiers: direct, adjacent, or not_responsive.
+- Use direct only when the fact directly answers the user's topic and scope.
+- Use adjacent when the fact is related but not clearly within the user's requested scope.
+- Use not_responsive when the fact was retrieved but should not be used to answer the question.
+- A single chunk may contain a mix of direct, adjacent, and not_responsive facts; classify each fact separately.
 - Preserve exact dollar figures, account names, agencies, fiscal years, and section references.
 - Preserve financial-type language around each dollar figure, such as account total, suballocation, grant, direct loan authority, guaranteed loan authority, loan subsidy cost, user fee, offsetting collection, transfer, rescission, set-aside, cap, or limitation.
 - Preserve relationship language such as 'of which', 'to remain available', 'derived from fees', 'transferred', 'rescinded', 'not to exceed', and 'loan authority'.
@@ -51,8 +56,8 @@ MAP_BASE_RULES = """Map extraction rules:
 MAP_EXAMPLE = """Map example:
 Question: What amount is appropriated for FDA Salaries and Expenses?
 Relevant chunk text says the FDA Salaries and Expenses account receives $6,957,972,000 and nearby Sec. 776 provides $3,000,000 for a separate purpose.
-Good extracted_facts: - FDA Salaries and Expenses is appropriated $6,957,972,000 for necessary FDA expenses. [AG]
-Do not extract the nearby $3,000,000 unless it directly answers the question."""
+Good fact object: responsiveness_tier=direct, fact="- FDA Salaries and Expenses is appropriated $6,957,972,000 for necessary FDA expenses. [AG]"
+The nearby $3,000,000 should be adjacent or not_responsive unless it directly answers the question."""
 
 
 MODE_REDUCE_RULES: dict[str, str] = {
@@ -130,7 +135,9 @@ Good answer pattern: Group the answer by financial type: direct loan authority, 
 
 SYNTHESIS_BASE_RULES = """Synthesis rules:
 - Write a short top-level summary first.
-- Preserve or append the division-level results; do not drop a division.
+- Combine already-short division results rather than appending dense sections.
+- Do not drop a division; divisions with no direct evidence should appear only as short no-direct-info lines.
+- Group broad answers primarily by controlling agency/account, with division labels secondary.
 - Preserve relevant dollar figures and citation markers from division answers.
 - Preserve existing [[num:...]] markers immediately after their visible source or derived figures.
 - If you repeat or restate a marked dollar figure in the answer, by-division section, or caveats, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.
@@ -138,6 +145,8 @@ SYNTHESIS_BASE_RULES = """Synthesis rules:
 - Keep citation markers immediately after the figure or clause they support.
 - Do not introduce topic sections that were not requested by the question and are not directly relevant to the division answers.
 - Do new accounting only when combining comparable division totals.
+- Target 8-12 substantive bullets for broad answers. Exceed that only when more direct responsive accounts truly require it.
+- Avoid duplicating caveats across division sections and final caveats.
 - For any new calculated total, add a new marker like [[num:drv_final_1]] immediately after the visible total and add a matching derived annotation.
 - Derived annotation input_ids must reference existing source or derived marker ids from the available annotations.
 - Use clear language, clear numbers, and no filler."""
@@ -186,7 +195,9 @@ def build_map_prompt(
     """Build the map-stage extraction prompt."""
     return (
         "You are a legislative financial analyst extracting evidence from one source chunk.\n\n"
-        "Return structured output with `extracted_facts` markdown bullets and `source_numbers` for the dollar figures used in those facts.\n\n"
+        "Return structured output with `facts`, where each fact has `fact`, `responsiveness_tier`, `reason`, "
+        "and `source_numbers` for the dollar figures used in that fact. Legacy `extracted_facts` may be used only "
+        "when fact-level objects are unavailable.\n\n"
         "Use this markdown bullet format in extracted_facts:\n"
         "- <specific fact with exact dollar figure/account/program/agency/fiscal year if present> "
         f"[{division_acronym}]\n\n"
@@ -220,6 +231,14 @@ def build_reduce_prompt(
         "- Use an Included / Not added separately structure only when answer-mode instructions call for it or double-counting risk must be made explicit.\n\n"
         f"{INVARIANT_RULES}\n\n"
         f"{_mode_reduce_rules(answer_mode, answer_mode_flags)}\n\n"
+        "Responsiveness rules:\n"
+        "- Build substantive answer content from Direct facts.\n"
+        "- Use Adjacent facts only for short not-included or scope notes unless needed to clarify why they were not counted.\n"
+        "- Do not use Not responsive facts in the answer.\n"
+        "- If a routed division has no Direct facts, write a short no-direct-info line with the best adjacent reason when available.\n"
+        "- For broad answers, group primarily by controlling agency/account, with division labels secondary.\n"
+        "- Target 8-12 substantive bullets for broad mixed-topic answers. Exceed that only when more than 12 direct responsive accounts or buckets materially answer the question.\n"
+        "- Keep direct suballocations when useful, but group them compactly under the parent account and do not repeat the same caveat elsewhere.\n\n"
         "Rules:\n"
         "- Before writing, classify facts internally as DIRECT, SUPPORTING, or IRRELEVANT. Use DIRECT plus only essential SUPPORTING facts in the final answer.\n"
         "- Preserve all relevant dollar figures from the extracted facts.\n"
@@ -235,7 +254,7 @@ def build_reduce_prompt(
         f"Question:\n{question}\n\n"
         f"Division: {division}\n\n"
         f"Available annotations:\n{annotation_context}\n\n"
-        f"Extracted facts:\n{facts}"
+        f"Tiered extracted facts:\n{facts}"
     )
 
 
