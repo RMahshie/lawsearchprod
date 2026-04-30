@@ -12,7 +12,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from threading import Lock
-from typing import Annotated, Any, Callable, Optional
+from typing import Annotated, Any, Callable, Literal, Optional
 
 # In local development, Chroma may need the pysqlite3 shim. Docker uses system sqlite.
 if os.getenv("ENVIRONMENT") != "production" and not os.path.exists("/.dockerenv"):
@@ -46,6 +46,13 @@ from app.models.query import (
 )
 from app.services.ingestion_service import IngestionService
 from app.services.llm_factory import create_chat_model, describe_model_strategy, format_model_spec, resolve_model
+from app.services.rag_prompting import (
+    DEFAULT_ANSWER_MODE,
+    build_map_prompt,
+    build_reduce_prompt,
+    build_synthesis_prompt,
+    normalize_answer_mode,
+)
 from app.services.storage_registry import (
     create_vector_store_record,
     ensure_storage_ready,
@@ -61,73 +68,25 @@ logger = logging.getLogger(__name__)
 INCOMPATIBLE_QUESTION_ANSWER = FY2026_INCOMPATIBLE_QUESTION_ANSWER
 
 
-ACCOUNTING_SCOPE_POLICY = """Accounting scope policy:
-- Answer the question asked, not every related thing found. Use only facts that directly answer the question or are necessary to avoid misleading the user.
-- Default to a concise direct answer for simple account, program, or amount questions. Reserve reconciliation-style detail for questions that ask for a breakdown, combined total, reconciliation, or double-counting analysis.
-- Give direct working totals when the retrieved facts contain apparently top-level additive buckets. Label them as "total found" or "retrieved top-level bucket total", not as an authoritative statutory total.
-- For broad topic questions, provide a topic total found when top-level buckets are present, then show the included buckets and the related figures not added separately.
-- For questions that span agencies, components, accounts, or programs, include the relevant supported buckets and break the answer down by those units by default instead of hiding them inside one opaque number.
-- For combined-topic questions, provide one total found per topic and a combined total found when those topic totals are clearly additive.
-- Every calculated total must state exactly what is included and what was not added separately.
-- Do not add subprograms, transfers, component amounts, caps, or availability notes into a parent total unless the facts clearly show they are separate additive appropriations.
-- If a broader parent account and one of its components both appear, include the parent account and explain that the component was not added separately.
-- For account questions, separate internally: main appropriation amount, suballocations within that amount, user fees credited to the account, and separate provisions outside the account. Surface only the categories needed to answer the user.
-- Before aggregating dollar figures, classify each amount by financial type and additive relationship. Only sum amounts that are comparable, additive, and in the same scope.
-- Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
-- For mixed financial-type questions, group amounts by type first. If arithmetic across mixed types is useful, label it as a "mixed identified total" and state that it combines different financial types and should not be treated as one clean funding pool.
-- Do not create a "Not added separately" section unless the user asks for reconciliation/breakdown or excluding an amount is necessary to prevent double counting.
-- Distinguish dollar-figure evidence from funding-mechanism evidence. Continuing appropriations, rate-for-operations language, apportionment authority, extensions, and referenced prior laws can explain how funding continues, but they are not dollar amounts.
-- If the requested topic has funding-mechanism evidence but no relevant dollar figure, say that a dollar total was not found in the extracted facts and explain what mechanism was found. Do not substitute unrelated dollar figures from the same division or source bucket."""
+class AnswerModeFlags(BaseModel):
+    """Safety flags selected with the route decision."""
 
-
-ACCOUNTING_FEW_SHOT_EXAMPLES = """Accounting examples:
-These examples are illustrative accounting patterns, not required output headings. Do not copy example topic names unless the user's question asks about that topic or the retrieved facts make that topic directly relevant.
-
-Example 1 - FEMA scoped buckets:
-Question: how much for FEMA?
-Facts include FEMA operations and support $1,483,990,000, FEMA procurement/construction/improvements $99,528,000, FEMA Federal Assistance $3,497,019,369, Disaster Relief Fund $20,261,000,000, National Flood Insurance Fund $239,983,000, and a $33,000,000 transfer to FEMA Federal Assistance.
-Good answer pattern: Start with "FEMA total found: $25,581,520,369" when adding those retrieved top-level buckets. Then use a "FEMA" section with "Included in FEMA total found" bullets for operations/support, procurement/construction/improvements, Federal Assistance, Disaster Relief Fund, and National Flood Insurance Fund. Use "Not added separately" bullets for the $33,000,000 transfer and any subprograms, caps, or availability amounts that appear to sit within broader FEMA buckets.
-
-Example 2 - Immigration buckets:
-Question: how much for FEMA and immigration combined?
-Facts include FEMA Federal Assistance $3,497,019,369, ICE operations and support $9,501,542,000, ICE enforcement/detention/removal $5,082,218,000, USCIS operations and support $271,140,000, USCIS Citizenship and Integration grants $10,000,000, and CBP operations and support $18,426,870,000.
-Good answer pattern: Start with "FEMA total found", "Immigration-related total found", and "Combined FEMA + immigration-related total found" when the arithmetic is source-backed. Then use separate "FEMA" and "Immigration-related" sections. Under Immigration-related, include CBP, ICE, USCIS, and DHS-wide immigration-related buckets that are supported by facts. Do not add the ICE enforcement/detention/removal component separately when the broader ICE operations/support amount is included.
-
-Example 3 - Non-FEMA component handling:
-Question: how much for Army Corps construction?
-Facts include Army Corps Construction $1,850,000,000, Mississippi River and Tributaries $368,037,000, and Investigations $142,000,000.
-Good answer pattern: Report Construction as $1,850,000,000. Keep Mississippi River and Tributaries and Investigations as separate accounts unless the user asks for all Army Corps civil works accounts together. Do not add them into Construction just because they are related to water infrastructure.
-
-Example 4 - Funding mechanism without a dollar figure:
-Question: how much money for FEMA?
-Facts include that amounts made available by continuing appropriations to the Department of Homeland Security under "Federal Emergency Management Agency--Disaster Relief Fund" may be apportioned up to the rate for operations necessary for Stafford Act response and recovery. Facts also include unrelated Indian Health Service amounts.
-Good answer pattern: Say "FEMA total found: no FEMA-specific dollar amount identified in the extracted facts." Then explain under FEMA that the retrieved text provides funding-mechanism evidence for continuing/apportioning Disaster Relief Fund operations, but no explicit FEMA dollar figure. Put the unrelated Indian Health Service amounts outside the FEMA total or omit them as not responsive.
-
-Example 5 - Direct account answer:
-Question: What amount is appropriated for the FDA Salaries and Expenses account in FY2026, and what are the major allowed uses?
-Facts include $6,957,972,000 for FDA Salaries and Expenses, necessary FDA expenses including passenger motor vehicles, space rental and related costs, special-purpose space, and emergency enforcement, program/center activities such as Human Foods, CDER, CBER, CVM, CDRH, NCTR, and Center for Tobacco Products, user fees credited to the account, and a separate nearby $3,000,000 provision.
-Good answer pattern: Give the $6,957,972,000 account amount and a compact summary of major allowed uses. Mention that user fees are credited to the account under applicable laws only if useful for clarity. Do not list every center suballocation, do not include the separate nearby $3,000,000 provision, and do not create a "Not added separately" section unless the user asks for a breakdown or reconciliation.
-
-Example 6 - Mixed financial types:
-Question: What FY2026 funding is available for rural water/wastewater infrastructure?
-Facts include USDA Rural Utilities Service direct loan authority $X, USDA Rural Utilities Service guaranteed loan authority $Y, USDA Rural Utilities Service subsidy/grant/program funding $Z, USDA technical assistance/circuit rider funding $A, and EPA targeted grant funding $B.
-Good answer pattern: Group the answer by financial type: direct loan authority, guaranteed loan authority, subsidy/grant/program funding, technical assistance, and targeted grants. Do not present X+Y+Z+A+B as a clean grant pool or top-line appropriation. If showing arithmetic across all retrieved figures, label it as "Mixed identified total: $N" and explain that it combines different financial types and should not be treated as one clean funding pool."""
-
-
-SYNTHESIS_ACCOUNTING_POLICY = """Accounting synthesis policy:
-- Preserve division-level "total found" values, topic sections, included buckets, and not-added caveats.
-- If combining division totals, state exactly which scoped totals are included.
-- Preserve notes about excluded transfers, component amounts, caps, and non-comparable accounts.
-- If the division answers separate agencies, components, accounts, or programs under a topic, preserve that breakdown even when also reporting a topic subtotal.
-- If division answers group amounts by financial type, preserve those financial-type groups instead of flattening them into one headline total.
-- Do not create a cross-division headline total unless the division answers identify comparable additive amounts in the same scope. For mixed types, preserve any "mixed identified total" caveat and prioritize the grouped breakdown.
-- Do not introduce topic sections that were not requested by the question and are not directly relevant to the division answers."""
+    mixed_financial_types: bool = False
 
 
 class RouteDecision(BaseModel):
     """Structured routing response."""
 
     divisions: list[str] = Field(default_factory=list)
+    answer_mode: Literal[
+        "direct_account_amount",
+        "broad_topic_total",
+        "funding_mechanism_no_amount",
+        "reconciliation_breakdown",
+        "general_summary",
+    ] = DEFAULT_ANSWER_MODE
+    answer_mode_flags: AnswerModeFlags = Field(default_factory=AnswerModeFlags)
+    answer_mode_reason: str = ""
 
 
 class DivisionQueryDecision(BaseModel):
@@ -240,6 +199,9 @@ class RAGState(TypedDict, total=False):
     vector_store_id: str | None
     vector_store_root: str | None
     vector_store_embedding_model: str | None
+    answer_mode: str
+    answer_mode_flags: dict[str, Any]
+    answer_mode_reason: str
     selected_divisions: list[str]
     division_queries: list[DivisionQueryState]
     retrieved_chunks: Annotated[list[RetrievedChunkState], operator.add]
@@ -380,6 +342,9 @@ class RAGService:
             "vector_store_id": active_store_id,
             "vector_store_root": active_store_root,
             "vector_store_embedding_model": active_embedding_model,
+            "answer_mode": DEFAULT_ANSWER_MODE,
+            "answer_mode_flags": {"mixed_financial_types": False},
+            "answer_mode_reason": "",
             "selected_divisions": [],
             "division_queries": [],
             "retrieved_chunks": [],
@@ -417,13 +382,15 @@ class RAGService:
         processing_time = time.time() - start_time
         self._debug_log(
             "query_done query_id=%s duration=%.2fs selected_divisions=%s retrieved_chunks=%s "
-            "mapped_chunks=%s division_answers=%s",
+            "mapped_chunks=%s division_answers=%s answer_mode=%s flags=%s",
             query_id,
             processing_time,
             len(result.get("selected_divisions", [])),
             len(result.get("retrieved_chunks", [])),
             len(result.get("mapped_chunks", [])),
             len(result.get("division_answers", [])),
+            result.get("answer_mode"),
+            result.get("answer_mode_flags"),
         )
         self._emit_progress(query_id, "done", "Done")
         if progress_callback:
@@ -434,7 +401,15 @@ class RAGService:
             try:
                 with SessionLocal() as db:
                     vector_store = db.get(VectorStore, result.get("vector_store_id")) if result.get("vector_store_id") else None
-                    save_query_response(db, response=response, question=request.question, vector_store=vector_store)
+                    save_query_response(
+                        db,
+                        response=response,
+                        question=request.question,
+                        vector_store=vector_store,
+                        answer_mode=result.get("answer_mode"),
+                        answer_mode_flags=result.get("answer_mode_flags"),
+                        answer_mode_reason=result.get("answer_mode_reason"),
+                    )
                     db.commit()
             except Exception as exc:
                 logger.warning("Query result was not persisted: %s", exc)
@@ -452,16 +427,8 @@ class RAGService:
         start_time = time.time()
         self._emit_progress(state, "routing", "Finding relevant divisions")
         requested_filter = state.get("divisions_filter")
-        if requested_filter:
-            self._debug_log(
-                "route query_id=%s source=filter duration=%.2fs selected=%s",
-                state.get("query_id", "unknown"),
-                time.time() - start_time,
-                len(requested_filter),
-            )
-            return {"selected_divisions": requested_filter}
-
-        valid_divisions = list(self.settings.subcommittee_stores.keys())
+        settings = getattr(self, "settings", get_settings())
+        valid_divisions = list(settings.subcommittee_stores.keys())
         routing_model = resolve_model(state.get("thinking_speed", "normal"), "routing")
         routing_llm = create_chat_model(
             routing_model.model,
@@ -469,15 +436,22 @@ class RAGService:
             routing_model.reasoning_effort,
         ).with_structured_output(RouteDecision)
         allowed_divisions = "\n".join(
-            f"- {division}: {self.settings.routing_aliases.get(division, '')}"
+            f"- {division}: {settings.routing_aliases.get(division, '')}"
             for division in valid_divisions
         )
         route_messages = [
             SystemMessage(
                 content=(
-                    "Select the relevant appropriations divisions for this question. "
+                    "Select the relevant appropriations divisions and classify the answer style for this question. "
                     "Return only exact FY2026 division names from the allowed list. "
-                    "Use the aliases only as routing hints, never as returned labels."
+                    "Use the aliases only as routing hints, never as returned labels. "
+                    "Set answer_mode to one of: direct_account_amount, broad_topic_total, "
+                    "funding_mechanism_no_amount, reconciliation_breakdown, general_summary. "
+                    "If the best mode is ambiguous, use broad_topic_total. "
+                    "Set answer_mode_flags.mixed_financial_types=true when relevant figures may include "
+                    "non-comparable financial types such as grants, loan authority, subsidy costs, user fees, "
+                    "transfers, rescissions, caps, limitations, or set-asides. "
+                    "Keep answer_mode_reason short."
                 )
             ),
             HumanMessage(
@@ -492,29 +466,70 @@ class RAGService:
             stage="route",
             query_id=state.get("query_id", "unknown"),
         )
-        selected = [division for division in decision.divisions if division in self.settings.subcommittee_stores]
-        if not selected:
-            logger.info("Router returned no valid FY2026 divisions; ending as incompatible question")
+        answer_mode_update = self._answer_mode_update(decision)
+        if requested_filter:
             self._debug_log(
-                "route query_id=%s source=llm model=%s duration=%.2fs selected=0 incompatible=true raw_divisions=%s",
+                "route query_id=%s source=filter model=%s duration=%.2fs selected=%s answer_mode=%s flags=%s reason=%s",
                 state.get("query_id", "unknown"),
                 format_model_spec(routing_model),
                 time.time() - start_time,
+                len(requested_filter),
+                answer_mode_update["answer_mode"],
+                answer_mode_update["answer_mode_flags"],
+                answer_mode_update["answer_mode_reason"],
+            )
+            return {"selected_divisions": requested_filter, **answer_mode_update}
+
+        selected = [division for division in decision.divisions if division in settings.subcommittee_stores]
+        if not selected:
+            logger.info("Router returned no valid FY2026 divisions; ending as incompatible question")
+            self._debug_log(
+                "route query_id=%s source=llm model=%s duration=%.2fs selected=0 incompatible=true "
+                "answer_mode=%s flags=%s reason=%s raw_divisions=%s",
+                state.get("query_id", "unknown"),
+                format_model_spec(routing_model),
+                time.time() - start_time,
+                answer_mode_update["answer_mode"],
+                answer_mode_update["answer_mode_flags"],
+                answer_mode_update["answer_mode_reason"],
                 decision.divisions,
             )
             return {
                 "selected_divisions": [],
                 "final_answer": INCOMPATIBLE_QUESTION_ANSWER,
+                **answer_mode_update,
             }
         self._debug_log(
-            "route query_id=%s source=llm model=%s duration=%.2fs selected=%s divisions=%s",
+            "route query_id=%s source=llm model=%s duration=%.2fs selected=%s divisions=%s "
+            "answer_mode=%s flags=%s reason=%s",
             state.get("query_id", "unknown"),
             format_model_spec(routing_model),
             time.time() - start_time,
             len(selected),
             [division_acronym(division) for division in selected],
+            answer_mode_update["answer_mode"],
+            answer_mode_update["answer_mode_flags"],
+            answer_mode_update["answer_mode_reason"],
         )
-        return {"selected_divisions": selected}
+        return {"selected_divisions": selected, **answer_mode_update}
+
+    def _answer_mode_update(self, decision: Any) -> dict[str, Any]:
+        """Normalize route-classifier answer-mode metadata for graph state."""
+        raw_mode = getattr(decision, "answer_mode", DEFAULT_ANSWER_MODE)
+        flags = getattr(decision, "answer_mode_flags", None)
+        if isinstance(flags, AnswerModeFlags):
+            flags_dict = flags.model_dump()
+        elif isinstance(flags, dict):
+            flags_dict = {"mixed_financial_types": bool(flags.get("mixed_financial_types"))}
+        else:
+            flags_dict = {
+                "mixed_financial_types": bool(getattr(flags, "mixed_financial_types", False)),
+            }
+        return {
+            "answer_mode": normalize_answer_mode(raw_mode),
+            "answer_mode_flags": flags_dict,
+            "answer_mode_reason": str(getattr(decision, "answer_mode_reason", "") or "").strip(),
+        }
 
     def _rewrite_division_queries(self, state: RAGState) -> dict[str, Any]:
         """Rewrite the original question into division-specific retrieval queries.
@@ -637,6 +652,8 @@ class RAGService:
                     "vector_store_id": state.get("vector_store_id"),
                     "vector_store_root": state.get("vector_store_root"),
                     "vector_store_embedding_model": state.get("vector_store_embedding_model"),
+                    "answer_mode": state.get("answer_mode", DEFAULT_ANSWER_MODE),
+                    "answer_mode_flags": state.get("answer_mode_flags", {}),
                 },
             )
             for item in division_queries
@@ -706,6 +723,8 @@ class RAGService:
                     "query_id": state.get("query_id", "unknown"),
                     "chunk": chunk,
                     "thinking_speed": state.get("thinking_speed", "normal"),
+                    "answer_mode": state.get("answer_mode", DEFAULT_ANSWER_MODE),
+                    "answer_mode_flags": state.get("answer_mode_flags", {}),
                 },
             )
             for chunk in state.get("retrieved_chunks", [])
@@ -735,28 +754,12 @@ class RAGService:
         summary_llm = create_chat_model(summary_model.model, "summary", summary_model.reasoning_effort)
         question = state["question"]
 
-        extraction_prompt = (
-            "You are a legislative financial analyst extracting evidence from one source chunk.\n\n"
-            "Return structured output with `extracted_facts` markdown bullets and `source_numbers` for the dollar figures used in those facts.\n\n"
-            "Use this markdown bullet format in extracted_facts:\n"
-            "- <specific fact with exact dollar figure/account/program/agency/fiscal year if present> "
-            f"[{chunk['division_acronym']}]\n\n"
-            "Rules:\n"
-            "- Extract only facts that help answer the question.\n"
-            "- Relevance must be tied to the agency, account, program, authority, or topic in the question, not just the same division or catch-all source bucket.\n"
-            "- Preserve exact dollar figures, account names, agencies, fiscal years, and section references.\n"
-            "- Preserve financial-type language around each dollar figure, such as account total, suballocation, grant, direct loan authority, guaranteed loan authority, loan subsidy cost, user fee, offsetting collection, transfer, rescission, set-aside, cap, or limitation.\n"
-            "- Preserve relationship language such as 'of which', 'to remain available', 'derived from fees', 'transferred', 'rescinded', 'not to exceed', and 'loan authority'.\n"
-            "- If the chunk has relevant funding-mechanism evidence but no relevant dollar figure, extract that mechanism as a fact without a source_numbers item.\n"
-            "- Funding-mechanism evidence includes continuing appropriations, rate-for-operations language, apportionment authority, extensions, and referenced prior laws.\n"
-            "- Do not extract unrelated dollar figures merely because the question asks how much; unrelated figures must not be used as substitutes for missing topic-specific amounts.\n"
-            "- One fact per bullet; no paragraphs.\n"
-            "- End every substantive bullet with the citation marker.\n"
-            "- Add one source_numbers item for each relevant dollar figure used in extracted_facts.\n"
-            "- Each source_numbers item must include the exact displayed figure, normalized dollar value, and a short account/program label.\n"
-            "- If the chunk has no relevant evidence, return exactly: - No relevant facts found.\n\n"
-            f"Question:\n{question}\n\n"
-            f"Source chunk:\n{chunk['content']}"
+        extraction_prompt = build_map_prompt(
+            question=question,
+            chunk_content=chunk["content"],
+            division_acronym=chunk["division_acronym"],
+            answer_mode=state.get("answer_mode", DEFAULT_ANSWER_MODE),
+            answer_mode_flags=state.get("answer_mode_flags", {}),
         )
         summary_prompt = (
             "Write exactly one plain-English sentence for a source hover summary. "
@@ -896,6 +899,8 @@ class RAGService:
                     "mapped_items": by_division.get(division, []),
                     "chunks_retrieved": retrieved_counts.get(division, 0),
                     "thinking_speed": state.get("thinking_speed", "normal"),
+                    "answer_mode": state.get("answer_mode", DEFAULT_ANSWER_MODE),
+                    "answer_mode_flags": state.get("answer_mode_flags", {}),
                 },
             )
             for division in state.get("selected_divisions", [])
@@ -959,47 +964,14 @@ class RAGService:
             derived_annotations: list[NumberAnnotation] = []
             proposed_derived_count = 0
         else:
-            prompt = (
-                "Synthesize the extracted facts into a division-level answer. "
-                "Return structured output with `answer` markdown and `derived_annotations`.\n\n"
-                "Answer shape:\n"
-                f"- Start with a heading exactly like: ### [{state['division_acronym']}] {division}\n"
-                "- Then answer directly and concisely. For simple account/program questions, use short paragraphs or a small bullet list instead of a reconciliation template.\n"
-                "- Use an Included / Not added separately structure only when the user asks for a breakdown, combined total, reconciliation, or when double-counting risk must be made explicit.\n\n"
-                f"{ACCOUNTING_SCOPE_POLICY}\n\n"
-                f"{ACCOUNTING_FEW_SHOT_EXAMPLES}\n\n"
-                "Rules:\n"
-                "- Before writing, classify facts internally as DIRECT, SUPPORTING, or IRRELEVANT. Use DIRECT plus only essential SUPPORTING facts in the final answer.\n"
-                "- Before proposing any total, classify every dollar figure internally by financial_type, scope/account/program, additive_relationship, and include_in_headline_total.\n"
-                "- Use additive_relationship values such as additive, suballocation, offset/fee, transfer, rescission, cap/limitation, or unknown. Treat unknown as not safe for a headline total unless the text clearly supports addition.\n"
-                "- Preserve all relevant dollar figures from the extracted facts.\n"
-                "- Preserve existing [[num:...]] markers immediately after their visible source figures.\n"
-                "- If you repeat or restate a marked dollar figure in the bottom line, accounts/programs, or notes, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.\n"
-                "- Do not write a source-backed dollar figure without its existing marker when that figure appears in the extracted facts with a marker.\n"
-                "- Keep citation markers immediately after the figure or clause they support.\n"
-                "- Apply the accounting scope policy before proposing any calculated total.\n"
-                "- The bottom line should lead with '<Topic> total found' values when the retrieved facts support top-level additive buckets.\n"
-                "- For mixed financial types, lead with grouped amounts by type rather than one clean headline total.\n"
-                "- For direct account questions, keep the concise account answer shape and do not expand into a financial-type ledger unless needed to avoid double counting.\n"
-                "- Choose topic sections from the user's question and the retrieved facts; do not copy topic names from examples unless they are directly relevant.\n"
-                "- Do not include nearby provisions merely because they were retrieved.\n"
-                "- Do not include long suballocation or user-fee detail unless the user asks for that breakdown or it is essential to answer accurately.\n"
-                "- If the question asks about one topic, use one topic section unless the facts clearly require separate comparable subtopics.\n"
-                "- If an excluded transfer, cap, administrative amount, component, or related figure belongs to the requested topic only as a caveat, put it under that topic's Not added separately subsection rather than creating a new topic section.\n"
-                "- Group breakdown bullets under their topic instead of writing one flat accounts list.\n"
-                "- Do not invent totals unless the extracted facts explicitly support the arithmetic.\n"
-                "- Do not use unrelated dollar figures as substitutes when the requested topic has no dollar figure in the extracted facts.\n"
-                "- When relevant facts describe a funding mechanism without a dollar figure, report that mechanism under the requested topic and state that no topic-specific dollar amount was found.\n"
-                "- If answering the dollar amount requires a prior-year baseline or referenced law that is not present in the extracted facts, say that explicitly.\n"
-                "- If a total is provisional because hierarchy is ambiguous, label it as a retrieved top-level bucket total and explain the ambiguity in Not added separately or Other notes.\n"
-                "- For any calculated total, add a new marker like [[num:drv_dhs_1]] immediately after the visible total and add a matching derived annotation.\n"
-                "- Derived annotation input_ids must reference existing source or derived marker ids from the available annotations.\n"
-                "- Do not omit relevant accounts or programs just to be concise.\n"
-                "- If the facts do not answer the question, say so in the bottom line.\n\n"
-                f"Question:\n{state['question']}\n\n"
-                f"Division: {division}\n\n"
-                f"Available annotations:\n{self._annotation_prompt_context(source_annotations)}\n\n"
-                f"Extracted facts:\n{facts}"
+            prompt = build_reduce_prompt(
+                question=state["question"],
+                division=division,
+                division_acronym=state["division_acronym"],  # type: ignore[typeddict-item]
+                answer_mode=state.get("answer_mode", DEFAULT_ANSWER_MODE),
+                answer_mode_flags=state.get("answer_mode_flags", {}),
+                annotation_context=self._annotation_prompt_context(source_annotations),
+                facts=facts,
             )
             marked = self._invoke_marked_answer(
                 llm,
@@ -1071,6 +1043,14 @@ class RAGService:
         start_time = time.time()
         division_answers = state.get("division_answers", [])
         if not division_answers:
+            existing_answer = state.get("final_answer")
+            if existing_answer:
+                self._debug_log(
+                    "synthesize_skip query_id=%s reason=existing_final_answer answer_chars=%s",
+                    state.get("query_id", "unknown"),
+                    len(existing_answer),
+                )
+                return {"final_answer": existing_answer}
             self._debug_log(
                 "synthesize_skip query_id=%s reason=no_division_answers",
                 state.get("query_id", "unknown"),
@@ -1125,44 +1105,12 @@ class RAGService:
             self._unmarked_figures(context),
             [annotation.id for annotation in available_annotations[:16]],
         )
-        prompt = (
-            "Create the final answer from the division-level answers using a stable structure. "
-            "Return structured output with `answer` markdown and `derived_annotations`.\n\n"
-            "Use this markdown structure, preserving only the topic sections relevant to the question and division answers:\n"
-            "## Answer\n"
-            "- <direct total found values first; include topic totals and combined total when supported.>\n\n"
-            "- <for mixed financial types, lead with grouped amounts by type and only include a labeled mixed identified total when useful.>\n\n"
-            "## By Division\n"
-            "### [ACRONYM] Division Name\n"
-            "- **Bottom line:** <division bottom line>\n"
-            "- **<Topic name>:**\n"
-            "  - **Included in <topic> total found:**\n"
-            "    - <top-level account/program/component and exact dollar figure with citation marker>\n"
-            "  - **Not added separately:**\n"
-            "    - <subprogram, transfer, component, cap, availability amount, or related excluded figure and reason; use 'None identified.' if none>\n\n"
-            "## Caveats\n"
-            "- <only include important caveats about totals, transfers, offsets, or incomplete comparability.>\n\n"
-            f"{SYNTHESIS_ACCOUNTING_POLICY}\n\n"
-            "Rules:\n"
-            "- Include every division answer provided below; do not drop a division.\n"
-            "- Preserve relevant dollar figures and citation markers from division answers.\n"
-            "- Preserve existing [[num:...]] markers immediately after their visible source or derived figures.\n"
-            "- If you repeat or restate a marked dollar figure in the answer, by-division section, or caveats, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.\n"
-            "- Do not write a source-backed or derived dollar figure without its existing marker when that figure appears in the division answers with a marker.\n"
-            "- Keep citation markers immediately after the figure or clause they support.\n"
-            "- Combine figures only when they are clearly comparable and supported by the division answers.\n"
-            "- Do not create a clean cross-division headline total from mixed financial types such as loan authority, subsidy costs, grants, user fees, transfers, rescissions, set-asides, caps, or limitations.\n"
-            "- If division answers identify mixed financial types, preserve their grouped breakdown and any warning that a mixed identified total is not one clean funding pool.\n"
-            "- Preserve topic sections that are present in division answers, but do not introduce unrelated example topics.\n"
-            "- If the question asks about one topic, do not add unrelated topic sections unless a division answer makes them directly responsive to that question.\n"
-            "- A combined total found is acceptable when it adds clearly labeled topic totals; state exactly which topic totals are included.\n"
-            "- For any new calculated total, add a new marker like [[num:drv_final_1]] immediately after the visible total and add a matching derived annotation.\n"
-            "- Derived annotation input_ids must reference existing source or derived marker ids from the available annotations.\n"
-            "- If no caveats are needed, write '- None identified.'\n"
-            "- Use clear language, clear numbers, and no filler.\n\n"
-            f"Question:\n{state['question']}\n\n"
-            f"Available annotations:\n{self._annotation_prompt_context(available_annotations)}\n\n"
-            f"Division answers:\n{context}"
+        prompt = build_synthesis_prompt(
+            question=state["question"],
+            answer_mode=state.get("answer_mode", DEFAULT_ANSWER_MODE),
+            answer_mode_flags=state.get("answer_mode_flags", {}),
+            annotation_context=self._annotation_prompt_context(available_annotations),
+            division_context=context,
         )
         marked = self._invoke_marked_answer(
             llm,

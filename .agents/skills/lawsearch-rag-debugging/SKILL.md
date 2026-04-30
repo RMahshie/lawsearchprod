@@ -44,7 +44,7 @@ Use `DEBUG=true` when diagnosing retrieval, generation, number provenance, or hi
 Useful high-level lines:
 
 - `RAG_DEBUG query_start`: request settings, model strategy, active vector store, embedding model.
-- `RAG_DEBUG route`: selected divisions.
+- `RAG_DEBUG route`: selected divisions, `answer_mode`, flags, and short classifier reason.
 - `RAG_DEBUG rewrite`: division-specific retrieval rewrites.
 - `VECTOR_DEBUG retrieve`: Chroma collection, embedding model, requested and returned chunk counts.
 - `RAG_DEBUG map`: per-chunk map latency and output sizes.

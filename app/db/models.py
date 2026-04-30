@@ -84,6 +84,9 @@ class QueryRun(Base):
     vector_store_id: Mapped[str | None] = mapped_column(ForeignKey("vector_stores.id"), nullable=True)
     processing_time: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     number_annotations: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
+    answer_mode: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    answer_mode_flags: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    answer_mode_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

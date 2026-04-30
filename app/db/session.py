@@ -83,6 +83,12 @@ def _add_query_run_columns() -> None:
         existing_columns = {column["name"] for column in inspector.get_columns("query_runs")}
         if "number_annotations" not in existing_columns:
             connection.execute(text("ALTER TABLE query_runs ADD COLUMN number_annotations JSON"))
+        if "answer_mode" not in existing_columns:
+            connection.execute(text("ALTER TABLE query_runs ADD COLUMN answer_mode VARCHAR(64)"))
+        if "answer_mode_flags" not in existing_columns:
+            connection.execute(text("ALTER TABLE query_runs ADD COLUMN answer_mode_flags JSON"))
+        if "answer_mode_reason" not in existing_columns:
+            connection.execute(text("ALTER TABLE query_runs ADD COLUMN answer_mode_reason TEXT"))
 
 
 def _drop_removed_query_source_columns() -> None:
