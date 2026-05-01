@@ -90,6 +90,7 @@ docker compose up --build
 - [Setup guide](docs/SETUP.md)
 - [Architecture notes](docs/ARCHITECTURE.md)
 - [Docker operations](docs/DOCKER_GUIDE.md)
+- [Railway deployment](docs/RAILWAY_DEPLOYMENT.md)
 
 ## Example Questions
 
