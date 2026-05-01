@@ -1,4 +1,11 @@
-from app.core.config import FY2026_INCOMPATIBLE_QUESTION_ANSWER, get_settings
+import os
+
+from app.core.config import (
+    FY2026_INCOMPATIBLE_QUESTION_ANSWER,
+    Settings,
+    _export_langsmith_environment,
+    get_settings,
+)
 from app.services.llm_factory import describe_model_strategy, resolve_model
 from app.services.rag_service import RAGService
 from app.services.vector_store_service import VectorStoreService, division_acronym
@@ -22,6 +29,32 @@ class FakeStatusError(Exception):
     def __init__(self, status_code: int):
         super().__init__(f"status {status_code}")
         self.status_code = status_code
+
+
+def test_settings_accepts_and_exports_langsmith_environment(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
+    monkeypatch.setenv("langsmith_tracing", "true")
+    monkeypatch.setenv("langsmith_endpoint", "https://api.smith.langchain.com")
+    monkeypatch.setenv("langsmith_api_key", "test-langsmith-key")
+    monkeypatch.setenv("langsmith_project", "lawsearch")
+    monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
+    monkeypatch.delenv("LANGSMITH_ENDPOINT", raising=False)
+    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.delenv("LANGSMITH_PROJECT", raising=False)
+
+    settings = Settings(_env_file=None)
+
+    assert settings.langsmith_tracing is True
+    assert settings.langsmith_endpoint == "https://api.smith.langchain.com"
+    assert settings.langsmith_api_key == "test-langsmith-key"
+    assert settings.langsmith_project == "lawsearch"
+
+    _export_langsmith_environment(settings)
+
+    assert os.environ["LANGSMITH_TRACING"] == "true"
+    assert os.environ["LANGSMITH_ENDPOINT"] == "https://api.smith.langchain.com"
+    assert os.environ["LANGSMITH_API_KEY"] == "test-langsmith-key"
+    assert os.environ["LANGSMITH_PROJECT"] == "lawsearch"
 
 
 class FlakyLLM:

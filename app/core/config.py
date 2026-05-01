@@ -5,6 +5,7 @@ Uses Pydantic BaseSettings for environment-based configuration with .env file su
 Centralizes all configuration constants from the original src/config.py plus new API settings.
 """
 
+import os
 from typing import List, Dict, Optional
 from pathlib import Path
 from pydantic import Field, field_validator, ConfigDict
@@ -192,6 +193,12 @@ class Settings(BaseSettings):
 
     # === OpenAI Configuration ===
     openai_api_key: str = Field(..., description="OpenAI API key")
+
+    # === LangSmith Tracing Configuration ===
+    langsmith_tracing: Optional[bool] = Field(default=None, description="Enable LangSmith tracing")
+    langsmith_endpoint: Optional[str] = Field(default=None, description="LangSmith API endpoint")
+    langsmith_api_key: Optional[str] = Field(default=None, description="LangSmith API key")
+    langsmith_project: Optional[str] = Field(default=None, description="LangSmith project name")
     
     # === Model Configuration (from original src/config.py) ===
     embedding_model: str = Field(default="text-embedding-3-large", description="OpenAI embedding model")
@@ -281,6 +288,20 @@ class Settings(BaseSettings):
 # Global settings instance
 _settings: Optional[Settings] = None
 
+
+def _export_langsmith_environment(settings: Settings) -> None:
+    """Expose optional LangSmith settings for LangChain/LangGraph integrations."""
+    langsmith_values = {
+        "LANGSMITH_TRACING": settings.langsmith_tracing,
+        "LANGSMITH_ENDPOINT": settings.langsmith_endpoint,
+        "LANGSMITH_API_KEY": settings.langsmith_api_key,
+        "LANGSMITH_PROJECT": settings.langsmith_project,
+    }
+    for key, value in langsmith_values.items():
+        if value is None:
+            continue
+        os.environ[key] = str(value).lower() if isinstance(value, bool) else str(value)
+
 def get_settings() -> Settings:
     """Get or create the global settings instance.
 
@@ -293,4 +314,5 @@ def get_settings() -> Settings:
     global _settings
     if _settings is None:
         _settings = Settings()
+        _export_langsmith_environment(_settings)
     return _settings
