@@ -5,11 +5,12 @@ Uses Pydantic BaseSettings for environment-based configuration with .env file su
 Centralizes all configuration constants from the original src/config.py plus new API settings.
 """
 
+import json
 import os
-from typing import List, Dict, Optional
+from typing import Annotated, List, Dict, Optional
 from pathlib import Path
 from pydantic import Field, field_validator, ConfigDict
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, NoDecode
 
 
 FY2026_INCOMPATIBLE_QUESTION_ANSWER = "This question is incompatible with the FY2026 appropriations text available in LawSearch."
@@ -137,7 +138,7 @@ class Settings(BaseSettings):
     api_workers: int = Field(default=1, description="Number of worker processes")
     
     # === CORS Configuration ===
-    cors_origins: List[str] = Field(
+    cors_origins: Annotated[List[str], NoDecode] = Field(
         default=[
             "http://localhost:3000",
             "http://127.0.0.1:3000", 
@@ -190,6 +191,51 @@ class Settings(BaseSettings):
         if v is None:
             return info.data['base_dir'] / "db" / "chroma"
         return Path(v)
+
+    @field_validator('database_url', mode='before')
+    @classmethod
+    def normalize_database_url(cls, v):
+        """Normalize Railway/Postgres URLs to the installed SQLAlchemy driver.
+
+        Args:
+            v: Explicit database URL from environment or settings input.
+
+        Returns:
+            Database URL using the psycopg v3 SQLAlchemy dialect when needed.
+        """
+        if not v:
+            return v
+        database_url = str(v)
+        if database_url.startswith("postgresql://"):
+            return f"postgresql+psycopg://{database_url.removeprefix('postgresql://')}"
+        if database_url.startswith("postgres://"):
+            return f"postgresql+psycopg://{database_url.removeprefix('postgres://')}"
+        return database_url
+
+    @field_validator('cors_origins', mode='before')
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Accept CORS origins as a JSON array or comma-separated env string.
+
+        Args:
+            v: CORS origins from settings input or environment.
+
+        Returns:
+            List of origin strings.
+        """
+        if v is None or isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            raw_value = v.strip()
+            if not raw_value:
+                return []
+            if raw_value.startswith("["):
+                parsed = json.loads(raw_value)
+                if not isinstance(parsed, list):
+                    raise ValueError("CORS_ORIGINS JSON value must be a list")
+                return parsed
+            return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
+        return v
 
     # === OpenAI Configuration ===
     openai_api_key: str = Field(..., description="OpenAI API key")
