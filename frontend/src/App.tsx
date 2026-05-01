@@ -115,6 +115,7 @@ function AppContent() {
     setQueryPending(true);
     setQueryError(null);
     setQueryProgress(null);
+    setResult(null);
 
     try {
       const response = await submitQueryStream(queryRequest, setQueryProgress);
@@ -206,6 +207,8 @@ function AppContent() {
     }
     setAutoRoute(checked);
   };
+
+  const progressDisplay = getProgressDisplay(queryProgress);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -385,15 +388,14 @@ function AppContent() {
               <Card className="rounded-sm">
                 <CardContent className="flex items-center justify-between py-5 text-sm text-muted-foreground">
                   <div className="flex flex-col gap-1">
-                    <span className="font-medium text-foreground">{queryProgress?.message ?? 'Starting query'}</span>
-                    <span className="text-xs">
-                      {queryProgress?.stage ?? 'queued'}
-                      {typeof queryProgress?.details?.model === 'string' ? ` · ${queryProgress.details.model}` : ''}
-                      {formatProgressDivisions(queryProgress)}
-                    </span>
+                    <span className="font-medium text-foreground">{progressDisplay.primary}</span>
+                    <span className="text-xs">{progressDisplay.secondary}</span>
                   </div>
-                  <span className="h-2 w-28 overflow-hidden bg-muted">
-                    <span className="block h-full w-1/2 animate-pulse bg-primary" />
+                  <span className="h-2 w-32 overflow-hidden rounded-sm bg-muted">
+                    <span
+                      className="block h-full bg-primary transition-all duration-500 ease-out"
+                      style={{ width: `${progressDisplay.percent}%` }}
+                    />
                   </span>
                 </CardContent>
               </Card>
@@ -589,15 +591,126 @@ function ControlRow({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-function formatProgressDivisions(progress: QueryProgressEvent | null) {
+type ProgressDisplay = {
+  primary: string;
+  secondary: string;
+  percent: number;
+};
+
+const DIVISION_LABELS: Record<string, string> = {
+  AG: 'Agriculture division',
+  CJS: 'Commerce, Justice, Science division',
+  EWD: 'Energy and Water division',
+  FSGG: 'Financial Services division',
+  INT: 'Interior/Environment division',
+  LHHS: 'Labor-HHS-Education division',
+  THUD: 'Transportation-HUD division',
+  SFOPS: 'State/Foreign Operations division',
+  DEF: 'Defense division',
+  MCVA: 'Military Construction-VA division',
+  LB: 'Legislative Branch division',
+  CRX: 'Continuing appropriations division',
+};
+
+function getProgressDisplay(progress: QueryProgressEvent | null): ProgressDisplay {
+  const stage = progress?.stage ?? 'queued';
+  const scope = formatProgressScope(progress);
+
+  switch (stage) {
+    case 'queued':
+      return {
+        primary: 'Waiting to start',
+        secondary: 'Your query is queued',
+        percent: 3,
+      };
+    case 'start':
+      return {
+        primary: 'Starting search',
+        secondary: 'Preparing the retrieval pipeline',
+        percent: 8,
+      };
+    case 'classifying':
+      return {
+        primary: 'Understanding your question',
+        secondary: 'Choosing the best answer format',
+        percent: 15,
+      };
+    case 'routing':
+      return {
+        primary: 'Choosing relevant bill divisions',
+        secondary: 'Auto-routing across FY2026 divisions',
+        percent: 25,
+      };
+    case 'rewriting':
+      return {
+        primary: 'Preparing division searches',
+        secondary: scope ? `Targeting searches for ${scope}` : 'Targeting searches for selected divisions',
+        percent: 35,
+      };
+    case 'retrieving':
+      return {
+        primary: 'Searching source text',
+        secondary: scope ? `Searching ${scope}` : 'Searching selected divisions',
+        percent: 48,
+      };
+    case 'mapping':
+      return {
+        primary: 'Reading matching passages',
+        secondary: scope ? `Reading passages from ${scope}` : 'Reading retrieved passages',
+        percent: 65,
+      };
+    case 'reducing':
+      return {
+        primary: 'Drafting division answers',
+        secondary: scope ? `Drafting answer for ${scope}` : 'Combining evidence by division',
+        percent: scope ? 86 : 80,
+      };
+    case 'synthesizing':
+      return {
+        primary: 'Preparing final answer',
+        secondary: scope ? `Combining ${scope}` : 'Combining division answers',
+        percent: 94,
+      };
+    case 'done':
+      return {
+        primary: 'Finalizing answer',
+        secondary: 'Response ready',
+        percent: 100,
+      };
+    default:
+      return {
+        primary: progress?.message ?? 'Working on your answer',
+        secondary: scope || 'Processing query',
+        percent: 50,
+      };
+  }
+}
+
+function formatProgressScope(progress: QueryProgressEvent | null) {
   const details = progress?.details;
   if (!details) return '';
 
   if (Array.isArray(details.divisions) && details.divisions.length > 0) {
-    return ` · ${details.divisions.join(', ')}`;
+    return formatDivisionList(details.divisions.filter((division): division is string => typeof division === 'string'));
   }
 
-  return typeof details.division === 'string' ? ` · ${details.division}` : '';
+  return typeof details.division === 'string' ? formatDivisionLabel(details.division) : '';
+}
+
+function formatDivisionList(divisions: string[]) {
+  if (divisions.length === 0) return '';
+  if (divisions.length === 1) return formatDivisionLabel(divisions[0]);
+  return divisions.map(formatDivisionShortLabel).join(', ');
+}
+
+function formatDivisionLabel(division: string) {
+  const trimmed = division.trim();
+  return DIVISION_LABELS[trimmed] ?? trimmed;
+}
+
+function formatDivisionShortLabel(division: string) {
+  const trimmed = division.trim();
+  return DIVISION_LABELS[trimmed] ? trimmed : trimmed;
 }
 
 function App() {
