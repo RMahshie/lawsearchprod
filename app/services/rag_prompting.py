@@ -130,14 +130,47 @@ Question: how much money for FEMA?
 Facts include that amounts made available by continuing appropriations to the Department of Homeland Security under "Federal Emergency Management Agency--Disaster Relief Fund" may be apportioned up to the rate for operations necessary for Stafford Act response and recovery. Facts also include unrelated Indian Health Service amounts.
 Good answer pattern: Say "FEMA total found: no FEMA-specific dollar amount identified in the extracted facts." Then explain that the retrieved text provides funding-mechanism evidence for continuing/apportioning Disaster Relief Fund operations, but no explicit FEMA dollar figure. Omit unrelated Indian Health Service amounts as not responsive.""",
     "reconciliation_breakdown": """Reconciliation and breakdown reduce prompt:
+Use this markdown structure. Only include subsections that apply:
+
+### [ACRONYM] <Division>
+
+Bottom line: <account total / reconciliation summary>
+
+## Included
+### Programmatic breakdown
+- <account/activity>: <amount>
+- <account/activity>: <amount>
+
+### Financing-source breakdown
+- <user-fee/source>: <amount>
+- <user-fee/source>: <amount>
+
+## Not Added Separately
+### Suballocations within included amounts
+- <amount>: <why not added>
+
+### Transfers, caps, and limitations
+- <amount>: <why not added>
+
+### Financing-source treatment
+- <amount/category>: <why not added>
+
+## Caveats
+- <only if needed>
+
 - Use Direct facts for substantive answer content. Use Adjacent facts only for short not-included or scope notes. Do not use Not responsive facts in the answer.
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
 - Do not invent facts, dollar figures, or totals. If the facts do not answer the question, say that directly.
-- Use Included / Not added separately structure when the user asks for a breakdown, combined total, reconciliation, show math, included/excluded amounts, double-counting analysis, comparison, or multiple named topics.
+- Do not use internal pipeline language in the answer, including "extracted facts", "provided facts", "retrieved facts", "mapped facts", "division answers", or "source chunks".
+- Use user-facing language such as "the identified provisions", "the account text", "the bill text", or "the available FY2026 text".
+- When explaining uncertainty, do not say the extracted facts do not resolve it. Say what the bill text or identified provisions do and do not establish.
+- Use the markdown structure above when the user asks for a breakdown, combined total, reconciliation, show math, included/excluded amounts, double-counting analysis, comparison, or multiple named topics.
+- Keep Included for amounts that directly answer the requested breakdown. Keep Not Added Separately for figures that explain accounting boundaries, double counting, or why a nearby amount is excluded.
 - For combined-topic questions, provide one total found per topic and a combined total found only when those topic totals are clearly additive.
 - Preserve enough detail to audit the math.
 - If a broader parent account and one of its components both appear, include the parent account and explain that the component was not added separately.
-- Group breakdown bullets under their topic instead of writing one flat accounts list.
+- Group breakdown bullets under their topic, account, or financial relationship instead of writing one flat accounts list.
+- For account breakdown questions, separate programmatic/activity allocations from financing-source or fee-source amounts when both appear.
 - Classify excluded amounts by relationship: suballocation, transfer, fee/offset, cap/limitation, rescission, administrative amount, component, or unknown.
 - Put excluded transfer, cap, administrative amount, component, or related figure under the relevant topic's Not added separately subsection rather than creating a new topic section.
 - Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
@@ -271,15 +304,17 @@ Rules:
 - Routed divisions with no direct evidence should be omitted unless needed as a one-line missing-scope note.
 - For any calculated total, add a new marker like [[num:drv_final_mechanism_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.""",
     "reconciliation_breakdown": """Reconciliation synthesis prompt:
-Use this markdown structure:
+Use this markdown structure. Only include subsections that apply:
 ## Answer
 <totals found and combined total only if supported>
 
 ## Included
-- **<topic/account> [ACRONYM]:** <amount and why included>
+### <topic/account> [ACRONYM]
+- <programmatic/activity, financing-source, or financial-type line>: <amount and why included>
 
 ## Not Added Separately
-- **<topic/account> [ACRONYM]:** <amount and why excluded>
+### <topic/account or exclusion reason> [ACRONYM]
+- <amount/category>: <why not added>
 
 ## Caveats
 - <math, comparability, or hierarchy caveats needed to audit the answer>
@@ -287,10 +322,18 @@ Use this markdown structure:
 Rules:
 - Use only the division answers. Do not invent facts, dollar figures, or totals.
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
+- Do not use internal pipeline language in the answer, including "extracted facts", "provided facts", "retrieved facts", "mapped facts", "division answers", or "source chunks".
+- Use user-facing language such as "the identified provisions", "the account text", "the bill text", or "the available FY2026 text".
+- When explaining uncertainty, say what the bill text or identified provisions do and do not establish.
 - Preserve enough detail to audit the math.
-- Use Included / Not Added Separately because this mode is for breakdowns, reconciliation, comparisons, and double-counting analysis.
+- Preserve each division/account reconciliation structure unless combining comparable topics is explicitly requested.
+- Keep Included for amounts that directly answer the requested breakdown. Keep Not Added Separately for figures that explain accounting boundaries, double counting, or why a nearby amount is excluded.
 - Show combined totals only when topic totals are clearly additive.
+- If multiple divisions contain reconciliation results, group by account/topic first, then division only as a secondary label.
+- For account breakdown questions, preserve the reduce-stage separation between programmatic/activity allocations and financing-source or fee-source amounts when both appear.
 - Identify parent totals, suballocations, transfers, fees/offsets, caps/limitations, rescissions, administrative amounts, and unknown relationships.
+- Preserve Included / Not Added Separately distinctions from reduce. Do not move excluded amounts into Included.
+- Do not flatten a structured reduce answer into dense paragraphs. Keep the account/topic headings and concise bullets when the reduce answer already has them.
 - Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
 - If cross-type arithmetic is retained for user visibility, label it as a mixed identified total, not a clean funding pool.
 - Group excluded caveats under the related topic instead of creating unrelated sections.

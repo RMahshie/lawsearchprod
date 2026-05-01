@@ -1104,7 +1104,11 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     assert "Use Direct facts for substantive answer content" in prompt
     assert "Do not use Not responsive facts in the answer" in prompt
     assert "Preserve enough detail to audit the math" in prompt
-    assert "Use Included / Not added separately structure" in prompt
+    assert "Use the markdown structure above when the user asks for a breakdown" in prompt
+    assert "Keep Included for amounts that directly answer the requested breakdown" in prompt
+    assert "Do not use internal pipeline language in the answer" in prompt
+    assert "When explaining uncertainty, do not say the extracted facts do not resolve it" in prompt
+    assert "separate programmatic/activity allocations from financing-source or fee-source amounts" in prompt
     assert "For combined-topic questions, provide one total found per topic" in prompt
     assert "Reconciliation example:" in prompt
     assert "Immigration-related total found" in prompt
@@ -1419,7 +1423,13 @@ def test_synthesis_prompts_are_mode_owned():
         "direct_account_amount": ["Direct account synthesis prompt:", "## Source Scope", "Do not introduce By Agency / Account"],
         "broad_topic_total": ["Broad topic synthesis prompt:", "## Topic-Specific or Targeted Funding", "## Not Included"],
         "funding_mechanism_no_amount": ["Funding mechanism synthesis prompt:", "## Mechanism Found", "## Missing Amount"],
-        "reconciliation_breakdown": ["Reconciliation synthesis prompt:", "## Included", "## Not Added Separately"],
+        "reconciliation_breakdown": [
+            "Reconciliation synthesis prompt:",
+            "## Included",
+            "## Not Added Separately",
+            "Do not flatten a structured reduce answer into dense paragraphs",
+            "programmatic/activity allocations and financing-source or fee-source amounts",
+        ],
         "general_summary": ["General summary synthesis prompt:", "Do not force accounting sections"],
     }
 
