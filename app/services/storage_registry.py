@@ -418,7 +418,17 @@ def load_conversation(db: Session, query_id: str, chunk_loader) -> QueryResponse
         saved_source_count += division_saved_count
 
         for source in division.sources:
-            loaded = chunk_loader(run.vector_store, division.division_key, source.chunk_id) if run.vector_store else None
+            try:
+                loaded = chunk_loader(run.vector_store, division.division_key, source.chunk_id) if run.vector_store else None
+            except KeyError as exc:
+                logger.warning(
+                    "Saved source chunk unavailable for query_id=%s division=%r chunk_id=%s: %s",
+                    query_id,
+                    division.division_key,
+                    source.chunk_id,
+                    exc,
+                )
+                loaded = None
             if not loaded:
                 missing_chunk_count += 1
                 continue

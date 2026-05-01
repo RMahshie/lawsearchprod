@@ -354,6 +354,73 @@ def test_load_conversation_hydrates_sources_from_chroma_only():
     assert response.division_results[0].source_chunk_ids == ["present"]
 
 
+def test_load_conversation_skips_legacy_invalid_division_sources():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.db.models import EmbeddingModel, QueryDivisionResult, QueryRun, QuerySource, VectorStore
+    from app.db.session import Base
+    from app.services.storage_registry import load_conversation
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    db.add(EmbeddingModel(id="embed", name="text-embedding-3-large"))
+    db.add(
+        VectorStore(
+            id="store",
+            name="Current",
+            embedding_model_id="embed",
+            chunk_size=1000,
+            chunk_overlap=100,
+            relative_path="store",
+            status="ready",
+        )
+    )
+    db.add(
+        QueryRun(
+            id="query",
+            question="How much DHS funding?",
+            answer="Saved answer",
+            vector_store_id="store",
+            processing_time=1.0,
+        )
+    )
+    db.add(
+        QueryDivisionResult(
+            id="division",
+            query_run_id="query",
+            division_key="DEPARTMENT OF HOMELAND SECURITY",
+            answer="Legacy division answer",
+            chunks_retrieved=1,
+            sort_order=0,
+        )
+    )
+    db.add(
+        QuerySource(
+            query_run_id="query",
+            query_division_result_id="division",
+            chunk_id="legacy-source",
+            rank=1,
+            chunk_summary="Legacy summary",
+            chunk_snapshot="Legacy snapshot",
+        )
+    )
+    db.commit()
+
+    def chunk_loader(_store, division, _chunk_id):
+        raise KeyError(division)
+
+    response = load_conversation(db, "query", chunk_loader)
+
+    assert response.answer == "Saved answer"
+    assert response.sources == []
+    assert response.division_results[0].division == "DEPARTMENT OF HOMELAND SECURITY"
+    assert response.division_results[0].source_chunk_ids == []
+
+
 def test_load_conversation_returns_saved_number_annotations():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
