@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Database, History, Search } from 'lucide-react';
 import QueryResults from '@/components/QueryResults';
-import { useApiStatus, useConversations, useHealthCheck, useVectorStores } from './hooks/useApi';
+import { useApiStatus, useConversations, useEmbeddingModels, useHealthCheck, useVectorStores } from './hooks/useApi';
 import { useSessionState } from './hooks/useSessionState';
 import {
   activateVectorStore,
@@ -15,7 +15,6 @@ import {
 } from './services/api';
 import {
   AVAILABLE_DIVISIONS,
-  AVAILABLE_EMBEDDING_MODELS,
   type ConversationSummary,
   type DivisionName,
   type QueryProgressEvent,
@@ -76,7 +75,7 @@ function AppContent() {
   const [maxResults, setMaxResults] = useState('8');
   const [autoRoute, setAutoRoute] = useState(true);
   const [selectedDivisions, setSelectedDivisions] = useState<DivisionName[]>([]);
-  const [embeddingModel, setEmbeddingModel] = useState<string>(AVAILABLE_EMBEDDING_MODELS[0].value);
+  const [embeddingModel, setEmbeddingModel] = useState('');
   const [ingestChunkSize, setIngestChunkSize] = useState('1500');
   const [ingestChunkOverlap, setIngestChunkOverlap] = useState('200');
   const [ingestionName, setIngestionName] = useState('');
@@ -91,15 +90,25 @@ function AppContent() {
   const { data: statusData, refetch: refetchStatus } = useApiStatus();
   const historyAvailable = Boolean(statusData?.history_available);
   const { data: vectorStores = [] } = useVectorStores();
+  const { data: embeddingModels = [] } = useEmbeddingModels();
   const { data: conversationsData } = useConversations(historyMode);
   const conversations = conversationsData?.conversations ?? [];
   const currentEmbeddingModel = statusData?.current_embedding_model;
+  const availableEmbeddingModels = useMemo(
+    () => embeddingModels.filter((model) => model.is_enabled),
+    [embeddingModels],
+  );
 
   useEffect(() => {
-    if (currentEmbeddingModel && AVAILABLE_EMBEDDING_MODELS.some((model) => model.value === currentEmbeddingModel)) {
+    if (currentEmbeddingModel && availableEmbeddingModels.some((model) => model.id === currentEmbeddingModel)) {
       setEmbeddingModel(currentEmbeddingModel);
+    } else if (
+      availableEmbeddingModels.length > 0
+      && !availableEmbeddingModels.some((model) => model.id === embeddingModel)
+    ) {
+      setEmbeddingModel(availableEmbeddingModels[0].id);
     }
-  }, [currentEmbeddingModel]);
+  }, [availableEmbeddingModels, currentEmbeddingModel, embeddingModel]);
 
   const handleQuery = async (queryRequest: QueryRequest) => {
     setLastQuestion(queryRequest.question);
@@ -501,9 +510,9 @@ function AppContent() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
-                            {AVAILABLE_EMBEDDING_MODELS.map((model) => (
-                              <SelectItem key={model.value} value={model.value}>
-                                {model.label}
+                            {availableEmbeddingModels.map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.name}
                               </SelectItem>
                             ))}
                           </SelectGroup>
@@ -546,7 +555,7 @@ function AppContent() {
                     </label>
                   </div>
 
-                  <Button className="self-end rounded-sm" onClick={runIngestion} disabled={ingestPending}>
+                  <Button className="self-end rounded-sm" onClick={runIngestion} disabled={ingestPending || !embeddingModel}>
                     {ingestPending ? 'Creating Store...' : 'Create and Activate'}
                   </Button>
                 </div>

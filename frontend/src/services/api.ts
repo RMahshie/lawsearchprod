@@ -9,7 +9,6 @@ import type {
   VectorStoreInfo,
   EmbeddingModelInfo,
   CreateVectorStoreRequest,
-  CreateEmbeddingModelRequest,
   ConversationListResponse,
   ConversationDetail
 } from '../types/api';
@@ -17,104 +16,33 @@ import type {
 // API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-// Create axios instance with default config
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 120000, // 120 seconds for ingestion operations (queries still use 30s)
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Create separate instance for ingestion with longer timeout
-const ingestionClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 300000, // 5 minutes for ingestion operations
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Create separate instance for long queries with extended timeout
-const longQueryClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 480000, // 8 minutes for long thinking speed queries
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Apply same interceptors to ingestion client
-ingestionClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  (error) => {
+const normalizeApiError = (error: unknown) => {
+  if (axios.isAxiosError(error)) {
     if (error.response?.data) {
-      // Backend returned an error response
-      throw new Error(error.response.data.message || error.response.data.error || 'API Error');
-    } else if (error.request) {
-      // Network error
+      const data = error.response.data as { message?: string; error?: string };
+      throw new Error(data.message || data.error || 'API Error');
+    }
+    if (error.request) {
       throw new Error('Unable to connect to the server. Please check your connection.');
-    } else {
-      // Something else went wrong
-      throw new Error(error.message || 'An unexpected error occurred');
     }
   }
-);
-
-// Apply same interceptors to long query client
-longQueryClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  (error) => {
-    if (error.response?.data) {
-      // Backend returned an error response
-      throw new Error(error.response.data.message || error.response.data.error || 'API Error');
-    } else if (error.request) {
-      // Network error
-      throw new Error('Unable to connect to the server. Please check your connection.');
-    } else {
-      // Something else went wrong
-      throw new Error(error.message || 'An unexpected error occurred');
-    }
-  }
-);
-
-// Response interceptor to handle errors consistently
-apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  (error) => {
-    if (error.response?.data) {
-      // Backend returned an error response
-      throw new Error(error.response.data.message || error.response.data.error || 'API Error');
-    } else if (error.request) {
-      // Network error
-      throw new Error('Unable to connect to the server. Please check your connection.');
-    } else {
-      // Something else went wrong
-      throw new Error(error.message || 'An unexpected error occurred');
-    }
-  }
-);
-
-/**
- * Submit a query to the RAG system
- * Uses appropriate timeout based on thinking speed:
- * - quick/normal: 2 minutes
- * - long: 8 minutes
- */
-export const submitQuery = async (queryRequest: QueryRequest): Promise<QueryResponse> => {
-  try {
-    // Choose client based on thinking speed to handle different timeouts
-    const client = queryRequest.thinking_speed === 'long' ? longQueryClient : apiClient;
-
-    console.log(`Submitting query with thinking_speed: ${queryRequest.thinking_speed}, using timeout: ${queryRequest.thinking_speed === 'long' ? '8 minutes' : '2 minutes'}`);
-
-    const response = await client.post<QueryResponse>('/api/query', queryRequest);
-    return response.data;
-  } catch (error) {
-    console.error('Query submission failed:', error);
-    throw error;
-  }
+  throw new Error(error instanceof Error ? error.message : 'An unexpected error occurred');
 };
+
+const createApiClient = (timeout: number) => {
+  const client = axios.create({
+    baseURL: API_BASE_URL,
+    timeout,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  client.interceptors.response.use((response: AxiosResponse) => response, normalizeApiError);
+  return client;
+};
+
+const apiClient = createApiClient(120000);
+const ingestionClient = createApiClient(300000);
 
 /**
  * Submit a query and receive live Server-Sent Events progress updates.
@@ -239,11 +167,6 @@ export const listEmbeddingModels = async (): Promise<EmbeddingModelInfo[]> => {
   return response.data;
 };
 
-export const createEmbeddingModel = async (request: CreateEmbeddingModelRequest): Promise<EmbeddingModelInfo> => {
-  const response = await apiClient.post<EmbeddingModelInfo>('/api/storage/embedding-models', request);
-  return response.data;
-};
-
 export const listConversations = async (): Promise<ConversationListResponse> => {
   const response = await apiClient.get<ConversationListResponse>('/api/conversations');
   return response.data;
@@ -263,7 +186,6 @@ export const queryKeys = {
   vectorStores: ['vector-stores'] as const,
   embeddingModels: ['embedding-models'] as const,
   conversations: ['conversations'] as const,
-  query: (request: QueryRequest) => ['query', request] as const,
 };
 
 /**
@@ -273,9 +195,5 @@ export const queryOptions = {
   health: {
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchInterval: 30 * 1000, // 30 seconds
-  },
-  query: {
-    staleTime: 10 * 60 * 1000, // 10 minutes (RAG responses don't change quickly)
-    retry: 1, // Only retry once for failed queries
   },
 };

@@ -151,12 +151,6 @@ export interface CreateVectorStoreRequest {
   activate?: boolean;
 }
 
-export interface CreateEmbeddingModelRequest {
-  name: string;
-  provider?: string;
-  dimensions?: number;
-}
-
 export interface ConversationSummary {
   id: string;
   question: string;
@@ -205,12 +199,3 @@ export const AVAILABLE_DIVISIONS = [
 ] as const;
 
 export type DivisionName = typeof AVAILABLE_DIVISIONS[number];
-
-// Available embedding models
-export const AVAILABLE_EMBEDDING_MODELS = [
-  { value: "text-embedding-3-large", label: "text-embedding-3-large" },
-  { value: "text-embedding-3-small", label: "text-embedding-3-small" },
-  { value: "text-embedding-ada-002", label: "text-embedding-ada-002" }
-] as const;
-
-export type EmbeddingModel = typeof AVAILABLE_EMBEDDING_MODELS[number]["value"];

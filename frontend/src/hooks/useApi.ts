@@ -1,6 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
-  submitQuery,
   checkHealth,
   getStatus,
   queryKeys,
@@ -9,25 +8,7 @@ import {
   listEmbeddingModels,
   listConversations,
 } from '../services/api';
-import type { QueryRequest, QueryResponse, HealthResponse, StatusResponse } from '../types/api';
-
-/**
- * Hook for submitting queries to the RAG system
- */
-export const useSubmitQuery = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<QueryResponse, Error, QueryRequest>({
-    mutationFn: submitQuery,
-    onSuccess: (data, variables) => {
-      // Cache the successful query result
-      queryClient.setQueryData(queryKeys.query(variables), data);
-    },
-    onError: (error) => {
-      console.error('Query failed:', error);
-    },
-  });
-};
+import type { HealthResponse, StatusResponse } from '../types/api';
 
 /**
  * Hook for checking API health status
@@ -75,13 +56,4 @@ export const useConversations = (enabled: boolean = true) => {
     queryFn: listConversations,
     enabled,
   });
-};
-
-/**
- * Hook to get a cached query result if it exists
- */
-export const useCachedQuery = (queryRequest: QueryRequest) => {
-  const queryClient = useQueryClient();
-  
-  return queryClient.getQueryData<QueryResponse>(queryKeys.query(queryRequest));
 };
