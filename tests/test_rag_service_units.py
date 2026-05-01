@@ -1384,19 +1384,27 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     assert "Selected answer_mode: broad_topic_total" in prompt
     assert "Active safety flags: mixed_financial_types" in prompt
     assert "Broad topic synthesis prompt:" in prompt
-    assert "## By Agency / Account" in prompt
+    assert "Only include sections that have content" in prompt
+    assert "## <Topic-Specific or Targeted Funding>" in prompt
+    assert "## Broader Related Funding" in prompt
+    assert "## Identified But Not Cleanly Topic-Specific" in prompt
     assert "## Not Included" in prompt
     assert "## By Division" not in prompt
     assert "Do not append full division answers. Combine already-shaped division results." in prompt
     assert "if it has no direct evidence, put it in Not Included as one line" in prompt
-    assert "Group broad answers by controlling agency/account" in prompt
-    assert "Target 8-12 substantive bullets total across By Agency / Account and Not Included" in prompt
+    assert "Do not mention \"division answers\", \"extracted facts\", \"retrieved facts\", \"provided facts\"" in prompt
+    assert "Rural-Specific or Rural-Targeted Funding" in prompt
+    assert "organize by specificity before account detail" in prompt
+    assert "Use one heading per controlling account" in prompt
+    assert "Label each amount by financial type" in prompt
     assert "Do not repeat the same agency, account, bucket, or dollar figure" in prompt
     assert "Caveats must be cross-cutting only" in prompt
-    assert "do not repeat each account's hierarchy caveat" in prompt
     assert "Do not add account totals plus suballocations" in prompt
-    assert "Mixed identified total" in prompt
-    assert "Synthesis example:" in prompt
+    assert "Do not compute or lead with a mixed identified total unless the user explicitly asks" in prompt
+    assert "Good pattern:" in prompt
+    assert "Bad pattern:" in prompt
+    assert "USDA RUS — same account/heading" in prompt
+    assert "## By Agency / Account" not in prompt
     assert "Synthesis rules:" not in prompt
     assert "Mixed financial-type safety rules:" not in prompt
 
@@ -1406,7 +1414,7 @@ def test_synthesis_prompts_are_mode_owned():
 
     cases = {
         "direct_account_amount": ["Direct account synthesis prompt:", "## Source Scope", "Do not introduce By Agency / Account"],
-        "broad_topic_total": ["Broad topic synthesis prompt:", "## By Agency / Account", "## Not Included"],
+        "broad_topic_total": ["Broad topic synthesis prompt:", "## <Topic-Specific or Targeted Funding>", "## Not Included"],
         "funding_mechanism_no_amount": ["Funding mechanism synthesis prompt:", "## Mechanism Found", "## Missing Amount"],
         "reconciliation_breakdown": ["Reconciliation synthesis prompt:", "## Included", "## Not Added Separately"],
         "general_summary": ["General summary synthesis prompt:", "Do not force accounting sections"],
@@ -1469,10 +1477,10 @@ def test_vector_store_retrieve_requires_explicit_root():
 
 
 def test_model_strategy_resolves_by_speed_and_task():
-    assert resolve_model("quick", "routing").model == "gpt-5.4-nano"
+    assert resolve_model("quick", "routing").model == "gpt-5.4-mini"
     assert resolve_model("quick", "map").model == "gpt-5.4-nano"
     assert resolve_model("quick", "synthesize").model == "gpt-5.4-mini"
-    assert resolve_model("normal", "synthesize").reasoning_effort == "low"
+    assert resolve_model("normal", "synthesize").reasoning_effort == "medium"
     assert resolve_model("long", "reduce").reasoning_effort == "medium"
     assert resolve_model("long", "synthesize").reasoning_effort == "medium"
     assert (

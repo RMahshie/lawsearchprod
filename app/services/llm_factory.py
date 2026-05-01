@@ -28,7 +28,7 @@ def format_model_spec(spec: ModelSpec) -> str:
     return spec.model
 
 
-ROUTING_MODEL = ModelSpec("gpt-5.4-nano")
+ROUTING_MODEL = ModelSpec("gpt-5.4-mini")
 
 MODEL_STRATEGIES = {
     "quick": {
@@ -41,7 +41,7 @@ MODEL_STRATEGIES = {
         "map": ModelSpec("gpt-5.4-mini"),
         "summary": ModelSpec("gpt-5.4-nano"),
         "reduce": ModelSpec("gpt-5.4", reasoning_effort="low"),
-        "synthesize": ModelSpec("gpt-5.4", reasoning_effort="low"),
+        "synthesize": ModelSpec("gpt-5.4", reasoning_effort="medium"),
     },
     "long": {
         "map": ModelSpec("gpt-5.4-mini"),

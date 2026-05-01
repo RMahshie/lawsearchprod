@@ -186,37 +186,66 @@ Rules:
 - Routed divisions with no direct evidence should appear only as one-line Source Scope notes.
 - For any calculated total, add a new marker like [[num:drv_final_direct_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.""",
     "broad_topic_total": """Broad topic synthesis prompt:
-Use this markdown structure:
-## Answer
-<1 short paragraph with the bottom line. State whether a clean total is available.>
+Use this markdown structure. Only include sections that have content.
 
-## By Agency / Account
-- **<Agency or account> [ACRONYM]:** <top-level responsive amount(s) and control point. Include compact direct suballocations only when they materially answer the question.>
+## Answer
+<1 short paragraph. State whether a clean total is available and name the main controlling agencies/accounts. Do not use internal pipeline words like "division answers", "extracted facts", "retrieved facts", or "provided facts".>
+
+## <Topic-Specific or Targeted Funding>
+### <Agency/account/program> [ACRONYM]
+- <Financial type>: <amount and short description>
+- <Financial type>:
+  - <subtype>: <amount>
+  - <subtype>: <amount>
+- Key identified suballocations within/under this account:
+  - <suballocation/set-aside>: <amount>
+
+## Broader Related Funding
+### <Agency/account/program> [ACRONYM]
+- <Financial type>: <amount and short description>
+
+## Identified But Not Cleanly Topic-Specific
+### <Agency/account/program> [ACRONYM]
+- <why it is related but not cleanly within the user's requested scope>
 
 ## Not Included
 - **<Division/acronym>:** <one-line reason when a routed division has no direct responsive funding or only adjacent material.>
 
 ## Caveats
-- <2-3 bullets max. Only caveats needed to prevent misreading or double counting.>
+- <2-4 bullets max. Only caveats needed to prevent misreading or double counting.>
 
 Rules:
 - Use only the division answers. Do not invent facts, dollar figures, or totals.
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
-- Group broad answers by controlling agency/account, with division labels secondary.
-- Use one bullet per controlling bucket. Merge duplicate same-account bullets.
-- Do not repeat the same agency, account, bucket, or dollar figure in both the top Answer and By Agency / Account.
+- Do not mention "division answers", "extracted facts", "retrieved facts", "provided facts", or other pipeline/internal process language in the final answer.
+- Use the user's topic words when naming the first section. Example: for rural water/wastewater, use "Rural-Specific or Rural-Targeted Funding"; for other topics, use the corresponding topic-specific label.
+- For broad mixed-financial-type questions, organize by specificity before account detail: topic-specific or targeted funding; broader related funding that may support relevant projects; identified but not cleanly topic-specific; not included.
+- Only include sections that have content.
 - Do not append full division answers. Combine already-shaped division results.
+- Do not create multiple top-level bullets or headings for the same agency/account/heading. Use one heading per controlling account and nest financial types, suballocations, and set-asides underneath it.
+- Label each amount by financial type where possible: appropriated cost/grant/subsidy, direct loan authority, guaranteed loan authority, grant reservation, administrative expenses, suballocation/set-aside, transfer, cap/limitation, rescission, or user fee.
+- Do not repeat the same agency, account, bucket, or dollar figure in both the top Answer and the detailed sections.
 - Do not drop a routed division; if it has no direct evidence, put it in Not Included as one line.
 - Provide a clean total only when amounts are comparable and additive in the same scope.
+- Do not compute or lead with a mixed identified total unless the user explicitly asks for a summed identified amount.
 - Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
-- For mixed financial types, preserve grouped buckets and do not create one clean total. If arithmetic across mixed types is useful, label it as "Mixed identified total" and say it is not a clean funding pool.
-- Compress suballocations under their parent account and keep only those that materially answer the question.
-- Caveats must be cross-cutting only. Put local hierarchy or double-counting notes beside the relevant bucket.
-- Target 8-12 substantive bullets total across By Agency / Account and Not Included.
+- Caveats must be cross-cutting only. Put local hierarchy or double-counting notes beside the relevant account.
 - For any calculated total, add a new marker like [[num:drv_final_broad_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
 
-Synthesis example:
-For a broad infrastructure question, write one bottom-line paragraph, then group direct responsive buckets by controlling agency/account, such as USDA RUS [AG] and EPA [INT]. Put routed but non-responsive divisions like THUD in Not Included as one-line notes. Use Caveats only for cross-cutting warnings such as mixed financial types; do not repeat each account's hierarchy caveat.""",
+Good pattern:
+### USDA Rural Utilities Service — Rural Water and Waste Disposal Program Account [AG]
+- Appropriated cost/grant/subsidy: $445,864,564
+- Loan authority:
+  - Direct loans: $1,015,000,000
+  - Guaranteed loans: $50,000,000
+- Key identified suballocations within/under this account:
+  - Section 306(a)(2)(A) grants: $250,488,564
+  - Technical assistance grants: $35,000,000
+
+Bad pattern:
+- USDA RUS — same account/heading [AG]: ...
+- USDA RUS — section 306(a)(2)(A) grants [AG]: ...
+- USDA RUS — technical assistance and rural utilities support [AG]: ...""",
     "funding_mechanism_no_amount": """Funding mechanism synthesis prompt:
 Use this markdown structure:
 ## Answer
