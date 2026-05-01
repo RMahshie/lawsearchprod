@@ -115,21 +115,3 @@ def _drop_removed_query_source_columns() -> None:
         for column in sorted(removed_columns & existing_columns):
             connection.execute(text(f"ALTER TABLE query_sources DROP COLUMN {column}"))
 
-
-def get_db_session():
-    """Yield a database session for FastAPI dependency injection.
-
-    Args:
-        None.
-
-    Yields:
-        SQLAlchemy session bound to the configured metadata database.
-    """
-    if SessionLocal is None:
-        raise RuntimeError("DATABASE_URL is not configured")
-
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()

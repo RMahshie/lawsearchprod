@@ -269,43 +269,6 @@ class Settings(BaseSettings):
             return info.data.get('environment', 'development') == 'development'
         return v
     
-    # === Computed Properties ===
-    @property
-    def is_development(self) -> bool:
-        """Check if running in development mode.
-
-        Args:
-            None.
-
-        Returns:
-            True when environment is development, otherwise False.
-        """
-        return self.environment == "development"
-    
-    @property
-    def is_production(self) -> bool:
-        """Check if running in production mode.
-
-        Args:
-            None.
-
-        Returns:
-            True when environment is production, otherwise False.
-        """
-        return self.environment == "production"
-    
-    @property
-    def server_host_port(self) -> str:
-        """Get formatted host and port string.
-
-        Args:
-            None.
-
-        Returns:
-            Host and port formatted as host:port.
-        """
-        return f"{self.api_host}:{self.api_port}"
-    
     model_config = ConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -331,50 +294,3 @@ def get_settings() -> Settings:
     if _settings is None:
         _settings = Settings()
     return _settings
-
-
-# Convenience functions for backwards compatibility with src/config.py
-def get_vectorstore_dir() -> Path:
-    """Get vector store directory path.
-
-    Args:
-        None.
-
-    Returns:
-        Path to the configured Chroma vector store directory.
-    """
-    return get_settings().vectorstore_dir
-
-def get_data_dir() -> Path:
-    """Get bill data directory path.
-
-    Args:
-        None.
-
-    Returns:
-        Path to the configured source bill data directory.
-    """
-    return get_settings().data_dir
-
-def get_subcommittee_stores() -> Dict[str, str]:
-    """Get division-to-vector-store mapping.
-
-    Args:
-        None.
-
-    Returns:
-        Mapping of division names to Chroma store directory names.
-    """
-    return get_settings().subcommittee_stores
-
-# For backwards compatibility, expose common constants
-settings = get_settings()
-VECTORSTORE_DIR = str(settings.vectorstore_dir)
-DATA_DIR = str(settings.data_dir)
-EMBEDDING_MODEL = settings.embedding_model
-LLM_INGEST = settings.llm_ingest
-LLM_SUMMARY = settings.llm_summary
-LLM_ROUTING = settings.llm_routing
-CHUNK_SIZE = settings.chunk_size
-CHUNK_OVERLAP = settings.chunk_overlap
-subcommittee_stores = settings.subcommittee_stores

@@ -16,7 +16,6 @@ from app.db.session import SessionLocal, database_available
 from app.models.storage import (
     ConversationDetail,
     ConversationListResponse,
-    CreateEmbeddingModelRequest,
     CreateVectorStoreRequest,
     EmbeddingModelInfo,
     VectorStoreInfo,
@@ -206,44 +205,6 @@ async def list_embedding_models() -> list[EmbeddingModelInfo]:
             ]
     except Exception:
         return []
-
-
-@router.post("/storage/embedding-models", response_model=EmbeddingModelInfo)
-async def create_embedding_model(request: CreateEmbeddingModelRequest) -> EmbeddingModelInfo:
-    """Register or re-enable an embedding model option.
-
-    Args:
-        request: Embedding model creation request with provider and optional dimensions.
-
-    Returns:
-        EmbeddingModelInfo for the created or re-enabled model.
-    """
-    if not database_available() or SessionLocal is None:
-        raise HTTPException(status_code=503, detail="Storage metadata is unavailable")
-
-    with SessionLocal() as db:
-        existing = db.get(EmbeddingModel, request.name)
-        if existing:
-            existing.is_enabled = True
-            model = existing
-        else:
-            model = EmbeddingModel(
-                id=request.name,
-                name=request.name,
-                provider=request.provider,
-                dimensions=request.dimensions,
-                is_enabled=True,
-            )
-            db.add(model)
-        db.commit()
-        db.refresh(model)
-        return EmbeddingModelInfo(
-            id=model.id,
-            name=model.name,
-            provider=model.provider,
-            dimensions=model.dimensions,
-            is_enabled=model.is_enabled,
-        )
 
 
 @router.get("/conversations", response_model=ConversationListResponse)

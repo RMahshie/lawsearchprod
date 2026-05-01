@@ -12,7 +12,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from threading import Lock
-from typing import Annotated, Any, Callable, Literal, Optional
+from typing import Annotated, Any, Callable, Literal, Optional, TypeVar
 
 # In local development, Chroma may need the pysqlite3 shim. Docker uses system sqlite.
 if os.getenv("ENVIRONMENT") != "production" and not os.path.exists("/.dockerenv"):
@@ -66,6 +66,7 @@ from app.services.vector_store_service import VectorStoreService, division_acron
 
 logger = logging.getLogger(__name__)
 INCOMPATIBLE_QUESTION_ANSWER = FY2026_INCOMPATIBLE_QUESTION_ANSWER
+StructuredResponseT = TypeVar("StructuredResponseT", bound=BaseModel)
 
 
 class AnswerModeFlags(BaseModel):
@@ -375,7 +376,7 @@ class RAGService:
             "question": request.question,
             "thinking_speed": thinking_speed,
             "max_results": retrieval_k_for_request(request),
-            "include_sources": True,
+            "include_sources": bool(request.include_sources),
             "divisions_filter": request.divisions_filter,
             "model_used": model_used,
             "vector_store_id": active_store_id,
@@ -531,8 +532,21 @@ class RAGService:
         self._emit_progress(state, "routing", "Finding relevant divisions")
         requested_filter = state.get("divisions_filter")
         settings = getattr(self, "settings", get_settings())
-        valid_divisions = list(settings.subcommittee_stores.keys())
         routing_model = resolve_model(state.get("thinking_speed", "normal"), "routing")
+        if requested_filter:
+            self._debug_log(
+                "route query_id=%s source=filter model=%s duration=%.2fs selected=%s answer_mode=%s flags=%s reason=%s",
+                state.get("query_id", "unknown"),
+                format_model_spec(routing_model),
+                time.time() - start_time,
+                len(requested_filter),
+                state.get("answer_mode", DEFAULT_ANSWER_MODE),
+                state.get("answer_mode_flags", {}),
+                state.get("answer_mode_reason", ""),
+            )
+            return {"selected_divisions": requested_filter}
+
+        valid_divisions = list(settings.subcommittee_stores.keys())
         routing_llm = create_chat_model(
             routing_model.model,
             "routing",
@@ -574,19 +588,6 @@ class RAGService:
             stage="route",
             query_id=state.get("query_id", "unknown"),
         )
-        if requested_filter:
-            self._debug_log(
-                "route query_id=%s source=filter model=%s duration=%.2fs selected=%s answer_mode=%s flags=%s reason=%s",
-                state.get("query_id", "unknown"),
-                format_model_spec(routing_model),
-                time.time() - start_time,
-                len(requested_filter),
-                state.get("answer_mode", DEFAULT_ANSWER_MODE),
-                state.get("answer_mode_flags", {}),
-                state.get("answer_mode_reason", ""),
-            )
-            return {"selected_divisions": requested_filter}
-
         selected = self._normalize_route_divisions(decision.divisions, settings.subcommittee_stores)
         if not selected:
             logger.info("Router returned no valid FY2026 divisions; ending as incompatible question")
@@ -1618,7 +1619,11 @@ class RAGService:
             ],
             sources=sources,
             number_annotations=self._final_number_annotations(result),
-            debug_division_queries=None,
+            debug_division_queries=(
+                self._debug_division_queries(result)
+                if getattr(getattr(self, "settings", None), "debug", False)
+                else None
+            ),
             query_id=query_id,
             timestamp=datetime.utcnow(),
             thinking_speed=result.get("thinking_speed"),
@@ -1780,34 +1785,44 @@ class RAGService:
 
     def _invoke_mapped_facts(self, llm: Any, prompt: str, *, stage: str, query_id: str) -> MappedFacts:
         """Invoke structured map output, falling back to plain extracted facts."""
-        try:
-            structured_llm = llm.with_structured_output(MappedFacts)
-        except AttributeError:
-            text = self._invoke_text(llm, prompt, stage=stage, query_id=query_id)
-            return MappedFacts(extracted_facts=text, source_numbers=self._fallback_source_number_candidates(text))
-
-        try:
-            response = self._invoke_with_retry(
-                lambda: structured_llm.invoke(prompt),
-                stage=stage,
-                query_id=query_id,
-            )
-        except Exception:
-            text = self._invoke_text(llm, prompt, stage=stage, query_id=query_id)
-            return MappedFacts(extracted_facts=text, source_numbers=self._fallback_source_number_candidates(text))
-
-        if isinstance(response, MappedFacts):
-            return response
-        if isinstance(response, dict):
-            return MappedFacts.model_validate(response)
-        return MappedFacts.model_validate(getattr(response, "model_dump", lambda: response)())
+        return self._invoke_structured_or_text(
+            llm,
+            prompt,
+            schema=MappedFacts,
+            fallback=lambda text: MappedFacts(
+                extracted_facts=text,
+                source_numbers=self._fallback_source_number_candidates(text),
+            ),
+            stage=stage,
+            query_id=query_id,
+        )
 
     def _invoke_marked_answer(self, llm: Any, prompt: str, *, stage: str, query_id: str) -> MarkedAnswer:
         """Invoke structured answer output, falling back to plain markdown for legacy models/tests."""
+        return self._invoke_structured_or_text(
+            llm,
+            prompt,
+            schema=MarkedAnswer,
+            fallback=lambda text: MarkedAnswer(answer=text),
+            stage=stage,
+            query_id=query_id,
+        )
+
+    def _invoke_structured_or_text(
+        self,
+        llm: Any,
+        prompt: str,
+        *,
+        schema: type[StructuredResponseT],
+        fallback: Callable[[str], StructuredResponseT],
+        stage: str,
+        query_id: str,
+    ) -> StructuredResponseT:
+        """Invoke a structured LLM response with a plain-text compatibility fallback."""
         try:
-            structured_llm = llm.with_structured_output(MarkedAnswer)
+            structured_llm = llm.with_structured_output(schema)
         except AttributeError:
-            return MarkedAnswer(answer=self._invoke_text(llm, prompt, stage=stage, query_id=query_id))
+            return fallback(self._invoke_text(llm, prompt, stage=stage, query_id=query_id))
 
         try:
             response = self._invoke_with_retry(
@@ -1815,14 +1830,21 @@ class RAGService:
                 stage=stage,
                 query_id=query_id,
             )
-        except Exception:
-            return MarkedAnswer(answer=self._invoke_text(llm, prompt, stage=stage, query_id=query_id))
+        except Exception as exc:
+            self._debug_log(
+                "structured_fallback query_id=%s stage=%s schema=%s error=%s",
+                query_id,
+                stage,
+                schema.__name__,
+                type(exc).__name__,
+            )
+            return fallback(self._invoke_text(llm, prompt, stage=stage, query_id=query_id))
 
-        if isinstance(response, MarkedAnswer):
+        if isinstance(response, schema):
             return response
         if isinstance(response, dict):
-            return MarkedAnswer.model_validate(response)
-        return MarkedAnswer.model_validate(getattr(response, "model_dump", lambda: response)())
+            return schema.model_validate(response)
+        return schema.model_validate(getattr(response, "model_dump", lambda: response)())
 
     def _validate_derived_annotations(
         self,

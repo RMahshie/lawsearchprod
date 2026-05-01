@@ -147,6 +147,30 @@ def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
     assert "What amount is appropriated for the FDA Salaries and Expenses account" not in prompt[0].content
 
 
+def test_route_divisions_filter_bypasses_router(monkeypatch):
+    def fail_create_chat_model(*args, **kwargs):
+        raise AssertionError("router should not be initialized when divisions_filter is supplied")
+
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", fail_create_chat_model)
+    service = RAGService.__new__(RAGService)
+    service.settings = get_settings()
+
+    selected = ["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"]
+    result = service._route_divisions(
+        {
+            "query_id": "query-test",
+            "question": "How much FEMA funding is continued?",
+            "thinking_speed": "normal",
+            "divisions_filter": selected,
+            "answer_mode": "funding_mechanism_no_amount",
+            "answer_mode_flags": {"mixed_financial_types": False},
+            "answer_mode_reason": "Manual filter.",
+        }
+    )
+
+    assert result == {"selected_divisions": selected}
+
+
 def test_route_returns_incompatible_answer_when_no_valid_fy2026_division(monkeypatch):
     from app.services.rag_service import RouteDecision
 
@@ -529,6 +553,60 @@ def test_response_includes_sources_and_division_results():
     assert response.sources[0].chunk_snapshot == "CRX cybersecurity funding"
     assert response.debug_division_queries is None
     assert response.division_results[0].source_chunk_ids == ["CRX-1-test"]
+
+
+def test_response_excludes_sources_when_requested():
+    service = RAGService.__new__(RAGService)
+    result = {
+        "final_answer": "CRX receives $10,000,000 [CRX].",
+        "selected_divisions": ["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"],
+        "include_sources": False,
+        "retrieved_chunks": [
+            {
+                "chunk_id": "CRX-1-test",
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "content": "For cybersecurity, $10,000,000 shall be available.",
+                "chunk_summary": None,
+                "score": 0.1,
+                "metadata": {},
+            }
+        ],
+        "mapped_chunks": [],
+        "division_answers": [],
+    }
+
+    response = service._to_response(result, 1.2, "query-test")
+
+    assert response.sources is None
+
+
+def test_response_includes_debug_division_queries_when_debug_enabled():
+    class Settings:
+        debug = True
+
+    service = RAGService.__new__(RAGService)
+    service.settings = Settings()
+    result = {
+        "final_answer": "CRX receives $10,000,000 [CRX].",
+        "selected_divisions": ["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"],
+        "include_sources": False,
+        "division_queries": [
+            {
+                "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+                "division_acronym": "CRX",
+                "query": "FEMA funding",
+            }
+        ],
+        "retrieved_chunks": [],
+        "mapped_chunks": [],
+        "division_answers": [],
+    }
+
+    response = service._to_response(result, 1.2, "query-test")
+
+    assert response.debug_division_queries is not None
+    assert response.debug_division_queries[0].query == "FEMA funding"
 
 
 def test_response_includes_source_number_annotations_when_markers_are_used():

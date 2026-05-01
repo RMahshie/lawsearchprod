@@ -46,12 +46,6 @@ class CreateVectorStoreRequest(BaseModel):
         return self
 
 
-class CreateEmbeddingModelRequest(BaseModel):
-    name: str = Field(..., min_length=1, max_length=128)
-    provider: str = "openai"
-    dimensions: int | None = None
-
-
 class ConversationSummary(BaseModel):
     id: str
     question: str
