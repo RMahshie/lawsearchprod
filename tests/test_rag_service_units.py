@@ -69,16 +69,48 @@ def test_division_acronym_is_stable():
     assert division_acronym("CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS") == "CRX"
 
 
-def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
-    from app.services.rag_service import AnswerModeFlags, RouteDecision
+def test_classify_prompt_uses_answer_mode_examples(monkeypatch):
+    from app.services.rag_service import AnswerModeDecision, AnswerModeFlags
 
     llm = CapturingStructuredLLM(
-        RouteDecision(
-            divisions=["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"],
+        AnswerModeDecision(
             answer_mode="funding_mechanism_no_amount",
             answer_mode_flags=AnswerModeFlags(mixed_financial_types=False),
             answer_mode_reason="FEMA continuation question.",
         )
+    )
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+    service.settings = get_settings()
+
+    result = service._classify_answer_mode(
+        {
+            "query_id": "query-test",
+            "question": "How much FEMA funding is continued?",
+            "thinking_speed": "normal",
+        }
+    )
+
+    prompt = llm.prompts[0]
+    assert result["answer_mode"] == "funding_mechanism_no_amount"
+    assert result["answer_mode_flags"] == {"mixed_financial_types": False}
+    assert result["answer_mode_reason"] == "FEMA continuation question."
+    assert "Set answer_mode to one of" in prompt[0].content
+    assert "The mode examples below are illustrative, not exhaustive" in prompt[0].content
+    assert "asking for major allowed uses does not by itself mean reconciliation_breakdown" in prompt[0].content
+    assert "Use reconciliation_breakdown only when the user asks for breakdown, allocation, line items" in prompt[0].content
+    assert "What amount is appropriated for the FDA Salaries and Expenses account" in prompt[0].content
+    assert "Break down FDA Salaries and Expenses by center and user-fee source" in prompt[0].content
+    assert "If the best mode is ambiguous, use broad_topic_total" in prompt[0].content
+    assert "answer_mode_flags.mixed_financial_types=true" in prompt[0].content
+    assert "Allowed FY2026 divisions and routing hints:" not in prompt[0].content
+
+
+def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
+    from app.services.rag_service import RouteDecision
+
+    llm = CapturingStructuredLLM(
+        RouteDecision(divisions=["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"])
     )
     monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
@@ -89,6 +121,9 @@ def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
             "query_id": "query-test",
             "question": "How much FEMA funding is continued?",
             "thinking_speed": "normal",
+            "answer_mode": "funding_mechanism_no_amount",
+            "answer_mode_flags": {"mixed_financial_types": False},
+            "answer_mode_reason": "FEMA continuation question.",
         }
     )
 
@@ -96,24 +131,26 @@ def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
     assert result["selected_divisions"] == [
         "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"
     ]
-    assert result["answer_mode"] == "funding_mechanism_no_amount"
-    assert result["answer_mode_flags"] == {"mixed_financial_types": False}
-    assert result["answer_mode_reason"] == "FEMA continuation question."
+    assert "answer_mode" not in result
     assert "Allowed FY2026 divisions and routing hints:" in prompt[1].content
     assert "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS" in prompt[1].content
     assert "FEMA" in prompt[1].content
     assert "DEPARTMENT OF HOMELAND SECURITY" not in prompt[1].content
-    assert "Set answer_mode to one of" in prompt[0].content
-    assert "If the best mode is ambiguous, use broad_topic_total" in prompt[0].content
-    assert "answer_mode_flags.mixed_financial_types=true" in prompt[0].content
+    assert "Select the relevant appropriations divisions" in prompt[0].content
+    assert "Do not classify the answer style" in prompt[0].content
+    assert "Appropriations routing follows bill-division jurisdiction" in prompt[0].content
+    assert "FDA Salaries and Expenses" in prompt[0].content
+    assert "not LHHS" in prompt[0].content
+    assert "NIH, CDC, CMS" in prompt[0].content
+    assert "EPA routes to DEPARTMENT OF THE INTERIOR" in prompt[0].content
+    assert "Set answer_mode to one of" not in prompt[0].content
+    assert "What amount is appropriated for the FDA Salaries and Expenses account" not in prompt[0].content
 
 
 def test_route_returns_incompatible_answer_when_no_valid_fy2026_division(monkeypatch):
     from app.services.rag_service import RouteDecision
 
-    llm = CapturingStructuredLLM(
-        RouteDecision(divisions=["DEPARTMENT OF HOMELAND SECURITY"], answer_mode="general_summary")
-    )
+    llm = CapturingStructuredLLM(RouteDecision(divisions=["DEPARTMENT OF HOMELAND SECURITY"]))
     monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
     service.settings = get_settings()
@@ -128,7 +165,29 @@ def test_route_returns_incompatible_answer_when_no_valid_fy2026_division(monkeyp
 
     assert result["selected_divisions"] == []
     assert result["final_answer"] == FY2026_INCOMPATIBLE_QUESTION_ANSWER
-    assert result["answer_mode"] == "general_summary"
+    assert "answer_mode" not in result
+
+
+def test_route_normalizes_known_division_acronyms(monkeypatch):
+    from app.core.config import FY2026_DIVISIONS
+    from app.services.rag_service import RouteDecision
+
+    llm = CapturingStructuredLLM(RouteDecision(divisions=["AG"]))
+    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+    service.settings = get_settings()
+
+    result = service._route_divisions(
+        {
+            "query_id": "query-test",
+            "question": "What amount is appropriated for FDA Salaries and Expenses?",
+            "thinking_speed": "normal",
+        }
+    )
+
+    assert result["selected_divisions"] == [FY2026_DIVISIONS[0]]
+    assert "answer_mode" not in result
+    assert "final_answer" not in result
 
 
 def test_query_source_model_does_not_persist_source_text_or_scores():
@@ -830,17 +889,18 @@ def test_unmarked_figures_allows_markdown_closer_before_marker():
 
 
 def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
-    from app.services.rag_service import DivisionQueryDecision, DivisionQueryPlan, RouteDecision
+    from app.services.rag_service import AnswerModeDecision, DivisionQueryDecision, DivisionQueryPlan, RouteDecision
 
     def fake_create_chat_model(model, task, reasoning_effort=None):
-        if task == "routing":
+        if task == "classify":
             return FakeRewriteLLM(
-                RouteDecision(
-                    divisions=["AAA", "BBB"],
+                AnswerModeDecision(
                     answer_mode="broad_topic_total",
                     answer_mode_flags={"mixed_financial_types": False},
                 )
             )
+        if task == "routing":
+            return FakeRewriteLLM(RouteDecision(divisions=["AAA", "BBB"]))
         if task == "division_query_rewrite":
             return FakeRewriteLLM(
                 DivisionQueryPlan(
@@ -1044,7 +1104,11 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     assert "Use Direct facts for substantive answer content" in prompt
     assert "Do not use Not responsive facts in the answer" in prompt
     assert "Preserve enough detail to audit the math" in prompt
-    assert "Use Included / Not added separately structure" in prompt
+    assert "Use the markdown structure above when the user asks for a breakdown" in prompt
+    assert "Keep Included for amounts that directly answer the requested breakdown" in prompt
+    assert "Do not use internal pipeline language in the answer" in prompt
+    assert "When explaining uncertainty, do not say the extracted facts do not resolve it" in prompt
+    assert "separate programmatic/activity allocations from financing-source or fee-source amounts" in prompt
     assert "For combined-topic questions, provide one total found per topic" in prompt
     assert "Reconciliation example:" in prompt
     assert "Immigration-related total found" in prompt
@@ -1096,8 +1160,15 @@ def test_reduce_prompt_uses_direct_account_module_without_unrelated_examples(mon
     assert "Selected answer_mode: direct_account_amount" in prompt
     assert "Direct account reduce prompt:" in prompt
     assert "Direct account example:" in prompt
-    assert "Default shape: main amount first, then 1-2 short paragraphs or up to 4 bullets" in prompt
+    assert "Default shape: main amount first, then 1 short paragraph" in prompt
+    assert "use a short bullet list for readability" in prompt
+    assert 'write "Major allowed uses include:"' in prompt
+    assert "category-only bullets" in prompt
     assert "do not list every center, activity, rent line, transfer, limitation, or user-fee amount" in prompt
+    assert "name categories only" in prompt
+    assert "do not include center-by-center dollar figures" in prompt
+    assert "do not list individual user-fee dollar figures" in prompt
+    assert "Bad answer pattern:" in prompt
     assert "Do not create Included / Not added separately sections" in prompt
     assert "FDA Salaries and Expenses" in prompt
     assert "do not include the separate nearby $3,000,000 provision" in prompt
@@ -1145,11 +1216,18 @@ def test_reduce_prompt_uses_broad_topic_mode_owned_mixed_financial_rules(monkeyp
     assert "Selected answer_mode: broad_topic_total" in prompt
     assert "Active safety flags: mixed_financial_types" in prompt
     assert "Broad topic total reduce prompt:" in prompt
+    assert "Output a compact division brief for synthesis, not a full ledger" in prompt
+    assert "Key buckets: <2-4 bullets max" in prompt
+    assert "Do not create separate bullets for suballocations within the same parent account" in prompt
+    assert "Omit tiny sub-set-asides, internal earmarks, administrative amounts" in prompt
+    assert "Do not compute or lead with a mixed identified total unless the user explicitly asks" in prompt
     assert "Before aggregating, classify each amount internally by financial type" in prompt
     assert "Do not add account totals plus suballocations" in prompt
     assert "rural water/wastewater infrastructure" in prompt
-    assert "direct loan authority, guaranteed loan authority, subsidy/grant/program funding" in prompt
-    assert "Do not present X+Y+Z+A+B as a clean grant pool" in prompt
+    assert "one Rural Water and Waste Disposal Program Account bullet" in prompt
+    assert "Do not split every section 306 set-aside into separate bullets" in prompt
+    assert "Do not present direct loans plus guarantees plus grants as one clean total" in prompt
+    assert "Target 8-12 substantive bullets" not in prompt
     assert "Mixed financial-type safety rules:" not in prompt
     assert "Reconciliation and breakdown reduce prompt:" not in prompt
 
@@ -1310,19 +1388,30 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     assert "Selected answer_mode: broad_topic_total" in prompt
     assert "Active safety flags: mixed_financial_types" in prompt
     assert "Broad topic synthesis prompt:" in prompt
-    assert "## By Agency / Account" in prompt
+    assert "Only include sections that have content" in prompt
+    assert "## Topic-Specific or Targeted Funding" in prompt
+    assert "## Broader Related Funding" in prompt
+    assert "## Identified But Not Cleanly Topic-Specific" in prompt
     assert "## Not Included" in prompt
     assert "## By Division" not in prompt
     assert "Do not append full division answers. Combine already-shaped division results." in prompt
     assert "if it has no direct evidence, put it in Not Included as one line" in prompt
-    assert "Group broad answers by controlling agency/account" in prompt
-    assert "Target 8-12 substantive bullets total across By Agency / Account and Not Included" in prompt
+    assert "Do not mention \"division answers\", \"extracted facts\", \"retrieved facts\", \"provided facts\"" in prompt
+    assert "Use these section titles exactly when applicable" in prompt
+    assert "Do not generate long topic-expanded section names" in prompt
+    assert "organize by specificity before account detail" in prompt
+    assert "Use one heading per controlling account" in prompt
+    assert "Preserve direct subamounts that help the user identify funding sources" in prompt
+    assert "Use valid markdown bullets for all account details and nested amounts" in prompt
+    assert "Label each amount by financial type" in prompt
     assert "Do not repeat the same agency, account, bucket, or dollar figure" in prompt
     assert "Caveats must be cross-cutting only" in prompt
-    assert "do not repeat each account's hierarchy caveat" in prompt
     assert "Do not add account totals plus suballocations" in prompt
-    assert "Mixed identified total" in prompt
-    assert "Synthesis example:" in prompt
+    assert "Do not compute or lead with a mixed identified total unless the user explicitly asks" in prompt
+    assert "Good pattern:" in prompt
+    assert "Bad pattern:" in prompt
+    assert "USDA RUS — same account/heading" in prompt
+    assert "## By Agency / Account" not in prompt
     assert "Synthesis rules:" not in prompt
     assert "Mixed financial-type safety rules:" not in prompt
 
@@ -1332,9 +1421,15 @@ def test_synthesis_prompts_are_mode_owned():
 
     cases = {
         "direct_account_amount": ["Direct account synthesis prompt:", "## Source Scope", "Do not introduce By Agency / Account"],
-        "broad_topic_total": ["Broad topic synthesis prompt:", "## By Agency / Account", "## Not Included"],
+        "broad_topic_total": ["Broad topic synthesis prompt:", "## Topic-Specific or Targeted Funding", "## Not Included"],
         "funding_mechanism_no_amount": ["Funding mechanism synthesis prompt:", "## Mechanism Found", "## Missing Amount"],
-        "reconciliation_breakdown": ["Reconciliation synthesis prompt:", "## Included", "## Not Added Separately"],
+        "reconciliation_breakdown": [
+            "Reconciliation synthesis prompt:",
+            "## Included",
+            "## Not Added Separately",
+            "Do not flatten a structured reduce answer into dense paragraphs",
+            "programmatic/activity allocations and financing-source or fee-source amounts",
+        ],
         "general_summary": ["General summary synthesis prompt:", "Do not force accounting sections"],
     }
 
@@ -1395,10 +1490,10 @@ def test_vector_store_retrieve_requires_explicit_root():
 
 
 def test_model_strategy_resolves_by_speed_and_task():
-    assert resolve_model("quick", "routing").model == "gpt-5.4-nano"
+    assert resolve_model("quick", "routing").model == "gpt-5.4-mini"
     assert resolve_model("quick", "map").model == "gpt-5.4-nano"
     assert resolve_model("quick", "synthesize").model == "gpt-5.4-mini"
-    assert resolve_model("normal", "synthesize").reasoning_effort == "low"
+    assert resolve_model("normal", "synthesize").reasoning_effort == "medium"
     assert resolve_model("long", "reduce").reasoning_effort == "medium"
     assert resolve_model("long", "synthesize").reasoning_effort == "medium"
     assert (

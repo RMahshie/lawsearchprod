@@ -233,34 +233,6 @@ class Settings(BaseSettings):
         description="Routing aliases and hints keyed by canonical division"
     )
     
-    # === Routing Prompt (from original src/config.py) ===
-    routing_prompt: str = Field(
-        default="""
-    You are an expert legislative financial analyst at a premier lobbying firm. 
-    Given the question, identify the relevant subcommittees that should be queried.
-
-    - AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES
-    - LEGISLATIVE BRANCH
-    - MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES
-    - COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES
-    - ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES
-    - DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES
-    - DEPARTMENT OF DEFENSE
-    - DEPARTMENTS OF LABOR, HEALTH AND HUMAN SERVICES, AND EDUCATION, AND RELATED AGENCIES
-    - TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES
-    - FINANCIAL SERVICES AND GENERAL GOVERNMENT
-    - DEPARTMENT OF STATE, FOREIGN OPERATIONS, AND RELATED PROGRAMS
-    - CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS
-    
-    Question: {question}
-
-    Return ONLY a Python list of strings from the EXACT subcommittee names listed above.
-    Example: ["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS", "DEPARTMENT OF DEFENSE"]
-    Relevant Subcommittees:
-    """,
-        description="Prompt template for routing queries to subcommittees"
-    )
-    
     # === Environment Detection ===
     environment: str = Field(default="development", description="Environment (development/production)")
     debug: bool = Field(default=False, description="Debug mode")
@@ -395,18 +367,6 @@ def get_subcommittee_stores() -> Dict[str, str]:
     """
     return get_settings().subcommittee_stores
 
-def get_routing_prompt() -> str:
-    """Get routing prompt template.
-
-    Args:
-        None.
-
-    Returns:
-        Prompt template used by legacy routing code.
-    """
-    return get_settings().routing_prompt
-
-
 # For backwards compatibility, expose common constants
 settings = get_settings()
 VECTORSTORE_DIR = str(settings.vectorstore_dir)
@@ -418,4 +378,3 @@ LLM_ROUTING = settings.llm_routing
 CHUNK_SIZE = settings.chunk_size
 CHUNK_OVERLAP = settings.chunk_overlap
 subcommittee_stores = settings.subcommittee_stores
-routing_prompt = settings.routing_prompt

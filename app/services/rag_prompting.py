@@ -66,9 +66,10 @@ REDUCE_MODE_PROMPTS: dict[str, str] = {
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
 - Do not invent facts, dollar figures, or totals. If the facts do not answer the question, say that directly.
 - Answer the specific account/program question directly and compactly.
-- Default shape: main amount first, then 1-2 short paragraphs or up to 4 bullets for requested uses/context.
+- Default shape: main amount first, then 1 short paragraph. When summarizing multiple major allowed-use categories, use a short bullet list for readability.
 - Identify the account, give the main appropriation amount, and summarize major allowed uses when asked.
 - For "major allowed uses", summarize categories of use; do not list every center, activity, rent line, transfer, limitation, or user-fee amount unless the user asks for a detailed allocation, breakdown, or reconciliation.
+- For "major allowed uses", name categories only. Do not attach dollar figures to internal centers, activities, rent lines, or other suballocations unless the user asks for allocation, breakdown, line items, or "how much for each".
 - Separate internally: main appropriation amount, suballocations within that amount, user fees credited to the account, separate provisions outside the account, and limitations/transfers.
 - Surface only categories needed to answer the user.
 - Mention user fees as credited to the account only when useful for clarity; do not list each user-fee dollar amount unless the user asks for user fees or a funding-source breakdown.
@@ -81,24 +82,25 @@ REDUCE_MODE_PROMPTS: dict[str, str] = {
 Direct account example:
 Question: What amount is appropriated for the FDA Salaries and Expenses account in FY2026, and what are the major allowed uses?
 Facts include $6,957,972,000 for FDA Salaries and Expenses, necessary FDA expenses including passenger motor vehicles, space rental and related costs, special-purpose space, and emergency enforcement, program/center activities such as Human Foods, CDER, CBER, CVM, CDRH, NCTR, and Center for Tobacco Products, user fees credited to the account, and a separate nearby $3,000,000 provision.
-Good answer pattern: Give the $6,957,972,000 account amount and a compact summary of major allowed uses. Mention that user fees are credited to the account under applicable laws only if useful for clarity. Do not list every center suballocation, do not include the separate nearby $3,000,000 provision, and do not create a "Not added separately" section unless the user asks for a breakdown or reconciliation.""",
+Good answer pattern: Give the $6,957,972,000 account amount, then write "Major allowed uses include:" followed by category-only bullets such as Human Foods Program and related field activities; inspections, investigations, and import operations; CDER; CBER; CVM; CDRH; NCTR; Center for Tobacco Products; rent and related activities; and other central FDA offices and services. Mention that user fees are credited to the account under applicable laws only if useful for clarity. Do not list every center suballocation, do not include center-by-center dollar figures, do not list individual user-fee dollar figures, do not include the separate nearby $3,000,000 provision, and do not create a "Not added separately" section unless the user asks for a breakdown or reconciliation.
+Bad answer pattern: "Human Foods Program $1,171,319,000; CDER $2,496,766,000; CBER $601,291,000..." unless the user asks for allocations.
+Bad answer pattern: "Prescription drug user fees $1,556,039,000; medical device user fees $478,166,000..." unless the user asks for a user-fee breakdown.""",
     "broad_topic_total": """Broad topic total reduce prompt:
 - Use only Direct facts for substantive answer content. Use Adjacent facts only for short not-included or scope notes. Do not use Not responsive facts in the answer.
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
 - Do not invent facts, dollar figures, or totals. If the facts do not answer the question, say that directly.
-- Group primarily by controlling agency/account/program, with the division label secondary.
-- Use one bullet or short paragraph per controlling bucket. Merge duplicate same-account material instead of creating repeated bullets for the same account.
+- Output a compact division brief for synthesis, not a full ledger.
+- Default shape for divisions with direct evidence: Bottom line: <1 sentence naming the controlling agency/account(s) and whether a clean total is available>; Key buckets: <2-4 bullets max, grouped by controlling agency/account/program>; Local caveat: <optional 1 sentence only if needed to prevent double counting>.
+- Use one bullet per controlling account/program. Do not create separate bullets for suballocations within the same parent account.
+- Include only top-level amounts and the most decision-useful sub-buckets. Omit tiny sub-set-asides, internal earmarks, administrative amounts, and repeated duplicate figures unless the user asks for detail.
 - Provide a "total found" only when top-level comparable additive buckets are present in the same scope.
+- Do not compute or lead with a mixed identified total unless the user explicitly asks for a summed identified amount.
 - If figures mix financial types or hierarchy is unclear, lead with grouped buckets instead of one clean headline total.
 - Before aggregating, classify each amount internally by financial type and additive relationship: account total, suballocation, grant, direct loan authority, guaranteed loan authority, loan subsidy cost, user fee, offsetting collection, transfer, rescission, set-aside, cap, or limitation.
 - Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
-- Preserve direct top-level controlling accounts/buckets. Compress suballocations under the parent account and keep only those that materially answer the question.
-- Target 8-12 substantive bullets for broad mixed-topic answers. Exceed that only when more than 12 direct responsive accounts or buckets materially answer the question.
 - For routed divisions with no Direct facts, return only the heading plus one no-direct-info sentence using the best Adjacent reason.
-- Put local double-counting or hierarchy notes beside the relevant bucket. Do not write a long Caveats section at reduce.
-- If arithmetic across mixed types is useful, label it as "Mixed identified total" and state that it combines different financial types and should not be treated as one clean funding pool.
 - If you repeat or restate a marked dollar figure, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.
-- For any calculated total, add a new marker like [[num:drv_broad_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
+- For any calculated comparable total, add a new marker like [[num:drv_broad_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
 
 Broad total example:
 Question: how much for FEMA?
@@ -108,7 +110,7 @@ Good answer pattern: Start with "FEMA total found: $25,581,520,369" when adding 
 Mixed financial types example:
 Question: What FY2026 funding is available for rural water/wastewater infrastructure?
 Facts include USDA Rural Utilities Service direct loan authority $X, USDA Rural Utilities Service guaranteed loan authority $Y, USDA Rural Utilities Service subsidy/grant/program funding $Z, USDA technical assistance/circuit rider funding $A, and EPA targeted grant funding $B.
-Good answer pattern: Group the answer by financial type: direct loan authority, guaranteed loan authority, subsidy/grant/program funding, technical assistance, and targeted grants. Do not present X+Y+Z+A+B as a clean grant pool or top-line appropriation.""",
+Good answer pattern: For USDA RUS, use one Rural Water and Waste Disposal Program Account bullet that names direct loan authority, guaranteed loan authority, and program-cost/grant funding. Mention key technical-assistance or grant buckets compactly only if they materially help the user locate the funding. Do not split every section 306 set-aside into separate bullets. Do not present direct loans plus guarantees plus grants as one clean total.""",
     "funding_mechanism_no_amount": """Funding mechanism reduce prompt:
 - Use only Direct facts to answer. Use Adjacent facts only for one short scope note when necessary. Do not use Not responsive facts in the answer.
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
@@ -128,14 +130,47 @@ Question: how much money for FEMA?
 Facts include that amounts made available by continuing appropriations to the Department of Homeland Security under "Federal Emergency Management Agency--Disaster Relief Fund" may be apportioned up to the rate for operations necessary for Stafford Act response and recovery. Facts also include unrelated Indian Health Service amounts.
 Good answer pattern: Say "FEMA total found: no FEMA-specific dollar amount identified in the extracted facts." Then explain that the retrieved text provides funding-mechanism evidence for continuing/apportioning Disaster Relief Fund operations, but no explicit FEMA dollar figure. Omit unrelated Indian Health Service amounts as not responsive.""",
     "reconciliation_breakdown": """Reconciliation and breakdown reduce prompt:
+Use this markdown structure. Only include subsections that apply:
+
+### [ACRONYM] <Division>
+
+Bottom line: <account total / reconciliation summary>
+
+## Included
+### Programmatic breakdown
+- <account/activity>: <amount>
+- <account/activity>: <amount>
+
+### Financing-source breakdown
+- <user-fee/source>: <amount>
+- <user-fee/source>: <amount>
+
+## Not Added Separately
+### Suballocations within included amounts
+- <amount>: <why not added>
+
+### Transfers, caps, and limitations
+- <amount>: <why not added>
+
+### Financing-source treatment
+- <amount/category>: <why not added>
+
+## Caveats
+- <only if needed>
+
 - Use Direct facts for substantive answer content. Use Adjacent facts only for short not-included or scope notes. Do not use Not responsive facts in the answer.
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
 - Do not invent facts, dollar figures, or totals. If the facts do not answer the question, say that directly.
-- Use Included / Not added separately structure when the user asks for a breakdown, combined total, reconciliation, show math, included/excluded amounts, double-counting analysis, comparison, or multiple named topics.
+- Do not use internal pipeline language in the answer, including "extracted facts", "provided facts", "retrieved facts", "mapped facts", "division answers", or "source chunks".
+- Use user-facing language such as "the identified provisions", "the account text", "the bill text", or "the available FY2026 text".
+- When explaining uncertainty, do not say the extracted facts do not resolve it. Say what the bill text or identified provisions do and do not establish.
+- Use the markdown structure above when the user asks for a breakdown, combined total, reconciliation, show math, included/excluded amounts, double-counting analysis, comparison, or multiple named topics.
+- Keep Included for amounts that directly answer the requested breakdown. Keep Not Added Separately for figures that explain accounting boundaries, double counting, or why a nearby amount is excluded.
 - For combined-topic questions, provide one total found per topic and a combined total found only when those topic totals are clearly additive.
 - Preserve enough detail to audit the math.
 - If a broader parent account and one of its components both appear, include the parent account and explain that the component was not added separately.
-- Group breakdown bullets under their topic instead of writing one flat accounts list.
+- Group breakdown bullets under their topic, account, or financial relationship instead of writing one flat accounts list.
+- For account breakdown questions, separate programmatic/activity allocations from financing-source or fee-source amounts when both appear.
 - Classify excluded amounts by relationship: suballocation, transfer, fee/offset, cap/limitation, rescission, administrative amount, component, or unknown.
 - Put excluded transfer, cap, administrative amount, component, or related figure under the relevant topic's Not added separately subsection rather than creating a new topic section.
 - Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
@@ -184,37 +219,69 @@ Rules:
 - Routed divisions with no direct evidence should appear only as one-line Source Scope notes.
 - For any calculated total, add a new marker like [[num:drv_final_direct_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.""",
     "broad_topic_total": """Broad topic synthesis prompt:
-Use this markdown structure:
-## Answer
-<1 short paragraph with the bottom line. State whether a clean total is available.>
+Use this markdown structure. Only include sections that have content.
 
-## By Agency / Account
-- **<Agency or account> [ACRONYM]:** <top-level responsive amount(s) and control point. Include compact direct suballocations only when they materially answer the question.>
+## Answer
+<1 short paragraph. State whether a clean total is available and name the main controlling agencies/accounts. Do not use internal pipeline words like "division answers", "extracted facts", "retrieved facts", or "provided facts".>
+
+## Topic-Specific or Targeted Funding
+### <Agency/account/program> [ACRONYM]
+- <Financial type>: <amount and short description>
+- <Financial type>:
+  - <subtype>: <amount>
+  - <subtype>: <amount>
+- Key identified suballocations within/under this account:
+  - <suballocation/set-aside>: <amount>
+
+## Broader Related Funding
+### <Agency/account/program> [ACRONYM]
+- <Financial type>: <amount and short description>
+
+## Identified But Not Cleanly Topic-Specific
+### <Agency/account/program> [ACRONYM]
+- <why it is related but not cleanly within the user's requested scope>
 
 ## Not Included
 - **<Division/acronym>:** <one-line reason when a routed division has no direct responsive funding or only adjacent material.>
 
 ## Caveats
-- <2-3 bullets max. Only caveats needed to prevent misreading or double counting.>
+- <2-4 bullets max. Only caveats needed to prevent misreading or double counting.>
 
 Rules:
 - Use only the division answers. Do not invent facts, dollar figures, or totals.
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
-- Group broad answers by controlling agency/account, with division labels secondary.
-- Use one bullet per controlling bucket. Merge duplicate same-account bullets.
-- Do not repeat the same agency, account, bucket, or dollar figure in both the top Answer and By Agency / Account.
+- Do not mention "division answers", "extracted facts", "retrieved facts", "provided facts", or other pipeline/internal process language in the final answer.
+- Use these section titles exactly when applicable: "Topic-Specific or Targeted Funding", "Broader Related Funding", "Identified But Not Cleanly Topic-Specific", "Not Included", and "Caveats".
+- Do not generate long topic-expanded section names like "Rural Water or Wastewater-Specific or Rural Water or Wastewater-Targeted Funding".
+- For broad mixed-financial-type questions, organize by specificity before account detail: topic-specific or targeted funding; broader related funding that may support relevant projects; identified but not cleanly topic-specific; not included.
+- Only include sections that have content.
 - Do not append full division answers. Combine already-shaped division results.
+- Do not create multiple top-level bullets or headings for the same agency/account/heading. Use one heading per controlling account and nest financial types, suballocations, and set-asides underneath it.
+- Preserve direct subamounts that help the user identify funding sources, but nest them under the controlling account instead of making them separate top-level accounts.
+- Use valid markdown bullets for all account details and nested amounts. Indent nested bullets by two spaces.
+- Label each amount by financial type where possible: appropriated cost/grant/subsidy, direct loan authority, guaranteed loan authority, grant reservation, administrative expenses, suballocation/set-aside, transfer, cap/limitation, rescission, or user fee.
+- Do not repeat the same agency, account, bucket, or dollar figure in both the top Answer and the detailed sections.
 - Do not drop a routed division; if it has no direct evidence, put it in Not Included as one line.
 - Provide a clean total only when amounts are comparable and additive in the same scope.
+- Do not compute or lead with a mixed identified total unless the user explicitly asks for a summed identified amount.
 - Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
-- For mixed financial types, preserve grouped buckets and do not create one clean total. If arithmetic across mixed types is useful, label it as "Mixed identified total" and say it is not a clean funding pool.
-- Compress suballocations under their parent account and keep only those that materially answer the question.
-- Caveats must be cross-cutting only. Put local hierarchy or double-counting notes beside the relevant bucket.
-- Target 8-12 substantive bullets total across By Agency / Account and Not Included.
+- Caveats must be cross-cutting only. Put local hierarchy or double-counting notes beside the relevant account.
 - For any calculated total, add a new marker like [[num:drv_final_broad_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
 
-Synthesis example:
-For a broad infrastructure question, write one bottom-line paragraph, then group direct responsive buckets by controlling agency/account, such as USDA RUS [AG] and EPA [INT]. Put routed but non-responsive divisions like THUD in Not Included as one-line notes. Use Caveats only for cross-cutting warnings such as mixed financial types; do not repeat each account's hierarchy caveat.""",
+Good pattern:
+### USDA Rural Utilities Service — Rural Water and Waste Disposal Program Account [AG]
+- Appropriated cost/grant/subsidy: $445,864,564
+- Loan authority:
+  - Direct loans: $1,015,000,000
+  - Guaranteed loans: $50,000,000
+- Key identified suballocations within/under this account:
+  - Section 306(a)(2)(A) grants: $250,488,564
+  - Technical assistance grants: $35,000,000
+
+Bad pattern:
+- USDA RUS — same account/heading [AG]: ...
+- USDA RUS — section 306(a)(2)(A) grants [AG]: ...
+- USDA RUS — technical assistance and rural utilities support [AG]: ...""",
     "funding_mechanism_no_amount": """Funding mechanism synthesis prompt:
 Use this markdown structure:
 ## Answer
@@ -237,15 +304,17 @@ Rules:
 - Routed divisions with no direct evidence should be omitted unless needed as a one-line missing-scope note.
 - For any calculated total, add a new marker like [[num:drv_final_mechanism_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.""",
     "reconciliation_breakdown": """Reconciliation synthesis prompt:
-Use this markdown structure:
+Use this markdown structure. Only include subsections that apply:
 ## Answer
 <totals found and combined total only if supported>
 
 ## Included
-- **<topic/account> [ACRONYM]:** <amount and why included>
+### <topic/account> [ACRONYM]
+- <programmatic/activity, financing-source, or financial-type line>: <amount and why included>
 
 ## Not Added Separately
-- **<topic/account> [ACRONYM]:** <amount and why excluded>
+### <topic/account or exclusion reason> [ACRONYM]
+- <amount/category>: <why not added>
 
 ## Caveats
 - <math, comparability, or hierarchy caveats needed to audit the answer>
@@ -253,10 +322,18 @@ Use this markdown structure:
 Rules:
 - Use only the division answers. Do not invent facts, dollar figures, or totals.
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
+- Do not use internal pipeline language in the answer, including "extracted facts", "provided facts", "retrieved facts", "mapped facts", "division answers", or "source chunks".
+- Use user-facing language such as "the identified provisions", "the account text", "the bill text", or "the available FY2026 text".
+- When explaining uncertainty, say what the bill text or identified provisions do and do not establish.
 - Preserve enough detail to audit the math.
-- Use Included / Not Added Separately because this mode is for breakdowns, reconciliation, comparisons, and double-counting analysis.
+- Preserve each division/account reconciliation structure unless combining comparable topics is explicitly requested.
+- Keep Included for amounts that directly answer the requested breakdown. Keep Not Added Separately for figures that explain accounting boundaries, double counting, or why a nearby amount is excluded.
 - Show combined totals only when topic totals are clearly additive.
+- If multiple divisions contain reconciliation results, group by account/topic first, then division only as a secondary label.
+- For account breakdown questions, preserve the reduce-stage separation between programmatic/activity allocations and financing-source or fee-source amounts when both appear.
 - Identify parent totals, suballocations, transfers, fees/offsets, caps/limitations, rescissions, administrative amounts, and unknown relationships.
+- Preserve Included / Not Added Separately distinctions from reduce. Do not move excluded amounts into Included.
+- Do not flatten a structured reduce answer into dense paragraphs. Keep the account/topic headings and concise bullets when the reduce answer already has them.
 - Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
 - If cross-type arithmetic is retained for user visibility, label it as a mixed identified total, not a clean funding pool.
 - Group excluded caveats under the related topic instead of creating unrelated sections.

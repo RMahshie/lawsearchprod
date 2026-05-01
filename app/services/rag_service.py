@@ -29,7 +29,7 @@ from langgraph.types import Send
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import TypedDict
 
-from app.core.config import FY2026_INCOMPATIBLE_QUESTION_ANSWER, get_settings
+from app.core.config import FY2026_DIVISION_ACRONYMS, FY2026_INCOMPATIBLE_QUESTION_ANSWER, get_settings
 from app.db.models import VectorStore
 from app.db.session import SessionLocal, database_available
 from app.models.query import (
@@ -74,10 +74,9 @@ class AnswerModeFlags(BaseModel):
     mixed_financial_types: bool = False
 
 
-class RouteDecision(BaseModel):
-    """Structured routing response."""
+class AnswerModeDecision(BaseModel):
+    """Structured answer-mode classification response."""
 
-    divisions: list[str] = Field(default_factory=list)
     answer_mode: Literal[
         "direct_account_amount",
         "broad_topic_total",
@@ -87,6 +86,12 @@ class RouteDecision(BaseModel):
     ] = DEFAULT_ANSWER_MODE
     answer_mode_flags: AnswerModeFlags = Field(default_factory=AnswerModeFlags)
     answer_mode_reason: str = ""
+
+
+class RouteDecision(BaseModel):
+    """Structured routing response."""
+
+    divisions: list[str] = Field(default_factory=list)
 
 
 class DivisionQueryDecision(BaseModel):
@@ -293,6 +298,7 @@ class RAGService:
             A compiled LangGraph application that transforms RAGState into final query state.
         """
         builder = StateGraph(RAGState)
+        builder.add_node("classify_answer_mode", self._classify_answer_mode)
         builder.add_node("route_divisions", self._route_divisions)
         builder.add_node("rewrite_division_queries", self._rewrite_division_queries)
         builder.add_node("retrieve_division", self._retrieve_division)
@@ -302,7 +308,8 @@ class RAGService:
         builder.add_node("reduce_division", self._reduce_division)
         builder.add_node("synthesize_final", self._synthesize_final)
 
-        builder.add_edge(START, "route_divisions")
+        builder.add_edge(START, "classify_answer_mode")
+        builder.add_edge("classify_answer_mode", "route_divisions")
         builder.add_edge("route_divisions", "rewrite_division_queries")
         builder.add_conditional_edges(
             "rewrite_division_queries",
@@ -449,6 +456,68 @@ class RAGService:
                 logger.warning("Query result was not persisted: %s", exc)
         return response
 
+    def _classify_answer_mode(self, state: RAGState) -> dict[str, Any]:
+        """Classify the requested answer shape before division routing."""
+        start_time = time.time()
+        self._emit_progress(state, "classifying", "Classifying answer style")
+        classification_model = resolve_model(state.get("thinking_speed", "normal"), "routing")
+        classification_llm = create_chat_model(
+            classification_model.model,
+            "classify",
+            classification_model.reasoning_effort,
+        ).with_structured_output(AnswerModeDecision)
+        messages = [
+            SystemMessage(
+                content=(
+                    "Classify the answer style for this question. Do not select divisions. "
+                    "Set answer_mode to one of: direct_account_amount, broad_topic_total, "
+                    "funding_mechanism_no_amount, reconciliation_breakdown, general_summary. "
+                    "The mode examples below are illustrative, not exhaustive. "
+                    "Use direct_account_amount when the user asks about one named account, program, agency line, "
+                    "or appropriation and wants the amount, purpose, allowed uses, or compact explanation; asking "
+                    "for major allowed uses does not by itself mean reconciliation_breakdown. "
+                    "Use broad_topic_total when the user asks about a broad topic across accounts, agencies, "
+                    "programs, or divisions and may need grouped funding buckets. "
+                    "Use funding_mechanism_no_amount when the FY2026 text likely explains how funding continues "
+                    "or is made available but may not include a dollar figure. "
+                    "Use reconciliation_breakdown only when the user asks for breakdown, allocation, line items, "
+                    "show math, included/excluded amounts, double-counting, comparison, or combined totals. "
+                    "Use general_summary for non-accounting explanatory questions. "
+                    "Examples: direct_account_amount: 'What amount is appropriated for the FDA Salaries and "
+                    "Expenses account in FY2026, and what are the major allowed uses?' "
+                    "broad_topic_total: 'What FY2026 funding is available for rural water or wastewater "
+                    "infrastructure, and which agencies or accounts control it?' "
+                    "funding_mechanism_no_amount: 'How much money does FEMA get under the continuing "
+                    "appropriations division?' when the text provides continuation or rate-for-operations "
+                    "language but no explicit FEMA amount. "
+                    "reconciliation_breakdown: 'Break down FDA Salaries and Expenses by center and user-fee source.' "
+                    "general_summary: 'What does the Agriculture division do for FDA facilities?' "
+                    "If the best mode is ambiguous, use broad_topic_total. "
+                    "Set answer_mode_flags.mixed_financial_types=true when relevant figures may include "
+                    "non-comparable financial types such as grants, loan authority, subsidy costs, user fees, "
+                    "transfers, rescissions, caps, limitations, or set-asides. "
+                    "Keep answer_mode_reason short."
+                )
+            ),
+            HumanMessage(content=f"Question: {state['question']}"),
+        ]
+        decision = self._invoke_with_retry(
+            lambda: classification_llm.invoke(messages),
+            stage="classify",
+            query_id=state.get("query_id", "unknown"),
+        )
+        answer_mode_update = self._answer_mode_update(decision)
+        self._debug_log(
+            "classify query_id=%s model=%s duration=%.2fs answer_mode=%s flags=%s reason=%s",
+            state.get("query_id", "unknown"),
+            format_model_spec(classification_model),
+            time.time() - start_time,
+            answer_mode_update["answer_mode"],
+            answer_mode_update["answer_mode_flags"],
+            answer_mode_update["answer_mode_reason"],
+        )
+        return answer_mode_update
+
     def _route_divisions(self, state: RAGState) -> dict[str, Any]:
         """Select which appropriations divisions should be searched for the query.
 
@@ -476,16 +545,21 @@ class RAGService:
         route_messages = [
             SystemMessage(
                 content=(
-                    "Select the relevant appropriations divisions and classify the answer style for this question. "
+                    "Select the relevant appropriations divisions for this question. "
                     "Return only exact FY2026 division names from the allowed list. "
                     "Use the aliases only as routing hints, never as returned labels. "
-                    "Set answer_mode to one of: direct_account_amount, broad_topic_total, "
-                    "funding_mechanism_no_amount, reconciliation_breakdown, general_summary. "
-                    "If the best mode is ambiguous, use broad_topic_total. "
-                    "Set answer_mode_flags.mixed_financial_types=true when relevant figures may include "
-                    "non-comparable financial types such as grants, loan authority, subsidy costs, user fees, "
-                    "transfers, rescissions, caps, limitations, or set-asides. "
-                    "Keep answer_mode_reason short."
+                    "Do not classify the answer style. Do not return aliases, acronyms, agencies, accounts, "
+                    "or shortened division names. Return no divisions only when the question is outside the "
+                    "available FY2026 appropriations divisions. "
+                    "Appropriations routing follows bill-division jurisdiction, not cabinet department organization. "
+                    "Important jurisdiction notes: FDA, Food and Drug Administration, FDA Salaries and Expenses, "
+                    "food safety, and tobacco product user fees route to AGRICULTURE, RURAL DEVELOPMENT, FOOD "
+                    "AND DRUG ADMINISTRATION, AND RELATED AGENCIES, not LHHS. NIH, CDC, CMS, HRSA, SAMHSA, "
+                    "ACF, ACL, and general HHS accounts route to LHHS. FEMA, DHS, continuing appropriations, "
+                    "extenders, and disaster relief continuation language route to CONTINUING APPROPRIATIONS, "
+                    "EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS. EPA routes to DEPARTMENT OF THE INTERIOR, "
+                    "ENVIRONMENT, AND RELATED AGENCIES, not ENERGY AND WATER DEVELOPMENT, unless the question "
+                    "is about Corps of Engineers, Bureau of Reclamation, or DOE water accounts."
                 )
             ),
             HumanMessage(
@@ -500,7 +574,6 @@ class RAGService:
             stage="route",
             query_id=state.get("query_id", "unknown"),
         )
-        answer_mode_update = self._answer_mode_update(decision)
         if requested_filter:
             self._debug_log(
                 "route query_id=%s source=filter model=%s duration=%.2fs selected=%s answer_mode=%s flags=%s reason=%s",
@@ -508,13 +581,13 @@ class RAGService:
                 format_model_spec(routing_model),
                 time.time() - start_time,
                 len(requested_filter),
-                answer_mode_update["answer_mode"],
-                answer_mode_update["answer_mode_flags"],
-                answer_mode_update["answer_mode_reason"],
+                state.get("answer_mode", DEFAULT_ANSWER_MODE),
+                state.get("answer_mode_flags", {}),
+                state.get("answer_mode_reason", ""),
             )
-            return {"selected_divisions": requested_filter, **answer_mode_update}
+            return {"selected_divisions": requested_filter}
 
-        selected = [division for division in decision.divisions if division in settings.subcommittee_stores]
+        selected = self._normalize_route_divisions(decision.divisions, settings.subcommittee_stores)
         if not selected:
             logger.info("Router returned no valid FY2026 divisions; ending as incompatible question")
             self._debug_log(
@@ -523,15 +596,14 @@ class RAGService:
                 state.get("query_id", "unknown"),
                 format_model_spec(routing_model),
                 time.time() - start_time,
-                answer_mode_update["answer_mode"],
-                answer_mode_update["answer_mode_flags"],
-                answer_mode_update["answer_mode_reason"],
+                state.get("answer_mode", DEFAULT_ANSWER_MODE),
+                state.get("answer_mode_flags", {}),
+                state.get("answer_mode_reason", ""),
                 decision.divisions,
             )
             return {
                 "selected_divisions": [],
                 "final_answer": INCOMPATIBLE_QUESTION_ANSWER,
-                **answer_mode_update,
             }
         self._debug_log(
             "route query_id=%s source=llm model=%s duration=%.2fs selected=%s divisions=%s "
@@ -541,11 +613,37 @@ class RAGService:
             time.time() - start_time,
             len(selected),
             [division_acronym(division) for division in selected],
-            answer_mode_update["answer_mode"],
-            answer_mode_update["answer_mode_flags"],
-            answer_mode_update["answer_mode_reason"],
+            state.get("answer_mode", DEFAULT_ANSWER_MODE),
+            state.get("answer_mode_flags", {}),
+            state.get("answer_mode_reason", ""),
         )
-        return {"selected_divisions": selected, **answer_mode_update}
+        return {"selected_divisions": selected}
+
+    def _normalize_route_divisions(self, divisions: list[str], valid_divisions: dict[str, str]) -> list[str]:
+        """Normalize route outputs to canonical division names.
+
+        The router is instructed to return exact division names, but small routing
+        models sometimes return stable FY2026 acronyms such as AG. Treat known
+        acronyms and case variants as the same canonical division; do not infer
+        fuzzy matches outside the configured division/acronym set.
+        """
+        canonical_by_upper = {division.upper(): division for division in valid_divisions}
+        acronym_to_division = {
+            acronym.upper(): division
+            for division, acronym in FY2026_DIVISION_ACRONYMS.items()
+            if division in valid_divisions
+        }
+        selected: list[str] = []
+        seen: set[str] = set()
+
+        for raw_division in divisions:
+            normalized_key = str(raw_division or "").strip().strip("[]").upper()
+            division = canonical_by_upper.get(normalized_key) or acronym_to_division.get(normalized_key)
+            if division and division not in seen:
+                selected.append(division)
+                seen.add(division)
+
+        return selected
 
     def _answer_mode_update(self, decision: Any) -> dict[str, Any]:
         """Normalize route-classifier answer-mode metadata for graph state."""
@@ -851,8 +949,6 @@ class RAGService:
                 item["fact"] = self._mark_text_with_source_annotations(item["fact"], number_annotations)
         extracted_facts = self._render_tiered_facts(relevance_facts)
         relevance_counts = self._relevance_counts(relevance_facts)
-        marker_count = self._count_number_markers(extracted_facts)
-        unmarked_figures = self._unmarked_figures(extracted_facts)
 
         mapped: MappedChunkState = {
             "chunk_id": chunk["chunk_id"],
@@ -868,33 +964,6 @@ class RAGService:
             "relevance_facts": relevance_facts,
             "relevance_counts": relevance_counts,
         }
-        self._debug_log(
-            "map query_id=%s chunk_id=%s division=%s map_model=%s summary_model=%s duration=%.2fs "
-            "facts_chars=%s summary_chars=%s snapshot_chars=%s relevance_counts=%s",
-            state.get("query_id", "unknown"),
-            chunk["chunk_id"],
-            chunk["division_acronym"],
-            format_model_spec(map_model),
-            format_model_spec(summary_model),
-            time.time() - start_time,
-            len(extracted_facts),
-            len(chunk_summary),
-            len(chunk_snapshot),
-            relevance_counts,
-        )
-        if unmarked_figures:
-            self._debug_log(
-                "map_annotation_gaps query_id=%s chunk_id=%s division=%s structured_candidates=%s "
-                "source_annotations=%s markers_in_facts=%s unmarked_figures=%s annotation_figures=%s",
-                state.get("query_id", "unknown"),
-                chunk["chunk_id"],
-                chunk["division_acronym"],
-                len(mapped_facts.source_numbers),
-                len(number_annotations),
-                marker_count,
-                unmarked_figures,
-                [annotation.figure for annotation in number_annotations[:8]],
-            )
         return {
             "mapped_chunks": [mapped],
             "number_annotations": [annotation.model_dump(mode="json", exclude_none=True) for annotation in number_annotations],
