@@ -191,7 +191,7 @@ Use this markdown structure. Only include sections that have content.
 ## Answer
 <1 short paragraph. State whether a clean total is available and name the main controlling agencies/accounts. Do not use internal pipeline words like "division answers", "extracted facts", "retrieved facts", or "provided facts".>
 
-## <Topic-Specific or Targeted Funding>
+## Topic-Specific or Targeted Funding
 ### <Agency/account/program> [ACRONYM]
 - <Financial type>: <amount and short description>
 - <Financial type>:
@@ -218,11 +218,14 @@ Rules:
 - Use only the division answers. Do not invent facts, dollar figures, or totals.
 - Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
 - Do not mention "division answers", "extracted facts", "retrieved facts", "provided facts", or other pipeline/internal process language in the final answer.
-- Use the user's topic words when naming the first section. Example: for rural water/wastewater, use "Rural-Specific or Rural-Targeted Funding"; for other topics, use the corresponding topic-specific label.
+- Use these section titles exactly when applicable: "Topic-Specific or Targeted Funding", "Broader Related Funding", "Identified But Not Cleanly Topic-Specific", "Not Included", and "Caveats".
+- Do not generate long topic-expanded section names like "Rural Water or Wastewater-Specific or Rural Water or Wastewater-Targeted Funding".
 - For broad mixed-financial-type questions, organize by specificity before account detail: topic-specific or targeted funding; broader related funding that may support relevant projects; identified but not cleanly topic-specific; not included.
 - Only include sections that have content.
 - Do not append full division answers. Combine already-shaped division results.
 - Do not create multiple top-level bullets or headings for the same agency/account/heading. Use one heading per controlling account and nest financial types, suballocations, and set-asides underneath it.
+- Preserve direct subamounts that help the user identify funding sources, but nest them under the controlling account instead of making them separate top-level accounts.
+- Use valid markdown bullets for all account details and nested amounts. Indent nested bullets by two spaces.
 - Label each amount by financial type where possible: appropriated cost/grant/subsidy, direct loan authority, guaranteed loan authority, grant reservation, administrative expenses, suballocation/set-aside, transfer, cap/limitation, rescission, or user fee.
 - Do not repeat the same agency, account, bucket, or dollar figure in both the top Answer and the detailed sections.
 - Do not drop a routed division; if it has no direct evidence, put it in Not Included as one line.

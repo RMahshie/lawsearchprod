@@ -1385,7 +1385,7 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     assert "Active safety flags: mixed_financial_types" in prompt
     assert "Broad topic synthesis prompt:" in prompt
     assert "Only include sections that have content" in prompt
-    assert "## <Topic-Specific or Targeted Funding>" in prompt
+    assert "## Topic-Specific or Targeted Funding" in prompt
     assert "## Broader Related Funding" in prompt
     assert "## Identified But Not Cleanly Topic-Specific" in prompt
     assert "## Not Included" in prompt
@@ -1393,9 +1393,12 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     assert "Do not append full division answers. Combine already-shaped division results." in prompt
     assert "if it has no direct evidence, put it in Not Included as one line" in prompt
     assert "Do not mention \"division answers\", \"extracted facts\", \"retrieved facts\", \"provided facts\"" in prompt
-    assert "Rural-Specific or Rural-Targeted Funding" in prompt
+    assert "Use these section titles exactly when applicable" in prompt
+    assert "Do not generate long topic-expanded section names" in prompt
     assert "organize by specificity before account detail" in prompt
     assert "Use one heading per controlling account" in prompt
+    assert "Preserve direct subamounts that help the user identify funding sources" in prompt
+    assert "Use valid markdown bullets for all account details and nested amounts" in prompt
     assert "Label each amount by financial type" in prompt
     assert "Do not repeat the same agency, account, bucket, or dollar figure" in prompt
     assert "Caveats must be cross-cutting only" in prompt
@@ -1414,7 +1417,7 @@ def test_synthesis_prompts_are_mode_owned():
 
     cases = {
         "direct_account_amount": ["Direct account synthesis prompt:", "## Source Scope", "Do not introduce By Agency / Account"],
-        "broad_topic_total": ["Broad topic synthesis prompt:", "## <Topic-Specific or Targeted Funding>", "## Not Included"],
+        "broad_topic_total": ["Broad topic synthesis prompt:", "## Topic-Specific or Targeted Funding", "## Not Included"],
         "funding_mechanism_no_amount": ["Funding mechanism synthesis prompt:", "## Mechanism Found", "## Missing Amount"],
         "reconciliation_breakdown": ["Reconciliation synthesis prompt:", "## Included", "## Not Added Separately"],
         "general_summary": ["General summary synthesis prompt:", "Do not force accounting sections"],
