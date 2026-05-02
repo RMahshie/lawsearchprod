@@ -12,9 +12,11 @@ import logging
 from datetime import datetime
 from typing import Dict, Any
 
-from fastapi import APIRouter, HTTPException, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import StreamingResponse
 
+from app import __version__
+from app.api.errors import api_error
 from app.models.query import (
     QueryRequest,
     QueryResponse,
@@ -103,39 +105,30 @@ async def process_query(
         return response
         
     except ValueError as e:
-        # Handle validation or input errors
         logger.warning(f"Query {query_id} validation error: {str(e)}")
-        raise HTTPException(
+        raise api_error(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": "validation_error",
-                "message": str(e),
-                "query_id": query_id
-            }
+            error="validation_error",
+            message=str(e),
+            query_id=query_id,
         )
-        
+
     except FileNotFoundError as e:
-        # Handle missing database/file errors
         logger.error(f"Query {query_id} database error: {str(e)}")
-        raise HTTPException(
+        raise api_error(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "error": "database_unavailable",
-                "message": "Vector database not available. Please ensure data has been ingested.",
-                "query_id": query_id
-            }
+            error="database_unavailable",
+            message="Vector database not available. Please ensure data has been ingested.",
+            query_id=query_id,
         )
-        
+
     except Exception as e:
-        # Handle unexpected errors
         logger.error(f"Query {query_id} unexpected error: {str(e)}", exc_info=True)
-        raise HTTPException(
+        raise api_error(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "internal_error",
-                "message": "An unexpected error occurred while processing your query.",
-                "query_id": query_id
-            }
+            error="internal_error",
+            message="An unexpected error occurred while processing your query.",
+            query_id=query_id,
         )
 
 
@@ -302,30 +295,25 @@ async def health_check(
             return HealthResponse(
                 status="healthy",
                 timestamp=datetime.utcnow(),
-                version="1.0.0",
+                version=__version__,
                 database_status=health_info.get("database_status", "unknown")
             )
         else:
-            # Service reports as unhealthy
             logger.warning(f"Health check failed: {health_info.get('reason', 'Unknown')}")
-            raise HTTPException(
+            raise api_error(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={
-                    "error": "service_unhealthy",
-                    "message": health_info.get("reason", "Service is not healthy"),
-                    "details": health_info
-                }
+                error="service_unhealthy",
+                message=health_info.get("reason", "Service is not healthy"),
+                details=health_info,
             )
-            
+
     except Exception as e:
         logger.error(f"Health check error: {str(e)}", exc_info=True)
-        raise HTTPException(
+        raise api_error(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "error": "health_check_failed",
-                "message": "Could not determine service health",
-                "details": {"exception": str(e)}
-            }
+            error="health_check_failed",
+            message="Could not determine service health",
+            details={"exception": str(e)},
         )
 
 
@@ -352,7 +340,7 @@ async def service_status(
         
         return {
             "service": "LawSearch AI",
-            "version": "1.0.0",
+            "version": __version__,
             "status": health_info.get("status", "unknown"),
             "timestamp": datetime.utcnow().isoformat(),
             "database_status": health_info.get("database_status", "unknown"),
@@ -371,7 +359,7 @@ async def service_status(
         logger.error(f"Status check error: {str(e)}")
         return {
             "service": "LawSearch AI",
-            "version": "1.0.0", 
+            "version": __version__,
             "status": "error",
             "timestamp": datetime.utcnow().isoformat(),
             "error": str(e)

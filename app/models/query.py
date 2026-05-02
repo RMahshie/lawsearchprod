@@ -9,6 +9,7 @@ from typing import List, Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 from datetime import datetime
 
+from app import __version__ as APP_VERSION
 from app.core.config import FY2026_DIVISIONS
 
 
@@ -355,9 +356,8 @@ class HealthResponse(BaseModel):
     )
     
     version: str = Field(
-        default="1.0.0",
+        default=APP_VERSION,
         description="API version",
-        example="1.0.0"
     )
     
     database_status: Optional[str] = Field(

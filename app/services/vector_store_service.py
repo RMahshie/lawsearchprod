@@ -161,6 +161,34 @@ class VectorStoreService:
         if embedding_model != self.embedding_model:
             self.reset_embedding_model(embedding_model)
 
+    def _resolve_store(
+        self,
+        division: str,
+        vectorstore_root: str | Path | None,
+        embedding_model: str | None,
+        *,
+        context: str,
+    ) -> tuple[str, Any]:
+        """Validate per-call store params and return the loaded Chroma store.
+
+        Args:
+            division: Full division name used to look up the store name.
+            vectorstore_root: Root directory for the versioned vector store.
+            embedding_model: Embedding model used by that vector store.
+            context: Short label used in error messages (e.g. "retrieval", "load chunk X").
+
+        Returns:
+            Tuple of (root_str, store) for downstream Chroma operations.
+        """
+        if not vectorstore_root:
+            raise ValueError(f"Vector store root is required for {context}")
+        if not embedding_model:
+            raise ValueError(f"Embedding model is required for {context}")
+        self.use_embedding_model(embedding_model)
+        store_name = self.settings.subcommittee_stores[division]
+        root = str(vectorstore_root)
+        return root, self.get_store(root, store_name)
+
     def retrieve(
         self,
         question: str,
@@ -181,15 +209,13 @@ class VectorStoreService:
         Returns:
             List of chunk dictionaries with content, score, id, division, and metadata.
         """
-        if not vectorstore_root:
-            raise ValueError(f"Vector store root is required for retrieval in {division_acronym(division)}")
-        if not embedding_model:
-            raise ValueError(f"Embedding model is required for retrieval in {division_acronym(division)}")
-        if embedding_model:
-            self.use_embedding_model(embedding_model)
+        root, store = self._resolve_store(
+            division,
+            vectorstore_root,
+            embedding_model,
+            context=f"retrieval in {division_acronym(division)}",
+        )
         store_name = self.settings.subcommittee_stores[division]
-        root = str(vectorstore_root)
-        store = self.get_store(root, store_name)
         docs_with_scores = store.similarity_search_with_score(question, k=k)
         if self.settings.debug:
             logger.info(
@@ -243,15 +269,12 @@ class VectorStoreService:
         Returns:
             Chunk dictionary when found, otherwise None.
         """
-        if not vectorstore_root:
-            raise ValueError(f"Vector store root is required to load chunk {chunk_id}")
-        if not embedding_model:
-            raise ValueError(f"Embedding model is required to load chunk {chunk_id}")
-        if embedding_model:
-            self.use_embedding_model(embedding_model)
-        store_name = self.settings.subcommittee_stores[division]
-        root = str(vectorstore_root)
-        store = self.get_store(root, store_name)
+        _, store = self._resolve_store(
+            division,
+            vectorstore_root,
+            embedding_model,
+            context=f"loading chunk {chunk_id}",
+        )
         result = store._collection.get(ids=[chunk_id], include=["documents", "metadatas"])  # noqa: SLF001
         documents = result.get("documents") or []
         if not documents:

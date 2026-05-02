@@ -11,6 +11,7 @@ import uvicorn
 import logging
 import sys
 
+from app import __version__
 # Import API routers
 from app.api.endpoints.query import router as query_router
 from app.api.endpoints.storage import router as storage_router
@@ -47,7 +48,7 @@ ensure_storage_ready()
 app = FastAPI(
     title="LawSearch AI API",
     description="A Retrieval-Augmented Generation (RAG) system for querying U.S. federal appropriations bills",
-    version="1.0.0",
+    version=__version__,
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -75,7 +76,7 @@ async def root():
     """
     return {
         "message": "LawSearch AI API",
-        "version": "1.0.0",
+        "version": __version__,
         "docs": "/docs",
         "health": "/api/health"
     }

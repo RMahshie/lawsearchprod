@@ -23,8 +23,21 @@ const API_BASE_URL = configuredApiBaseUrl || 'http://localhost:8000';
 const normalizeApiError = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (error.response?.data) {
-      const data = error.response.data as { message?: string; error?: string };
-      throw new Error(data.message || data.error || 'API Error');
+      const data = error.response.data as {
+        detail?: string | { error?: string; message?: string };
+        message?: string;
+        error?: string;
+      };
+      const detail = data.detail;
+      if (detail && typeof detail === 'object') {
+        throw new Error(detail.message || detail.error || 'API Error');
+      }
+      throw new Error(
+        (typeof detail === 'string' ? detail : undefined) ||
+          data.message ||
+          data.error ||
+          'API Error',
+      );
     }
     if (error.request) {
       throw new Error('Unable to connect to the server. Please check your connection.');
