@@ -11,6 +11,24 @@ from app.services.rag_service import RAGService
 from app.services.vector_store_service import VectorStoreService, division_acronym
 
 
+_CREATE_CHAT_MODEL_TARGETS = (
+    "app.services.rag.stages.classify.create_chat_model",
+    "app.services.rag.stages.route.create_chat_model",
+    "app.services.rag.stages.rewrite.create_chat_model",
+    "app.services.rag.stages.map_chunk.create_chat_model",
+    "app.services.rag.stages.reduce.create_chat_model",
+    "app.services.rag.stages.synthesize.create_chat_model",
+)
+
+
+def _patch_create_chat_model(monkeypatch, factory):
+    """Patch ``create_chat_model`` on every stage module so tests can intercept
+    LLM construction regardless of which pipeline stage they exercise.
+    """
+    for target in _CREATE_CHAT_MODEL_TARGETS:
+        monkeypatch.setattr(target, factory)
+
+
 class FakeMessage:
     def __init__(self, content: str):
         self.content = content
@@ -112,7 +130,7 @@ def test_classify_prompt_uses_answer_mode_examples(monkeypatch):
             answer_mode_reason="FEMA continuation question.",
         )
     )
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
     service.settings = get_settings()
 
@@ -145,7 +163,7 @@ def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
     llm = CapturingStructuredLLM(
         RouteDecision(divisions=["CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"])
     )
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
     service.settings = get_settings()
 
@@ -184,7 +202,7 @@ def test_route_divisions_filter_bypasses_router(monkeypatch):
     def fail_create_chat_model(*args, **kwargs):
         raise AssertionError("router should not be initialized when divisions_filter is supplied")
 
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", fail_create_chat_model)
+    _patch_create_chat_model(monkeypatch, fail_create_chat_model)
     service = RAGService.__new__(RAGService)
     service.settings = get_settings()
 
@@ -208,7 +226,7 @@ def test_route_returns_incompatible_answer_when_no_valid_fy2026_division(monkeyp
     from app.services.rag_service import RouteDecision
 
     llm = CapturingStructuredLLM(RouteDecision(divisions=["DEPARTMENT OF HOMELAND SECURITY"]))
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
     service.settings = get_settings()
 
@@ -230,7 +248,7 @@ def test_route_normalizes_known_division_acronyms(monkeypatch):
     from app.services.rag_service import RouteDecision
 
     llm = CapturingStructuredLLM(RouteDecision(divisions=["AG"]))
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
     service.settings = get_settings()
 
@@ -540,7 +558,7 @@ def test_save_query_response_persists_answer_mode_debug_metadata():
 
 
 def test_map_chunk_returns_facts_and_summary(monkeypatch):
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: FakeLLM())
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: FakeLLM())
     service = RAGService.__new__(RAGService)
 
     result = service._map_chunk(
@@ -567,7 +585,7 @@ def test_map_chunk_returns_facts_and_summary(monkeypatch):
 
 
 def test_invoke_text_retries_once_for_transient_error(monkeypatch):
-    monkeypatch.setattr("app.services.rag_service.time.sleep", lambda seconds: None)
+    monkeypatch.setattr("app.services.rag.llm_invocation.time.sleep", lambda seconds: None)
     service = RAGService.__new__(RAGService)
     llm = FlakyLLM(500)
 
@@ -578,7 +596,7 @@ def test_invoke_text_retries_once_for_transient_error(monkeypatch):
 
 
 def test_invoke_text_does_not_retry_non_transient_error(monkeypatch):
-    monkeypatch.setattr("app.services.rag_service.time.sleep", lambda seconds: None)
+    monkeypatch.setattr("app.services.rag.llm_invocation.time.sleep", lambda seconds: None)
     service = RAGService.__new__(RAGService)
     llm = FlakyLLM(400)
 
@@ -1086,7 +1104,7 @@ def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
             )
         return FakeLLM()
 
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", fake_create_chat_model)
+    _patch_create_chat_model(monkeypatch, fake_create_chat_model)
 
     class FakeVectorStore:
         def __init__(self):
@@ -1148,8 +1166,8 @@ def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
 def test_rewrite_division_queries_falls_back_for_missing_division(monkeypatch):
     from app.services.rag_service import DivisionQueryDecision, DivisionQueryPlan
 
-    monkeypatch.setattr(
-        "app.services.rag_service.create_chat_model",
+    _patch_create_chat_model(
+        monkeypatch,
         lambda model, task, reasoning_effort=None: FakeRewriteLLM(
             DivisionQueryPlan(
                 division_queries=[
@@ -1236,7 +1254,7 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     from app.services.rag_service import MarkedAnswer
 
     llm = CapturingStructuredLLM(MarkedAnswer(answer="Answer"))
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
 
     service._reduce_division(
@@ -1300,7 +1318,7 @@ def test_reduce_prompt_uses_direct_account_module_without_unrelated_examples(mon
     from app.services.rag_service import MarkedAnswer
 
     llm = CapturingStructuredLLM(MarkedAnswer(answer="Answer"))
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
 
     service._reduce_division(
@@ -1356,7 +1374,7 @@ def test_reduce_prompt_uses_broad_topic_mode_owned_mixed_financial_rules(monkeyp
     from app.services.rag_service import MarkedAnswer
 
     llm = CapturingStructuredLLM(MarkedAnswer(answer="Answer"))
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
 
     service._reduce_division(
@@ -1413,7 +1431,7 @@ def test_map_prompt_filters_unrelated_dollars_for_funding_mechanisms(monkeypatch
             "source_numbers": [],
         }
     )
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
 
     service._map_chunk(
@@ -1478,7 +1496,7 @@ def test_map_chunk_tracks_fact_level_relevance_and_marks_direct_numbers_only(mon
         "source_numbers": [],
     }
     llm = CapturingStructuredLLM(response)
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
 
     result = service._map_chunk(
@@ -1519,7 +1537,7 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     from app.services.rag_service import MarkedAnswer
 
     llm = CapturingStructuredLLM(MarkedAnswer(answer="Final answer"))
-    monkeypatch.setattr("app.services.rag_service.create_chat_model", lambda model, task, reasoning_effort=None: llm)
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: llm)
     service = RAGService.__new__(RAGService)
 
     service._synthesize_final(

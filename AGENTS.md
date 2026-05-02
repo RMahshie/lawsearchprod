@@ -26,6 +26,24 @@ Six-stage LangGraph state graph (see `CONTEXT.md` for stage definitions, ADR-000
 
 `START -> route_divisions -> rewrite_division_queries -> Send retrieve_division -> fan_out_chunks -> Send map_chunk -> fan_out_reduce_divisions -> Send reduce_division -> synthesize_final -> END`
 
+(`classify_answer_mode` runs first to pick the answer shape, before `route_divisions`.)
+
+## Code Layout
+
+The pipeline implementation lives in the `app/services/rag/` package:
+
+- `service.py` — `RAGService` class (graph wiring, `process_query`, `ingest_data`, `health_check`, progress streaming).
+- `context.py` — `RAGContext` dataclass passed to pure stage functions.
+- `state.py` — LangGraph `TypedDict` state shapes plus shared regex constants.
+- `schemas.py` — Pydantic schemas for structured LLM outputs.
+- `stages/{classify,route,rewrite,retrieve,map_chunk,reduce,synthesize}.py` — one Query Pipeline stage per file. Each exposes pure functions taking `(state, ctx)`.
+- `annotations.py` — Number Annotation pipeline (source extraction, marker insertion, derived validation, dollar parsing, ID generation).
+- `relevance.py` — Mapped-fact relevance bookkeeping.
+- `llm_invocation.py` — `invoke_with_retry`, `invoke_text`, `invoke_structured_or_text`.
+- `response.py` — `QueryResponse` shaping helpers.
+
+`app/services/rag_service.py` is a backwards-compatible shim re-exporting `RAGService`, `get_rag_service`, and the structured-LLM schemas. Do not import the implementation modules from outside `app/services/rag/` — go through the shim or `app/services/rag/__init__.py`.
+
 ## Invariants
 
 - `divisions_filter` bypasses Route.
