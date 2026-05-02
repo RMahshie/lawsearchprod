@@ -1,6 +1,11 @@
 # LawSearch AI
 
-RAG app for querying 2024 U.S. federal appropriations bills. Stack: FastAPI backend, LangGraph/LangChain, ChromaDB, OpenAI, React/Vite/TypeScript frontend, Docker Compose.
+RAG app for querying U.S. federal appropriations bills (FY2026: P.L. 119-37, 119-74, 119-75). Stack: FastAPI backend, LangGraph/LangChain, ChromaDB, OpenAI, React/Vite/TypeScript frontend, Docker Compose.
+
+## Read first
+
+- `CONTEXT.md` — domain glossary (Division, Chunk, Source-backed Figure, Thinking Speed, etc.). Use these terms verbatim; do not introduce synonyms.
+- `docs/adr/` — accepted design decisions. Do not contradict an accepted ADR without proposing a replacement ADR first.
 
 ## Commands
 
@@ -15,25 +20,31 @@ docker-compose up --build   # full stack containers
 
 Use `python3`, not bare `python`, in this environment. Required env: `OPENAI_API_KEY`. Optional env: `DEBUG`.
 
-## Current RAG Flow
+## Query Pipeline
 
-`START -> route_divisions -> Send retrieve_division -> fan_out_chunks -> Send map_chunk -> fan_out_reduce_divisions -> Send reduce_division -> synthesize_final -> END`
+Six-stage LangGraph state graph (see `CONTEXT.md` for stage definitions, ADR-0004 for why):
 
-Important invariants:
-- `divisions_filter` bypasses routing.
-- `max_results` means chunks per selected division.
-- Every retrieved chunk, mapped chunk, and division answer carries `division` and `division_acronym`.
-- State reducers append flat lists; grouping by division happens inside fan-out/reduce nodes.
-- `map_chunk` extracts chunk-level facts and source hover metadata; keep source provenance attached to persisted `chunk_id`s.
+`START -> route_divisions -> rewrite_division_queries -> Send retrieve_division -> fan_out_chunks -> Send map_chunk -> fan_out_reduce_divisions -> Send reduce_division -> synthesize_final -> END`
+
+## Invariants
+
+- `divisions_filter` bypasses Route.
+- `max_results` means Chunks per selected Division.
+- Every retrieved Chunk, mapped Chunk, and Division answer carries `division` and `division_acronym`.
+- State reducers append flat lists; grouping by Division happens inside fan-out/reduce nodes.
+- Every visible dollar figure in an answer MUST be bound to a Number Annotation (Source-backed or Derived). Never emit a figure without one. See ADR-0006.
+- Source-backed Figures point to a single `chunk_id`; Derived Figures carry an equation and `input_ids`.
 - Sources are first-class response fields for citation hover UI.
-- Saved history stores source `chunk_id`, `rank`, `chunk_summary`, and `chunk_snapshot`, not source text.
-- Saved history rehydrates source text from Chroma using `vector_store_id + chunk_id`; missing chunks are skipped.
+- Saved Questions store citation pointers (`chunk_id`, `rank`, `chunk_summary`, `chunk_snapshot`), never source text. Source text is fetched via Rehydrate against the recorded Vector Store Root. Missing Chunks are skipped silently. See ADR-0001.
+- `chunk_id`s are deterministic across rebuilds (Acronym + index + content hash). Do not invent fallback ids. See ADR-0008.
 
 ## API Behavior
 
 `QueryRequest` supports `question`, `thinking_speed`, `max_results`, `include_sources`, and `divisions_filter`.
 
-`QueryResponse` includes final answer, selected divisions, per-division results, sources, timing, query id, thinking speed, and model used.
+`QueryResponse` includes final answer, selected Divisions, per-Division results, sources, timing, query id, Thinking Speed, and model used.
+
+Note: the persistence API uses "Conversation" for what is actually a Saved Question (single Q&A, not multi-turn). See `CONTEXT.md` flagged ambiguities. Prefer the domain term in design discussion; keep the API name as-is.
 
 ## Execution Plans
 
@@ -53,8 +64,8 @@ Do not add assistant attribution, generated-by tags, or co-author trailers to co
 
 ## Gotchas
 
-- Do not reintroduce legacy `RetrievalQA(map_reduce)` or `langchain_classic` chains.
+- Do not reintroduce legacy `RetrievalQA(map_reduce)` or `langchain_classic` chains. See ADR-0004.
 - Do not rely on a `src/ingest.py`; ingestion now lives in `app/services/ingestion_service.py`.
 - Existing Chroma stores live under `db/chroma/`; source bills live under `data/bills/`.
 - Tests intentionally mock LLM/vector behavior; real query smoke tests require `OPENAI_API_KEY` and populated Chroma stores.
-- Do not add silent fallbacks for required runtime state. Fallbacks are useful only when the substitute preserves the same contract; otherwise fail loudly with a clear error and debug context. Example: retrieval must use the active `vector_store_root` and persisted `chunk_id`s. Falling back to the legacy root Chroma store or inventing fallback chunk IDs can make live results appear to work while saved-history rehydration and citation popovers break later.
+- Do not add silent fallbacks for required runtime state. Fallbacks are useful only when the substitute preserves the same contract; otherwise fail loudly with a clear error and debug context. Example: retrieval must use the active Vector Store Root and persisted `chunk_id`s. Falling back to a legacy root or inventing fallback chunk ids can make live results appear to work while saved-question Rehydration and citation popovers break later.

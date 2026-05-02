@@ -27,9 +27,6 @@ __pycache__/
 .vscode/
 .idea/
 
-# Local AI assistant instructions
-AGENTS.md
-
 # Database files (generated locally)
 /db/
 
