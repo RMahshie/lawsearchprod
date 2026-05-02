@@ -36,13 +36,8 @@ export function useSessionState() {
     setQuery(newQuery);
   };
 
-  const clearQuery = () => {
-    setQuery('');
-  };
-
   return {
     query,
     updateQuery,
-    clearQuery,
   };
 }

@@ -168,20 +168,6 @@ export interface ConversationDetail {
   response: QueryResponse;
 }
 
-// API response wrapper
-export interface ApiResponse<T> {
-  data?: T;
-  error?: ErrorResponse;
-}
-
-// Form state interfaces
-export interface QueryFormData {
-  question: string;
-  maxResults: number;
-  includeSources: boolean;
-  selectedDivisions: string[];
-}
-
 // Available divisions (matching backend)
 export const AVAILABLE_DIVISIONS = [
   "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",

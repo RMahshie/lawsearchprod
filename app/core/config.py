@@ -135,8 +135,7 @@ class Settings(BaseSettings):
     api_host: str = Field(default="0.0.0.0", description="API host address")
     api_port: int = Field(default=8000, description="API port")
     api_reload: bool = Field(default=True, description="Enable auto-reload in development")
-    api_workers: int = Field(default=1, description="Number of worker processes")
-    
+
     # === CORS Configuration ===
     cors_origins: Annotated[List[str], NoDecode] = Field(
         default=[
@@ -248,10 +247,7 @@ class Settings(BaseSettings):
     
     # === Model Configuration (from original src/config.py) ===
     embedding_model: str = Field(default="text-embedding-3-large", description="OpenAI embedding model")
-    llm_ingest: str = Field(default="gpt-4o-mini", description="LLM for document processing")
-    llm_summary: str = Field(default="o4-mini", description="LLM for summarization") 
-    llm_routing: str = Field(default="gpt-4o", description="LLM for query routing")
-    
+
     # === Chunking Parameters (from original src/config.py) ===
     chunk_size: int = Field(default=1500, description="Text chunk size for processing")
     chunk_overlap: int = Field(default=200, description="Overlap between text chunks")
@@ -262,13 +258,9 @@ class Settings(BaseSettings):
         default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         description="Log format string"
     )
-    log_file: Optional[str] = Field(default=None, description="Log file path (optional)")
-    
+
     # === Performance Configuration ===
-    max_query_length: int = Field(default=1000, description="Maximum query length")
-    max_results_per_division: int = Field(default=20, description="Max results per division")
     default_results_per_division: int = Field(default=8, description="Default results per division")
-    query_timeout: int = Field(default=300, description="Query timeout in seconds")
     
     # === Division/Subcommittee Mapping (from original src/config.py) ===
     subcommittee_stores: Dict[str, str] = Field(

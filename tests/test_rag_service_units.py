@@ -445,14 +445,10 @@ def test_load_conversation_returns_saved_number_annotations():
                     "id": "src_crx_1",
                     "kind": "source",
                     "figure": "$10",
-                    "normalized_value": 10,
+                    "value": 10,
                     "label": "CRX funding",
                     "targets": [{"scope": "answer"}],
-                    "division": "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
-                    "division_acronym": "CRX",
-                    "chunk_id": "chunk-1",
-                    "input_ids": [],
-                    "inputs": [],
+                    "source": {"chunk_id": "chunk-1"},
                 }
             ],
         )

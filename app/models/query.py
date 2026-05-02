@@ -223,61 +223,6 @@ class NumberAnnotation(BaseModel):
     source: Optional[SourceNumberReference] = Field(default=None, description="Source chunk reference for source figures")
     derived: Optional[DerivedNumberReference] = Field(default=None, description="Calculation metadata for derived figures")
 
-    @model_validator(mode="before")
-    @classmethod
-    def normalize_legacy_shape(cls, data):
-        """Accept current/older annotation JSON while returning the lean schema."""
-        if not isinstance(data, dict):
-            return data
-
-        normalized = dict(data)
-        if "value" not in normalized and "normalized_value" in normalized:
-            normalized["value"] = normalized.get("normalized_value")
-
-        if normalized.get("kind") == "source" and not normalized.get("source"):
-            chunk_id = normalized.get("chunk_id")
-            if chunk_id:
-                normalized["source"] = {"chunk_id": chunk_id}
-
-        if normalized.get("kind") == "derived" and not normalized.get("derived"):
-            inputs = normalized.get("inputs") or []
-            source_input_ids = [
-                item.get("annotation_id")
-                for item in inputs
-                if isinstance(item, dict) and item.get("annotation_id")
-            ]
-            normalized["derived"] = {
-                "equation": normalized.get("equation") or normalized.get("label") or normalized.get("figure") or "",
-                "rationale": normalized.get("rationale") or None,
-                "input_ids": normalized.get("input_ids") or [],
-                "source_input_ids": source_input_ids,
-            }
-
-        for legacy_field in (
-            "normalized_value",
-            "division",
-            "division_acronym",
-            "chunk_id",
-            "chunk_summary",
-            "chunk_snapshot",
-            "source_quote",
-            "equation",
-            "rationale",
-            "input_ids",
-            "inputs",
-        ):
-            normalized.pop(legacy_field, None)
-
-        if "targets" in normalized:
-            normalized["targets"] = [
-                {key: value for key, value in target.items() if key in {"scope", "division"}}
-                if isinstance(target, dict)
-                else target
-                for target in normalized.get("targets") or []
-            ]
-
-        return normalized
-
     @model_validator(mode="after")
     def validate_kind_payload(self):
         """Ensure annotation kind and payload stay aligned."""

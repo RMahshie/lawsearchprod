@@ -82,11 +82,6 @@ networks:
   lawsearch-network:
     driver: bridge
 
-# Optional: Add volumes for data persistence
 volumes:
-  chroma-data:
-    driver: local
-  bills-data:
-    driver: local
   postgres-data:
     driver: local
