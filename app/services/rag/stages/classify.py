@@ -70,7 +70,7 @@ def classify_answer_mode(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
     """Classify the requested answer shape before division routing."""
     start_time = time.time()
     ctx.emit_progress(state, "classifying", "Classifying answer style")
-    classification_model = resolve_model(state.get("thinking_speed", "normal"), "routing")
+    classification_model = resolve_model(state.get("thinking_speed", "normal"), "classify")
     classification_llm = create_chat_model(
         classification_model.model,
         "classify",

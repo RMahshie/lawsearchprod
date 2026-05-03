@@ -16,7 +16,9 @@ Set:
 OPENAI_API_KEY=sk-your-key
 ```
 
-Optional settings include `EMBEDDING_MODEL`, `API_HOST`, `API_PORT`, `LOG_LEVEL`, `ENVIRONMENT`, and `DEBUG=true`.
+Optional settings include `LAWSEARCH_MODEL_PROFILE=openai|deepseek`, `DEEPSEEK_API_KEY`, `EMBEDDING_MODEL`, `API_HOST`, `API_PORT`, `LOG_LEVEL`, `ENVIRONMENT`, and `DEBUG=true`.
+
+Use `LAWSEARCH_MODEL_PROFILE=deepseek` to run chat stages with the DeepSeek comparison profile. `OPENAI_API_KEY` is still required for OpenAI embeddings and for any OpenAI chat slots in the active profile.
 
 ## Docker Run
 

@@ -10,6 +10,8 @@ services:
     environment:
       - PYTHONPATH=/app
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LAWSEARCH_MODEL_PROFILE=${LAWSEARCH_MODEL_PROFILE:-openai}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - ENVIRONMENT=production
       - API_HOST=0.0.0.0
       - API_PORT=8000

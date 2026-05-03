@@ -46,3 +46,11 @@ def test_cors_origins_accept_comma_separated_environment_value(monkeypatch):
         "https://frontend.up.railway.app",
         "https://custom.example",
     ]
+
+
+def test_model_profile_accepts_lawsearch_env_alias(monkeypatch):
+    monkeypatch.setenv("LAWSEARCH_MODEL_PROFILE", "deepseek")
+
+    settings = Settings(_env_file=None, openai_api_key="test-key")
+
+    assert settings.model_profile == "deepseek"

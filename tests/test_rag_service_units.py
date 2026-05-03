@@ -1,5 +1,6 @@
 import os
 
+import app.core.config as config_module
 from app.core.config import (
     FY2026_INCOMPATIBLE_QUESTION_ANSWER,
     Settings,
@@ -7,6 +8,7 @@ from app.core.config import (
     get_settings,
 )
 from app.services.llm_factory import describe_model_strategy, resolve_model
+from app.services.rag.stages.rewrite import rewrite_division_queries
 from app.services.rag_service import RAGService
 from app.services.vector_store_service import VectorStoreService, division_acronym
 
@@ -1682,13 +1684,114 @@ def test_vector_store_retrieve_requires_explicit_root():
 
 
 def test_model_strategy_resolves_by_speed_and_task():
+    config_module._settings = None
+    assert resolve_model("quick", "classify").model == "gpt-5.4-mini"
+    assert resolve_model("quick", "route").model == "gpt-5.4-mini"
+    assert resolve_model("quick", "rewrite").model == "gpt-5.4-mini"
     assert resolve_model("quick", "routing").model == "gpt-5.4-mini"
     assert resolve_model("quick", "map").model == "gpt-5.4-nano"
     assert resolve_model("quick", "synthesize").model == "gpt-5.4-mini"
+    assert resolve_model("normal", "classify").reasoning_effort == "medium"
+    assert resolve_model("normal", "route").reasoning_effort == "medium"
+    assert resolve_model("normal", "rewrite").reasoning_effort == "medium"
+    assert resolve_model("normal", "map").reasoning_effort == "medium"
+    assert resolve_model("normal", "summary").reasoning_effort == "medium"
     assert resolve_model("normal", "synthesize").reasoning_effort == "medium"
+    assert resolve_model("long", "classify").reasoning_effort == "medium"
+    assert resolve_model("long", "route").reasoning_effort == "medium"
+    assert resolve_model("long", "rewrite").reasoning_effort == "medium"
+    assert resolve_model("long", "map").reasoning_effort == "medium"
+    assert resolve_model("long", "summary").reasoning_effort == "medium"
     assert resolve_model("long", "reduce").reasoning_effort == "medium"
     assert resolve_model("long", "synthesize").reasoning_effort == "medium"
     assert (
         describe_model_strategy("long")
-        == "map:gpt-5.4-mini, reduce:gpt-5.4(reasoning=medium), synthesize:gpt-5.4(reasoning=medium)"
+        == "profile:openai, classify:gpt-5.4-mini(reasoning=medium), route:gpt-5.4-mini(reasoning=medium), "
+        "rewrite:gpt-5.4-mini(reasoning=medium), map:gpt-5.4-mini(reasoning=medium), "
+        "summary:gpt-5.4-nano(reasoning=medium), reduce:gpt-5.4(reasoning=medium), "
+        "synthesize:gpt-5.4(reasoning=medium)"
     )
+
+
+def test_deepseek_model_strategy_resolves_by_speed_and_task(monkeypatch):
+    monkeypatch.setenv("LAWSEARCH_MODEL_PROFILE", "deepseek")
+    config_module._settings = None
+
+    assert resolve_model("quick", "classify").model == "deepseek-v4-flash"
+    assert resolve_model("quick", "classify").reasoning_effort is None
+    assert resolve_model("quick", "route").reasoning_effort is None
+    assert resolve_model("quick", "rewrite").reasoning_effort is None
+    assert resolve_model("quick", "map").reasoning_effort == "high"
+    assert resolve_model("quick", "summary").reasoning_effort is None
+    assert resolve_model("quick", "reduce").model == "deepseek-v4-pro"
+    assert resolve_model("quick", "reduce").reasoning_effort == "high"
+    assert resolve_model("quick", "synthesize").model == "deepseek-v4-pro"
+    assert resolve_model("quick", "synthesize").reasoning_effort == "high"
+
+    assert resolve_model("normal", "classify").reasoning_effort == "high"
+    assert resolve_model("normal", "route").reasoning_effort == "high"
+    assert resolve_model("normal", "rewrite").reasoning_effort == "high"
+    assert resolve_model("normal", "map").reasoning_effort == "high"
+    assert resolve_model("normal", "summary").reasoning_effort == "high"
+    assert resolve_model("normal", "reduce").model == "deepseek-v4-pro"
+    assert resolve_model("normal", "reduce").reasoning_effort == "high"
+    assert resolve_model("normal", "synthesize").model == "gpt-5.4"
+    assert resolve_model("normal", "synthesize").reasoning_effort == "medium"
+
+    assert resolve_model("long", "classify").reasoning_effort == "high"
+    assert resolve_model("long", "route").reasoning_effort == "high"
+    assert resolve_model("long", "rewrite").reasoning_effort == "high"
+    assert resolve_model("long", "map").reasoning_effort == "high"
+    assert resolve_model("long", "summary").reasoning_effort == "high"
+    assert resolve_model("long", "reduce").model == "deepseek-v4-pro"
+    assert resolve_model("long", "reduce").reasoning_effort == "max"
+    assert resolve_model("long", "synthesize").model == "deepseek-v4-pro"
+    assert resolve_model("long", "synthesize").reasoning_effort == "max"
+
+    assert "profile:deepseek" in describe_model_strategy("quick")
+    assert "classify:deepseek-v4-flash(provider=deepseek, thinking=off)" in describe_model_strategy(
+        "quick"
+    )
+    assert "reduce:deepseek-v4-pro(provider=deepseek, thinking=max)" in describe_model_strategy(
+        "long"
+    )
+
+
+def test_rewrite_resolves_speed_specific_model(monkeypatch):
+    config_module._settings = None
+    calls = []
+
+    class RewriteLLM:
+        def with_structured_output(self, schema):
+            return self
+
+        def invoke(self, messages):
+            from app.services.rag.schemas import DivisionQueryPlan
+
+            return DivisionQueryPlan(division_queries=[])
+
+    def fake_create_chat_model(model, task, reasoning_effort=None):
+        calls.append((model, task, reasoning_effort))
+        return RewriteLLM()
+
+    monkeypatch.setattr("app.services.rag.stages.rewrite.create_chat_model", fake_create_chat_model)
+    rewrite_division_queries(
+        {
+            "question": "How much for FDA?",
+            "query_id": "test",
+            "selected_divisions": [
+                "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES"
+            ],
+            "thinking_speed": "long",
+        },
+        type(
+            "Ctx",
+            (),
+            {
+                "emit_progress": lambda *args, **kwargs: None,
+                "debug_log": lambda *args, **kwargs: None,
+            },
+        )(),
+    )
+
+    assert calls == [("gpt-5.4-mini", "division_query_rewrite", "medium")]

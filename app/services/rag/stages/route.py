@@ -74,7 +74,7 @@ def route_divisions(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
     ctx.emit_progress(state, "routing", "Finding relevant divisions")
     requested_filter = state.get("divisions_filter")
     settings = ctx.settings
-    routing_model = resolve_model(state.get("thinking_speed", "normal"), "routing")
+    routing_model = resolve_model(state.get("thinking_speed", "normal"), "route")
     if requested_filter:
         ctx.debug_log(
             "route query_id=%s source=filter model=%s duration=%.2fs selected=%s answer_mode=%s flags=%s reason=%s",

@@ -27,6 +27,9 @@ Set these variables on `lawsearch-backend`:
 ```text
 RAILWAY_DOCKERFILE_PATH=Dockerfile.backend
 OPENAI_API_KEY=<secret>
+LAWSEARCH_MODEL_PROFILE=openai
+# If LAWSEARCH_MODEL_PROFILE=deepseek:
+# DEEPSEEK_API_KEY=<secret>
 ENVIRONMENT=production
 DEBUG=false
 LOG_LEVEL=INFO

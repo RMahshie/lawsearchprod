@@ -42,7 +42,7 @@ def rewrite_division_queries(state: RAGState, ctx: RAGContext) -> dict[str, Any]
     if not selected_divisions:
         return {"division_queries": []}
 
-    rewrite_model = resolve_model("quick", "routing")
+    rewrite_model = resolve_model(state.get("thinking_speed", "normal"), "rewrite")
     ctx.emit_progress(
         state,
         "rewriting",

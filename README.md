@@ -81,6 +81,8 @@ cp .env.example .env
 docker compose up --build
 ```
 
+Set `LAWSEARCH_MODEL_PROFILE=deepseek` and `DEEPSEEK_API_KEY` in `.env` to compare the DeepSeek V4 Flash/Pro chat profile. OpenAI remains the default.
+
 - Frontend: http://localhost:3000
 - Backend: http://localhost:8000
 - API docs: http://localhost:8000/docs

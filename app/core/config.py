@@ -9,7 +9,7 @@ import json
 import os
 from typing import Annotated, List, Dict, Optional
 from pathlib import Path
-from pydantic import Field, field_validator, ConfigDict
+from pydantic import AliasChoices, Field, field_validator, ConfigDict
 from pydantic_settings import BaseSettings, NoDecode
 
 
@@ -236,8 +236,27 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
         return v
 
+    # === Model Provider Configuration ===
+    model_profile: str = Field(
+        default="openai",
+        description="Chat model profile to use: openai or deepseek",
+        validation_alias=AliasChoices("LAWSEARCH_MODEL_PROFILE", "MODEL_PROFILE"),
+    )
+
     # === OpenAI Configuration ===
     openai_api_key: str = Field(..., description="OpenAI API key")
+
+    # === DeepSeek Configuration ===
+    deepseek_api_key: Optional[str] = Field(
+        default=None,
+        description="DeepSeek API key",
+        validation_alias=AliasChoices("DEEPSEEK_API_KEY", "DEEPSEEK_KEY"),
+    )
+    deepseek_api_base: Optional[str] = Field(
+        default=None,
+        description="DeepSeek API base URL",
+        validation_alias=AliasChoices("DEEPSEEK_API_BASE", "DEEPSEEK_BASE_URL"),
+    )
 
     # === LangSmith Tracing Configuration ===
     langsmith_tracing: Optional[bool] = Field(default=None, description="Enable LangSmith tracing")
@@ -313,11 +332,20 @@ class Settings(BaseSettings):
         if v is None:
             return info.data.get('environment', 'development') == 'development'
         return v
+
+    @field_validator('model_profile')
+    @classmethod
+    def validate_model_profile(cls, v):
+        """Validate the active chat model profile."""
+        if v not in ["openai", "deepseek"]:
+            raise ValueError("Model profile must be openai or deepseek")
+        return v
     
     model_config = ConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        populate_by_name=True,
         # Allow environment variables to override settings
         env_prefix=""
     )
