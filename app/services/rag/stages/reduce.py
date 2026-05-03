@@ -150,6 +150,7 @@ def reduce_division(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
             llm,
             prompt,
             schema=MarkedAnswer,
+            model_spec=reduce_model,
             fallback=lambda text: MarkedAnswer(answer=text),
             stage="reduce",
             query_id=state.get("query_id", "unknown"),

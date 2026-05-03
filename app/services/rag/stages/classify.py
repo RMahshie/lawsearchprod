@@ -9,7 +9,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.services.llm_factory import create_chat_model, format_model_spec, resolve_model
 from app.services.rag.context import RAGContext
-from app.services.rag.llm_invocation import invoke_with_retry
+from app.services.rag.llm_invocation import invoke_structured
 from app.services.rag.schemas import AnswerModeDecision, AnswerModeFlags
 from app.services.rag.state import RAGState
 from app.services.rag_prompting import DEFAULT_ANSWER_MODE, normalize_answer_mode
@@ -75,13 +75,16 @@ def classify_answer_mode(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
         classification_model.model,
         "classify",
         classification_model.reasoning_effort,
-    ).with_structured_output(AnswerModeDecision)
+    )
     messages = [
         SystemMessage(content=_CLASSIFY_SYSTEM_PROMPT),
         HumanMessage(content=f"Question: {state['question']}"),
     ]
-    decision = invoke_with_retry(
-        lambda: classification_llm.invoke(messages),
+    decision = invoke_structured(
+        classification_llm,
+        messages,
+        schema=AnswerModeDecision,
+        model_spec=classification_model,
         stage="classify",
         query_id=state.get("query_id", "unknown"),
         debug_log=ctx.debug_log,

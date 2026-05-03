@@ -100,6 +100,7 @@ def synthesize_final(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
         llm,
         prompt,
         schema=MarkedAnswer,
+        model_spec=synthesize_model,
         fallback=lambda text: MarkedAnswer(answer=text),
         stage="synthesize",
         query_id=state.get("query_id", "unknown"),

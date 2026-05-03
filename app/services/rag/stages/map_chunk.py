@@ -99,6 +99,7 @@ def map_chunk(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
             map_llm,
             extraction_prompt,
             schema=MappedFacts,
+            model_spec=map_model,
             fallback=lambda text: MappedFacts(
                 extracted_facts=text,
                 source_numbers=fallback_source_number_candidates(text),

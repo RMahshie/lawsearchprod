@@ -11,7 +11,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.core.config import FY2026_DIVISION_ACRONYMS, FY2026_INCOMPATIBLE_QUESTION_ANSWER
 from app.services.llm_factory import create_chat_model, format_model_spec, resolve_model
 from app.services.rag.context import RAGContext
-from app.services.rag.llm_invocation import invoke_with_retry
+from app.services.rag.llm_invocation import invoke_structured
 from app.services.rag.schemas import RouteDecision
 from app.services.rag.state import RAGState
 from app.services.rag_prompting import DEFAULT_ANSWER_MODE
@@ -93,7 +93,7 @@ def route_divisions(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
         routing_model.model,
         "routing",
         routing_model.reasoning_effort,
-    ).with_structured_output(RouteDecision)
+    )
     allowed_divisions = "\n".join(
         f"- {division}: {settings.routing_aliases.get(division, '')}"
         for division in valid_divisions
@@ -107,8 +107,11 @@ def route_divisions(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
             )
         ),
     ]
-    decision = invoke_with_retry(
-        lambda: routing_llm.invoke(route_messages),
+    decision = invoke_structured(
+        routing_llm,
+        route_messages,
+        schema=RouteDecision,
+        model_spec=routing_model,
         stage="route",
         query_id=state.get("query_id", "unknown"),
         debug_log=ctx.debug_log,

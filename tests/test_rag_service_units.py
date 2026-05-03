@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 import app.core.config as config_module
 from app.core.config import (
     FY2026_INCOMPATIBLE_QUESTION_ANSWER,
@@ -7,7 +9,9 @@ from app.core.config import (
     _export_langsmith_environment,
     get_settings,
 )
-from app.services.llm_factory import describe_model_strategy, resolve_model
+from app.services.llm_factory import ModelSpec, describe_model_strategy, resolve_model
+from app.services.rag.llm_invocation import invoke_structured
+from app.services.rag.schemas import RouteDecision
 from app.services.rag.stages.rewrite import rewrite_division_queries
 from app.services.rag_service import RAGService
 from app.services.vector_store_service import VectorStoreService, division_acronym
@@ -21,6 +25,14 @@ _CREATE_CHAT_MODEL_TARGETS = (
     "app.services.rag.stages.reduce.create_chat_model",
     "app.services.rag.stages.synthesize.create_chat_model",
 )
+
+
+@pytest.fixture(autouse=True)
+def _default_openai_model_profile(monkeypatch):
+    monkeypatch.setenv("LAWSEARCH_MODEL_PROFILE", "openai")
+    config_module._settings = None
+    yield
+    config_module._settings = None
 
 
 def _patch_create_chat_model(monkeypatch, factory):
@@ -43,6 +55,24 @@ class FakeLLM:
         if "source hover summary" in str(prompt):
             return FakeMessage("Chunk summarizes CRX cybersecurity funding.")
         return FakeMessage("Extracted $10,000,000 for cybersecurity [CRX].")
+
+
+class FakeJsonLLM:
+    def __init__(self, content='{"divisions":["DEPARTMENT OF DEFENSE"]}'):
+        self.content = content
+        self.bind_calls = []
+        self.invoke_payloads = []
+
+    def bind(self, **kwargs):
+        self.bind_calls.append(kwargs)
+        return self
+
+    def invoke(self, payload):
+        self.invoke_payloads.append(payload)
+        return FakeMessage(self.content)
+
+    def with_structured_output(self, schema):
+        raise AssertionError("DeepSeek structured invocation must not use tool calling")
 
 
 class FakeStatusError(Exception):
@@ -610,6 +640,97 @@ def test_invoke_text_does_not_retry_non_transient_error(monkeypatch):
         raise AssertionError("Expected non-transient error to be raised")
 
     assert llm.calls == 1
+
+
+def test_deepseek_structured_invocation_uses_json_mode_without_tool_calling():
+    llm = FakeJsonLLM()
+    logs = []
+
+    result = invoke_structured(
+        llm,
+        "Select divisions.",
+        schema=RouteDecision,
+        model_spec=ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
+        stage="route",
+        query_id="query-test",
+        debug_log=lambda *args, **kwargs: logs.append(args),
+    )
+
+    assert result.divisions == ["DEPARTMENT OF DEFENSE"]
+    assert llm.bind_calls == [{"response_format": {"type": "json_object"}}]
+    assert "Return only valid JSON matching this schema" in llm.invoke_payloads[0]
+    assert "RouteDecision" in llm.invoke_payloads[0]
+    assert logs == []
+
+
+def test_deepseek_structured_invocation_uses_json_mode_when_thinking_off():
+    llm = FakeJsonLLM()
+
+    result = invoke_structured(
+        llm,
+        "Select divisions.",
+        schema=RouteDecision,
+        model_spec=ModelSpec("deepseek-v4-flash", provider="deepseek"),
+        stage="route",
+        query_id="query-test",
+        debug_log=lambda *args, **kwargs: None,
+    )
+
+    assert result.divisions == ["DEPARTMENT OF DEFENSE"]
+    assert llm.bind_calls == [{"response_format": {"type": "json_object"}}]
+
+
+def test_deepseek_structured_invocation_invalid_json_fails_without_fallback():
+    llm = FakeJsonLLM("not json")
+    logs = []
+
+    try:
+        invoke_structured(
+            llm,
+            "Select divisions.",
+            schema=RouteDecision,
+            model_spec=ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
+            stage="route",
+            query_id="query-test",
+            debug_log=lambda *args, **kwargs: logs.append(args),
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Expected invalid JSON to fail without fallback")
+
+    assert logs
+    assert logs[0][0].startswith("structured_json_failed")
+
+
+def test_deepseek_structured_invocation_invalid_json_uses_text_fallback():
+    class FallbackLLM(FakeJsonLLM):
+        def __init__(self):
+            super().__init__("not json")
+            self.json_attempt = True
+
+        def invoke(self, payload):
+            self.invoke_payloads.append(payload)
+            if self.json_attempt:
+                self.json_attempt = False
+                return FakeMessage(self.content)
+            return FakeMessage('{"divisions":["DEPARTMENT OF DEFENSE"]}')
+
+    llm = FallbackLLM()
+
+    result = invoke_structured(
+        llm,
+        "Select divisions.",
+        schema=RouteDecision,
+        model_spec=ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
+        fallback=lambda text: RouteDecision.model_validate_json(text),
+        stage="route",
+        query_id="query-test",
+        debug_log=lambda *args, **kwargs: None,
+    )
+
+    assert result.divisions == ["DEPARTMENT OF DEFENSE"]
+    assert len(llm.invoke_payloads) == 2
 
 
 def test_response_includes_sources_and_division_results():

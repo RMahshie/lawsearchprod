@@ -10,7 +10,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.services.llm_factory import create_chat_model, format_model_spec, resolve_model
 from app.services.rag.context import RAGContext
-from app.services.rag.llm_invocation import invoke_with_retry
+from app.services.rag.llm_invocation import invoke_structured
 from app.services.rag.schemas import DivisionQueryPlan
 from app.services.rag.state import RAGState
 from app.services.vector_store_service import division_acronym
@@ -56,7 +56,7 @@ def rewrite_division_queries(state: RAGState, ctx: RAGContext) -> dict[str, Any]
             rewrite_model.model,
             "division_query_rewrite",
             rewrite_model.reasoning_effort,
-        ).with_structured_output(DivisionQueryPlan)
+        )
         allowed_divisions = "\n- ".join(selected_divisions)
         rewrite_messages = [
             SystemMessage(content=_REWRITE_SYSTEM_PROMPT),
@@ -67,8 +67,11 @@ def rewrite_division_queries(state: RAGState, ctx: RAGContext) -> dict[str, Any]
                 )
             ),
         ]
-        plan = invoke_with_retry(
-            lambda: rewrite_llm.invoke(rewrite_messages),
+        plan = invoke_structured(
+            rewrite_llm,
+            rewrite_messages,
+            schema=DivisionQueryPlan,
+            model_spec=rewrite_model,
             stage="rewrite",
             query_id=state.get("query_id", "unknown"),
             debug_log=ctx.debug_log,
