@@ -77,7 +77,7 @@ DEEPSEEK_MODEL_STRATEGIES = {
         "rewrite": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
         "map": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
         "summary": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
-        "reduce": ModelSpec("deepseek-v4-pro", provider="deepseek", reasoning_effort="high"),
+        "reduce": ModelSpec("gpt-5.4", reasoning_effort="low"),
         "synthesize": ModelSpec("gpt-5.4", reasoning_effort="medium"),
     },
     "long": {

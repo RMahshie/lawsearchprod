@@ -178,6 +178,12 @@ Bottom line: <account total / reconciliation summary>
 - If you repeat or restate a marked dollar figure, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.
 - For any calculated total, add a new marker like [[num:drv_recon_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
 
+Parent-total validation:
+- When same-scope child allocations sum to a source-backed parent account total, you may add a separate "reconciles to" line that re-states the parent figure with a [[num:drv_recon_1]] marker and a matching derived annotation whose input_ids reference the child source annotations.
+- Place the validation marker on its own re-stated parent figure, for example: "Programmatic allocations reconcile to: $6,957,972,000 [[num:drv_recon_1]]". Do not stack a derived marker on top of the parent's existing source marker.
+- Label this as "reconciles to the account total" or "validation check", not as a new appropriation or funding pool.
+- Use this only when the math actually works (same financial type, same scope, children sum to parent). Do not force a reconciliation when figures do not sum cleanly. Do not extend this carve-out to mixed financial types.
+
 Reconciliation example:
 Question: how much for FEMA and immigration combined?
 Facts include FEMA Federal Assistance $3,497,019,369, ICE operations and support $9,501,542,000, ICE enforcement/detention/removal $5,082,218,000, USCIS operations and support $271,140,000, USCIS Citizenship and Integration grants $10,000,000, and CBP operations and support $18,426,870,000.

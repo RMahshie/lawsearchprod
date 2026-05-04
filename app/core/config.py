@@ -61,12 +61,12 @@ FY2026_DIVISION_ACRONYMS = {
 }
 
 FY2026_ROUTING_ALIASES = {
-    "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES": "agriculture, USDA, rural development, FDA, food and drug, food safety, farm programs, nutrition programs, WIC, SNAP references when tied to agriculture appropriations.",
+    "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES": "agriculture, USDA, rural development, Rural Utilities Service, rural water and waste disposal, FDA, food and drug, food safety, farm programs, nutrition programs, WIC, SNAP references when tied to agriculture appropriations.",
     "LEGISLATIVE BRANCH": "Congress, House, Senate, Capitol Police, Architect of the Capitol, Library of Congress, Government Accountability Office, GAO, Congressional Budget Office, CBO.",
     "MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES": "military construction, MILCON, veterans affairs, VA, veterans health, veterans benefits, cemeteries, American Battle Monuments Commission.",
     "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES": "CJS, Commerce, DOJ, Justice, FBI, DEA, ATF, prisons, NASA, NSF, NOAA, Census, NIST, science agencies.",
-    "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES": "Energy and Water, Department of Energy, DOE, Corps of Engineers, Bureau of Reclamation, water projects, nuclear security, NNSA.",
-    "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES": "Interior, DOI, EPA, environment, public lands, National Park Service, Bureau of Land Management, Fish and Wildlife, Indian Affairs, Forest Service, Smithsonian.",
+    "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES": "Energy and Water, Department of Energy, DOE, Corps of Engineers, Bureau of Reclamation, water projects, rural water supply, Reclamation rural water program, nuclear security, NNSA.",
+    "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES": "Interior, DOI, EPA, environment, drinking water, wastewater, Drinking Water State Revolving Fund, Clean Water State Revolving Fund, water infrastructure grants, public lands, National Park Service, Bureau of Land Management, Fish and Wildlife, Indian Affairs, Forest Service, Smithsonian.",
     "DEPARTMENT OF DEFENSE": "Defense, DOD, military personnel, operation and maintenance, procurement, research and development, RDT&E, Army, Navy, Marine Corps, Air Force, Space Force.",
     "DEPARTMENTS OF LABOR, HEALTH AND HUMAN SERVICES, AND EDUCATION, AND RELATED AGENCIES": "Labor, DOL, HHS, Education, ED, NIH, CDC, CMS, public health, schools, Pell, student aid, workforce, OSHA.",
     "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES": "THUD, Transportation, DOT, FAA, highways, transit, rail, maritime, HUD, housing, rental assistance, community development.",
