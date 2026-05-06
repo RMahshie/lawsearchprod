@@ -37,7 +37,10 @@ _ROUTE_SYSTEM_PROMPT = (
     "extenders, and disaster relief continuation language route to CONTINUING APPROPRIATIONS, "
     "EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS. EPA routes to DEPARTMENT OF THE INTERIOR, "
     "ENVIRONMENT, AND RELATED AGENCIES, not ENERGY AND WATER DEVELOPMENT, unless the question "
-    "is about Corps of Engineers, Bureau of Reclamation, or DOE water accounts."
+    "is about Corps of Engineers, Bureau of Reclamation, or DOE water accounts. "
+    "Broad water infrastructure or wastewater questions span multiple divisions: include "
+    "INTERIOR for EPA water programs (SRFs, WIFIA), ENERGY AND WATER for Corps/Reclamation, "
+    "and AGRICULTURE for rural water utilities."
 )
 
 

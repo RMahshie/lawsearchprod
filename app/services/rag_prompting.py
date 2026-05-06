@@ -53,6 +53,43 @@ MAP_BASE_RULES = """Map extraction rules:
 - If the chunk has no relevant evidence, return exactly: - No relevant facts found."""
 
 
+MAP_MODE_PROMPTS: dict[str, str] = {
+    "direct_account_amount": """Mode-specific map rules (direct_account_amount):
+- Direct: facts about the named account, program, or agency in the question.
+- Adjacent: nearby provisions in the same section or title that are not the named account, and sibling accounts under the same parent agency that are not the requested one.
+- Not_responsive: unrelated accounts, unrelated suballocations, center-by-center figures, individual user-fee line amounts, and rent/transfer/limitation line items, unless the question asks for breakdown or reconciliation.
+- Do not promote nearby provisions to direct merely because they appear in the same chunk.
+- Preserve the named account's main appropriation amount and any allowed-use language as direct facts.""",
+    "broad_topic_total": """Mode-specific map rules (broad_topic_total):
+- Direct: any fact that provides or controls funding for the same project type as the question, a closely related project type, or a relevant eligible population or geography, even when the chunk does not repeat the user's exact phrase.
+- Direct includes top-level funding lanes for the topic: appropriated grants, direct loan authority, guaranteed loan authority, loan subsidy costs, dedicated program accounts, and major set-asides for the topic.
+- Adjacent: tiny caps, administrative-expense limitations, transfers, rescissions, and small carveouts inside a broader account when stronger funding lanes for the topic are also present in the chunk.
+- Adjacent: facts that mention the topic only in passing or as one of many eligible uses without a topic-specific amount or authority.
+- Promote a cap, administrative-expense limit, transfer, rescission, or small carveout to direct only when no stronger funding lane for the topic appears in the same chunk.
+- Not_responsive: unrelated agency or program funding that does not support the topic, related project types, related populations, or related geographies.
+- Do not classify a fact as not_responsive solely because it lacks the user's exact phrase; if it funds the same project type or eligible population, it is direct or adjacent.""",
+    "funding_mechanism_no_amount": """Mode-specific map rules (funding_mechanism_no_amount):
+- Direct: continuing-appropriations, rate-for-operations, apportionment-authority, extension, and referenced-prior-law language that controls funding for the requested topic. Extract these as facts even when no dollar figure is present, with no source_numbers item.
+- Direct: explicit references to a prior law, account, or fund that the requested topic's funding flows through.
+- Adjacent: mechanism language for related-but-not-requested programs in the same source bucket.
+- Not_responsive: unrelated dollar figures from the same division or source bucket. Do not extract them as substitutes for a missing topic-specific amount.
+- Do not invent or infer a dollar figure from mechanism language; preserve the mechanism as a fact and leave the amount unspecified.""",
+    "reconciliation_breakdown": """Mode-specific map rules (reconciliation_breakdown):
+- Direct (within the requested scope): parent account totals, child allocations and suballocations, financing sources such as user fees and offsetting collections, transfers in and out, caps, limitations, rescissions, set-asides, and exclusions needed to audit the math.
+- Preserve parent-child relationship language on every fact: 'of which', 'to remain available', 'derived from fees', 'transferred', 'rescinded', 'not to exceed', 'loan authority'.
+- Preserve the financial-type label on each amount (account total, suballocation, grant, direct loan authority, guaranteed loan authority, loan subsidy cost, user fee, offsetting collection, transfer, rescission, set-aside, cap, limitation) so the reduce stage can classify additive relationships.
+- Adjacent: related accounting context inside the same account that does not bear on the requested reconciliation math.
+- Not_responsive: amounts outside the requested topic or account scope.
+- Be exhaustive within scope; do not collapse multiple suballocations into a single fact.""",
+    "general_summary": """Mode-specific map rules (general_summary):
+- Direct: facts that directly answer the user's non-numeric or lightly numeric question.
+- Include dollar figures as direct facts only when they directly explain the answer; otherwise classify them as adjacent.
+- Adjacent: contextual provisions that help frame the answer but are not the answer itself.
+- Not_responsive: unrelated provisions retrieved alongside the relevant text.
+- Do not turn a summary question into a ledger; prefer one fact per substantive provision.""",
+}
+
+
 MAP_EXAMPLE = """Map example:
 Question: What amount is appropriated for FDA Salaries and Expenses?
 Relevant chunk text says the FDA Salaries and Expenses account receives $6,957,972,000 and nearby Sec. 776 provides $3,000,000 for a separate purpose.
@@ -410,6 +447,8 @@ def build_map_prompt(
     answer_mode_flags: dict[str, Any] | None,
 ) -> str:
     """Build the map-stage extraction prompt."""
+    mode = normalize_answer_mode(answer_mode)
+    mode_block = MAP_MODE_PROMPTS[mode]
     return (
         "You are a legislative financial analyst extracting evidence from one source chunk.\n\n"
         "Return structured output with `facts`, where each fact has `fact`, `responsiveness_tier`, `reason`, "
@@ -418,10 +457,11 @@ def build_map_prompt(
         "Use this markdown bullet format in extracted_facts:\n"
         "- <specific fact with exact dollar figure/account/program/agency/fiscal year if present> "
         f"[{division_acronym}]\n\n"
-        f"Selected answer_mode: {normalize_answer_mode(answer_mode)}\n"
+        f"Selected answer_mode: {mode}\n"
         f"Active safety flags: {mode_flags_text(answer_mode_flags)}\n\n"
         f"{INVARIANT_RULES}\n\n"
         f"{MAP_BASE_RULES}\n\n"
+        f"{mode_block}\n\n"
         f"{MAP_EXAMPLE}\n\n"
         f"Question:\n{question}\n\n"
         f"Source chunk:\n{chunk_content}"
