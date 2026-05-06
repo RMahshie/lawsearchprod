@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ReactNode } from 'react';
 import { useCallback, useState } from 'react';
+import { ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import type { NumberAnnotation, QueryResponse, SourceDocument } from '../types/api';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
@@ -16,8 +17,9 @@ interface QueryResultsProps {
 
 const POPOVER_COLLISION_PADDING = 12;
 const SOURCE_CONTEXT_WORDS = 80;
+const DERIVED_PREVIEW_AFTER_WORDS = 22;
 const SOURCE_POPOVER_CLASS = 'w-[min(640px,calc(100vw-2rem))] max-w-[var(--radix-popover-content-available-width)] rounded-sm';
-const DERIVED_POPOVER_CLASS = 'w-[min(720px,calc(100vw-2rem))] max-w-[var(--radix-popover-content-available-width)] rounded-sm';
+const DERIVED_POPOVER_CLASS = 'max-h-[min(90vh,1080px)] w-[min(720px,calc(100vw-2rem))] max-w-[var(--radix-popover-content-available-width)] overflow-y-auto overscroll-contain rounded-sm';
 
 export default function QueryResults({ result, question }: QueryResultsProps) {
   const [popoverBoundary, setPopoverBoundary] = useState<HTMLDivElement | null>(null);
@@ -352,6 +354,7 @@ function DerivedFigurePopover({
   const sourceInputs = annotation.derived.source_input_ids
     .map((id) => annotationsById.get(id))
     .filter((item): item is NumberAnnotation & { kind: 'source' } => item?.kind === 'source');
+  const summarySentence = derivedSummarySentence(annotation, sourceInputs.length);
 
   return (
     <Popover>
@@ -367,9 +370,9 @@ function DerivedFigurePopover({
         className={DERIVED_POPOVER_CLASS}
       >
         <div className="flex flex-col gap-4">
-          <div>
-            <div className="text-sm font-medium">{annotation.figure}</div>
-            {annotation.derived.rationale && <p className="mt-1 text-xs text-muted-foreground">{annotation.derived.rationale}</p>}
+          <div className="flex flex-col gap-1">
+            <div className="text-lg font-semibold leading-tight tabular-nums">{annotation.figure}</div>
+            <p className="text-sm leading-relaxed text-muted-foreground">{summarySentence}</p>
           </div>
           <Separator />
           <div>
@@ -399,32 +402,72 @@ function DerivedFigurePopover({
   );
 }
 
+function derivedSummarySentence(annotation: NumberAnnotation & { kind: 'derived' }, sourceCount: number) {
+  const rationale = firstSentence(annotation.derived.rationale);
+  if (rationale) {
+    const shortened = truncateAtWord(rationale, 180);
+    return sentenceIncludesFigure(shortened, annotation.figure)
+      ? shortened
+      : `${annotation.figure}: ${shortened}`;
+  }
+
+  const itemLabel = sourceCount === 1 ? 'Source-backed Figure' : 'Source-backed Figures';
+  return `${annotation.figure} is the synthesized total of ${sourceCount} included ${itemLabel}.`;
+}
+
+function firstSentence(text?: string) {
+  const trimmed = text?.trim();
+  if (!trimmed) return '';
+
+  const sentenceMatch = trimmed.match(/^.+?[.!?](?=\s|$)/);
+  return sentenceMatch?.[0].trim() ?? trimmed;
+}
+
+function truncateAtWord(text: string, maxLength: number) {
+  if (text.length <= maxLength) return text;
+
+  const truncated = text.slice(0, maxLength).replace(/\s+\S*$/, '').trim();
+  return `${truncated || text.slice(0, maxLength).trim()}...`;
+}
+
+function sentenceIncludesFigure(sentence: string, figure: string) {
+  const normalizedFigure = normalizeFigure(figure);
+  if (!normalizedFigure) return sentence.includes(figure);
+
+  return extractFigures(sentence).some((item) => normalizeFigure(item) === normalizedFigure);
+}
+
 function DerivedInputRow({ input, result }: { input: NumberAnnotation & { kind: 'source' }; result: QueryResponse }) {
   const [expanded, setExpanded] = useState(false);
   const source = sourceForAnnotation(input, result);
   const content = source?.content_snippet ?? '';
   const summary = source?.chunk_summary;
+  const title = source ? summaryForSource(source) : input.label;
+  const preview = sourcePreviewForFigure(content, input.figure, input.label);
 
   return (
     <div className="border bg-background">
       <button
         type="button"
         aria-expanded={expanded}
-        className="flex w-full cursor-pointer items-start gap-2 p-2.5 text-left transition-colors hover:bg-muted/60"
+        className="flex w-full cursor-pointer items-start gap-3 p-3 text-left transition-colors hover:bg-muted/60"
         onClick={() => setExpanded((value) => !value)}
       >
-        <span className="tabular-nums text-foreground">
-          {input.figure}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm leading-snug">{input.label}</span>
-          {source?.chunk_snapshot && (
-            <span className="mt-1 block text-xs text-muted-foreground">{source.chunk_snapshot}</span>
-          )}
+        <span className="min-w-0 flex-1 space-y-1">
+          <span className="block text-sm font-medium leading-snug text-foreground">{title}</span>
+          <span className="block text-sm leading-relaxed text-muted-foreground">
+            <span aria-hidden="true">“</span>
+            <HighlightedSourceSnippet content={preview} figure={input.figure} />
+            <span aria-hidden="true">”</span>
+          </span>
         </span>
         <span className="flex shrink-0 items-center gap-2 text-xs">
           <Badge variant="outline" className="rounded-sm">[{source?.division_acronym ?? 'SRC'}]</Badge>
-          <span className="text-muted-foreground">{expanded ? 'Hide' : 'Show'}</span>
+          {expanded ? (
+            <ChevronUpIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+          ) : (
+            <ChevronDownIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+          )}
         </span>
       </button>
       {expanded && (
@@ -442,6 +485,24 @@ function DerivedInputRow({ input, result }: { input: NumberAnnotation & { kind: 
       )}
       </div>
   );
+}
+
+function sourcePreviewForFigure(content: string, figure: string, fallback: string) {
+  const match = findFigureMatch(content, figure);
+  if (!match) return `${figure}${fallback ? ` ${fallback}` : ''}`;
+
+  const after = content.slice(match.index + match.text.length);
+  const afterContext = firstWords(after, DERIVED_PREVIEW_AFTER_WORDS);
+  const sentenceEnd = afterContext.text.search(/[.!?;]/);
+  const afterText = sentenceEnd >= 0
+    ? afterContext.text.slice(0, sentenceEnd + 1)
+    : afterContext.text;
+
+  return [
+    match.text,
+    afterText,
+    afterContext.truncated && sentenceEnd < 0 ? ' ...' : '',
+  ].join('').trim();
 }
 
 function sourceForAnnotation(annotation: NumberAnnotation & { kind: 'source' }, result: QueryResponse) {
