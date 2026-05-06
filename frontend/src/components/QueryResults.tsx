@@ -393,13 +393,21 @@ function DerivedFigurePopover({
               Calculation
             </div>
             <p className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
-              {annotation.derived.equation}
+              {formatCalculation(annotation.derived.equation)}
             </p>
           </div>
         </div>
       </PopoverContent>
     </Popover>
   );
+}
+
+function formatCalculation(equation: string) {
+  return equation.replace(/\b\d{4,}\b/g, (value) => {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return value;
+    return `$${numericValue.toLocaleString('en-US')}`;
+  });
 }
 
 function derivedSummarySentence(annotation: NumberAnnotation & { kind: 'derived' }, sourceCount: number) {

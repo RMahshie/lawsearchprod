@@ -69,7 +69,7 @@ DEEPSEEK_MODEL_STRATEGIES = {
         "map": ModelSpec("deepseek-v4-flash", provider="deepseek"),
         "summary": ModelSpec("deepseek-v4-flash", provider="deepseek"),
         "reduce": ModelSpec("gpt-5.4-mini", reasoning_effort="low"),
-        "synthesize": ModelSpec("deepseek-v4-pro", provider="deepseek", reasoning_effort="high"),
+        "synthesize": ModelSpec("gpt-5.4-mini", reasoning_effort="low"),
     },
     "normal": {
         "classify": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
@@ -77,7 +77,7 @@ DEEPSEEK_MODEL_STRATEGIES = {
         "rewrite": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
         "map": ModelSpec("deepseek-v4-flash", provider="deepseek"),
         "summary": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
-        "reduce": ModelSpec("gpt-5.4", reasoning_effort="low"),
+        "reduce": ModelSpec("gpt-5.4-mini", reasoning_effort="low"),
         "synthesize": ModelSpec("gpt-5.4", reasoning_effort="low"),
     },
     "long": {
@@ -86,7 +86,7 @@ DEEPSEEK_MODEL_STRATEGIES = {
         "rewrite": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
         "map": ModelSpec("deepseek-v4-flash", provider="deepseek"),
         "summary": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
-        "reduce": ModelSpec("deepseek-v4-pro", provider="deepseek", reasoning_effort="max"),
+        "reduce": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
         "synthesize": ModelSpec("deepseek-v4-pro", provider="deepseek", reasoning_effort="max"),
     },
 }
