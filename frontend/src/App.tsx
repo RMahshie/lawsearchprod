@@ -105,11 +105,13 @@ function AppContent() {
   const selectedEmbeddingModel = supportedEmbeddingModels.find((model) => model.id === embeddingModel);
 
   useEffect(() => {
+    if (embeddingModel && usableEmbeddingModels.some((model) => model.id === embeddingModel)) {
+      return;
+    }
     if (currentEmbeddingModel && usableEmbeddingModels.some((model) => model.id === currentEmbeddingModel)) {
       setEmbeddingModel(currentEmbeddingModel);
     } else if (
       usableEmbeddingModels.length > 0
-      && !usableEmbeddingModels.some((model) => model.id === embeddingModel)
     ) {
       setEmbeddingModel(usableEmbeddingModels[0].id);
     }
