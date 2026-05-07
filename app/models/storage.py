@@ -30,6 +30,7 @@ class EmbeddingModelInfo(BaseModel):
     provider: str
     dimensions: int | None = None
     is_enabled: bool
+    is_available: bool
 
 
 class CreateVectorStoreRequest(BaseModel):

@@ -18,7 +18,7 @@ npm run build:frontend      # frontend typecheck + build
 docker-compose up --build   # full stack containers
 ```
 
-Use `python3`, not bare `python`, in this environment. Required env: `OPENAI_API_KEY`. Optional env: `DEBUG`.
+Use `python3`, not bare `python`, in this environment. Required env: `OPENAI_API_KEY`. Optional env: `DEBUG`, `VOYAGE_API_KEY` for Voyage-backed vector stores.
 
 ## Query Pipeline
 

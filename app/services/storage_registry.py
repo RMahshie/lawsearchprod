@@ -23,17 +23,11 @@ from app.db.models import (
 )
 from app.db.session import SessionLocal, database_available, init_db
 from app.models.query import DivisionResult, NumberAnnotation, QueryResponse, SourceDocument
+from app.services.embedding_factory import SUPPORTED_EMBEDDING_MODELS, embedding_config_for
 from app.services.vector_store_service import division_acronym
 
 logger = logging.getLogger(__name__)
 NUMBER_MARKER_PATTERN = re.compile(r"\s*\[\[num:[A-Za-z0-9_-]+\]\]")
-
-DEFAULT_EMBEDDINGS = [
-    ("text-embedding-ada-002", None),
-    ("text-embedding-3-small", 1536),
-    ("text-embedding-3-large", 3072),
-]
-
 
 def ensure_storage_ready() -> bool:
     """Initialize storage metadata tables and seed required registry rows.
@@ -68,12 +62,13 @@ def seed_embedding_models(db: Session) -> None:
     Returns:
         None.
     """
-    for name, dimensions in DEFAULT_EMBEDDINGS:
+    for config in SUPPORTED_EMBEDDING_MODELS:
         db.merge(
             EmbeddingModel(
-                id=name,
-                name=name,
-                dimensions=dimensions,
+                id=config.id,
+                name=config.name,
+                provider=config.provider,
+                dimensions=config.dimensions,
                 is_enabled=True,
             )
         )
@@ -98,7 +93,16 @@ def ensure_legacy_vector_store(db: Session) -> VectorStore:
         return existing
 
     model_name = settings.embedding_model
-    db.merge(EmbeddingModel(id=model_name, name=model_name, is_enabled=True))
+    config = embedding_config_for(model_name)
+    db.merge(
+        EmbeddingModel(
+            id=config.id,
+            name=config.name,
+            provider=config.provider,
+            dimensions=config.dimensions,
+            is_enabled=True,
+        )
+    )
     db.flush()
 
     legacy = VectorStore(
@@ -183,7 +187,16 @@ def create_vector_store_record(
         Newly created VectorStore row in building status.
     """
     if not db.get(EmbeddingModel, embedding_model):
-        db.add(EmbeddingModel(id=embedding_model, name=embedding_model, is_enabled=True))
+        config = embedding_config_for(embedding_model)
+        db.add(
+            EmbeddingModel(
+                id=config.id,
+                name=config.name,
+                provider=config.provider,
+                dimensions=config.dimensions,
+                is_enabled=True,
+            )
+        )
 
     store = VectorStore(
         name=name.strip() or f"{embedding_model} {chunk_size}",

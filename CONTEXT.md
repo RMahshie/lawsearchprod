@@ -47,6 +47,10 @@ The inline link inside answer markdown that ties a visible figure to its Number 
 User-selected pipeline strategy that controls per-stage model selection and retrieval parameters. Three modes: `quick`, `normal`, `long`. Not a single-knob temperature toggle — different graph stages (map, summary, reduce, synthesize) may use different OpenAI models within one mode.
 _Avoid_: reasoning effort, depth, mode.
 
+**Embedding Model**:
+A registered embedding configuration used to build and query a Vector Store, identified by a LawSearch config id and including provider, provider model name, dimensions, and provider-specific retrieval options.
+_Avoid_: embedding string, embedder name.
+
 ## Pipeline stages
 
 The **Query Pipeline** is the LangGraph state graph that turns a question into an answer. Six named stages run in order:
@@ -92,6 +96,7 @@ A free-text hint string maintained per Division that lists the agencies, program
 - A **Bill Division** belongs to exactly one Public Law
 - Each non-CRX **Division** wraps exactly one **Bill Division**; **CRX** wraps many
 - A **Chunk** belongs to exactly one **Division** and is stored in that Division's Chroma store under a **Vector Store Root**
+- A **Vector Store** is built and queried with exactly one **Embedding Model**
 - A **Number Annotation** is either Source-backed (points to one Chunk) or Derived (points to one or more other Annotations via an equation)
 - An **Annotation Marker** in answer or Division-summary markdown resolves to exactly one Number Annotation
 - A **Saved Question** stores citation pointers; source text is fetched via **Rehydrate** against the recorded **Vector Store Root**

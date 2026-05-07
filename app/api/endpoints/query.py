@@ -23,6 +23,7 @@ from app.models.query import (
     HealthResponse,
     ErrorResponse,
 )
+from app.services.embedding_factory import EmbeddingModelUnavailableError
 from app.services.rag_service import get_rag_service, RAGService
 
 # Configure logging
@@ -43,6 +44,16 @@ def _sse_event(event: str, data: Dict[str, Any]) -> str:
         Formatted SSE event string.
     """
     return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
+
+
+def _query_error_message(exc: BaseException) -> str:
+    """Return a user-safe query error message for known clear failures."""
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, EmbeddingModelUnavailableError):
+            return str(current)
+        current = current.__cause__ or current.__context__
+    return "An unexpected error occurred while processing your query."
 
 
 async def get_rag_service_dependency() -> RAGService:
@@ -127,7 +138,7 @@ async def process_query(
         raise api_error(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             error="internal_error",
-            message="An unexpected error occurred while processing your query.",
+            message=_query_error_message(e),
             query_id=query_id,
         )
 
@@ -219,7 +230,7 @@ async def stream_query(
                     "error",
                     {
                         "query_id": query_id,
-                        "message": "An unexpected error occurred while processing your query.",
+                        "message": _query_error_message(exc),
                     },
                 )
             finally:

@@ -13,9 +13,9 @@ from typing import Any
 from chromadb.api.shared_system_client import SharedSystemClient
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings
 
 from app.core.config import FY2026_DIVISION_ACRONYMS, get_settings
+from app.services.embedding_factory import create_embeddings
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class VectorStoreService:
         persisted_model = read_persisted_embedding_model(self.settings.vectorstore_dir)
         self.embedding_model = embedding_model or persisted_model or self.settings.embedding_model
         self.settings.embedding_model = self.embedding_model
-        self.embedder = OpenAIEmbeddings(model=self.embedding_model)
+        self.embedder = create_embeddings(self.embedding_model, self.settings)
 
     @lru_cache(maxsize=None)
     def get_store(self, vectorstore_root: str, store_name: str) -> Chroma:
@@ -134,7 +134,7 @@ class VectorStoreService:
         """
         self.clear_cached_stores()
         self.embedding_model = embedding_model
-        self.embedder = OpenAIEmbeddings(model=embedding_model)
+        self.embedder = create_embeddings(embedding_model, self.settings)
         self.settings.embedding_model = embedding_model
 
     def clear_cached_stores(self) -> None:

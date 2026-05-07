@@ -11,6 +11,7 @@ langchain-openai==1.2.1
 langchain-chroma==1.1.0
 langgraph==1.1.9
 openai==2.32.0
+voyageai==0.3.7
 
 # Utility dependencies
 beautifulsoup4==4.14.3

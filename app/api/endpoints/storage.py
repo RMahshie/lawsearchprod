@@ -21,6 +21,11 @@ from app.models.storage import (
     EmbeddingModelInfo,
     VectorStoreInfo,
 )
+from app.services.embedding_factory import (
+    EmbeddingModelUnavailableError,
+    ensure_embedding_model_available,
+    is_embedding_model_available,
+)
 from app.services.rag_service import get_rag_service
 from app.services.storage_registry import (
     activate_vector_store,
@@ -100,6 +105,20 @@ async def create_vector_store(
     rag_service = get_rag_service()
     ingest_id = f"ingest_{uuid.uuid4().hex[:10]}"
     try:
+        ensure_embedding_model_available(request.embedding_model, rag_service.settings)
+    except EmbeddingModelUnavailableError as exc:
+        raise api_error(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error="embedding_model_unavailable",
+            message=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise api_error(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error="embedding_model_unsupported",
+            message=str(exc),
+        ) from exc
+    try:
         await rag_service.ingest_data(
             embedding_model=request.embedding_model,
             chunk_size=request.chunk_size,
@@ -155,7 +174,11 @@ async def activate_store(
     return _store_info(db, store)
 
 
-@router.delete("/storage/vector-stores/{store_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/storage/vector-stores/{store_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+)
 async def delete_store(
     store_id: str,
     force: bool = False,
@@ -212,6 +235,7 @@ async def list_embedding_models(db: Session = Depends(require_db)) -> list[Embed
         List of embedding model records.
     """
     try:
+        rag_service = get_rag_service()
         models = db.execute(select(EmbeddingModel).order_by(EmbeddingModel.name)).scalars().all()
         return [
             EmbeddingModelInfo(
@@ -220,6 +244,7 @@ async def list_embedding_models(db: Session = Depends(require_db)) -> list[Embed
                 provider=model.provider,
                 dimensions=model.dimensions,
                 is_enabled=model.is_enabled,
+                is_available=is_embedding_model_available(model.id, rag_service.settings),
             )
             for model in models
         ]

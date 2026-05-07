@@ -141,6 +141,7 @@ export interface EmbeddingModelInfo {
   provider: string;
   dimensions?: number;
   is_enabled: boolean;
+  is_available: boolean;
 }
 
 export interface CreateVectorStoreRequest {

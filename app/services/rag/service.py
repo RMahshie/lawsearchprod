@@ -41,6 +41,7 @@ from app.models.query import (
     QueryResponse,
 )
 from app.services.ingestion_service import IngestionService
+from app.services.embedding_factory import ensure_embedding_model_available
 from app.services.llm_factory import describe_model_strategy
 from app.services.rag.annotations import (
     mark_text_with_source_annotations,
@@ -478,6 +479,8 @@ class RAGService:
 
         if not database_available() or SessionLocal is None:
             raise ValueError("Storage metadata is unavailable")
+
+        ensure_embedding_model_available(embedding_model, self.settings)
 
         with SessionLocal() as db:
             store = create_vector_store_record(

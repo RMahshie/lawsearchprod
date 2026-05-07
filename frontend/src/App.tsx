@@ -94,21 +94,26 @@ function AppContent() {
   const { data: conversationsData } = useConversations(historyMode);
   const conversations = conversationsData?.conversations ?? [];
   const currentEmbeddingModel = statusData?.current_embedding_model;
-  const availableEmbeddingModels = useMemo(
+  const supportedEmbeddingModels = useMemo(
     () => embeddingModels.filter((model) => model.is_enabled),
     [embeddingModels],
   );
+  const usableEmbeddingModels = useMemo(
+    () => supportedEmbeddingModels.filter((model) => model.is_available),
+    [supportedEmbeddingModels],
+  );
+  const selectedEmbeddingModel = supportedEmbeddingModels.find((model) => model.id === embeddingModel);
 
   useEffect(() => {
-    if (currentEmbeddingModel && availableEmbeddingModels.some((model) => model.id === currentEmbeddingModel)) {
+    if (currentEmbeddingModel && usableEmbeddingModels.some((model) => model.id === currentEmbeddingModel)) {
       setEmbeddingModel(currentEmbeddingModel);
     } else if (
-      availableEmbeddingModels.length > 0
-      && !availableEmbeddingModels.some((model) => model.id === embeddingModel)
+      usableEmbeddingModels.length > 0
+      && !usableEmbeddingModels.some((model) => model.id === embeddingModel)
     ) {
-      setEmbeddingModel(availableEmbeddingModels[0].id);
+      setEmbeddingModel(usableEmbeddingModels[0].id);
     }
-  }, [availableEmbeddingModels, currentEmbeddingModel, embeddingModel]);
+  }, [usableEmbeddingModels, currentEmbeddingModel, embeddingModel]);
 
   const handleQuery = async (queryRequest: QueryRequest) => {
     setLastQuestion(queryRequest.question);
@@ -512,8 +517,8 @@ function AppContent() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
-                            {availableEmbeddingModels.map((model) => (
-                              <SelectItem key={model.id} value={model.id}>
+                            {supportedEmbeddingModels.map((model) => (
+                              <SelectItem key={model.id} value={model.id} disabled={!model.is_available}>
                                 {model.name}
                               </SelectItem>
                             ))}
@@ -557,7 +562,11 @@ function AppContent() {
                     </label>
                   </div>
 
-                  <Button className="self-end rounded-sm" onClick={runIngestion} disabled={ingestPending || !embeddingModel}>
+                  <Button
+                    className="self-end rounded-sm"
+                    onClick={runIngestion}
+                    disabled={ingestPending || !embeddingModel || selectedEmbeddingModel?.is_available === false}
+                  >
                     {ingestPending ? 'Creating Store...' : 'Create and Activate'}
                   </Button>
                 </div>

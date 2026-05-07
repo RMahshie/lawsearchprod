@@ -246,6 +246,9 @@ class Settings(BaseSettings):
     # === OpenAI Configuration ===
     openai_api_key: str = Field(..., description="OpenAI API key")
 
+    # === Voyage Configuration ===
+    voyage_api_key: Optional[str] = Field(default=None, description="Voyage API key")
+
     # === DeepSeek Configuration ===
     deepseek_api_key: Optional[str] = Field(
         default=None,

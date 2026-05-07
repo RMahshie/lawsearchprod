@@ -5,7 +5,7 @@ LawSearch AI is a service-oriented RAG app for querying 2024 federal appropriati
 ## System Shape
 
 ```text
-React UI -> FastAPI API -> RAG services -> ChromaDB + PostgreSQL + OpenAI
+React UI -> FastAPI API -> RAG services -> ChromaDB + PostgreSQL + OpenAI/Voyage
 ```
 
 Core backend modules:
@@ -15,6 +15,7 @@ Core backend modules:
 - `app/api/endpoints/storage.py`: storage manager and saved question history endpoints.
 - `app/models/query.py`: typed API contracts for requests, answers, chunks, and division results.
 - `app/services/rag_service.py`: LangGraph workflow and query orchestration.
+- `app/services/embedding_factory.py`: Embedding Model registry and OpenAI/Voyage embedder construction.
 - `app/services/vector_store_service.py`: Chroma access and embedding model lifecycle.
 - `app/services/ingestion_service.py`: bill parsing, division extraction, chunking, and vector rebuilds.
 - `app/services/llm_factory.py`: OpenAI model strategy by task and thinking speed.
@@ -60,6 +61,8 @@ LangGraph state is kept flat and reducer-friendly. Retrieved chunks, mapped chun
 ## Persistence Model
 
 PostgreSQL stores metadata for embedding models, versioned vector stores, saved questions, division answers, source `chunk_id`s, source `rank`, `chunk_summary`, and `chunk_snapshot`. It does not store source text, source metadata, or retrieval scores.
+
+Embedding Models are provider configurations: the persisted id identifies the LawSearch config used by a Vector Store, while the model row records provider, provider model name, and dimensions. Voyage-backed stores require `VOYAGE_API_KEY` at ingestion and retrieval time.
 
 Saved question replay uses `vector_store_id + chunk_id` to hydrate source text from Chroma. If the Chroma chunk is missing, that source is skipped entirely, including its stored summary/snapshot labels.
 

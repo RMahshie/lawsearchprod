@@ -81,6 +81,152 @@ class FakeStatusError(Exception):
         self.status_code = status_code
 
 
+def test_embedding_factory_exposes_voyage_configs():
+    from app.services.embedding_factory import SUPPORTED_EMBEDDING_MODEL_BY_ID
+
+    law = SUPPORTED_EMBEDDING_MODEL_BY_ID["voyage-law-2"]
+    large = SUPPORTED_EMBEDDING_MODEL_BY_ID["voyage-4-large-2048"]
+
+    assert law.name == "voyage-law-2"
+    assert law.provider == "voyage"
+    assert law.dimensions == 1024
+    assert law.output_dimension is None
+    assert large.name == "voyage-4-large"
+    assert large.provider == "voyage"
+    assert large.dimensions == 2048
+    assert large.output_dimension == 2048
+
+
+def test_embedding_factory_requires_voyage_key():
+    from app.services.embedding_factory import (
+        EmbeddingModelUnavailableError,
+        ensure_embedding_model_available,
+        is_embedding_model_available,
+    )
+
+    settings = Settings(_env_file=None, openai_api_key="test-openai-key", voyage_api_key=None)
+
+    assert is_embedding_model_available("voyage-law-2", settings) is False
+    with pytest.raises(EmbeddingModelUnavailableError, match="VOYAGE_API_KEY"):
+        ensure_embedding_model_available("voyage-law-2", settings)
+
+    settings.voyage_api_key = "test-voyage-key"
+    ensure_embedding_model_available("voyage-law-2", settings)
+    assert is_embedding_model_available("voyage-law-2", settings) is True
+
+
+def test_voyage_embeddings_uses_document_and_query_input_types():
+    from types import SimpleNamespace
+
+    from app.services.embedding_factory import VoyageEmbeddings
+
+    class FakeVoyageClient:
+        def __init__(self):
+            self.calls = []
+
+        def embed(self, texts, **kwargs):
+            self.calls.append((list(texts), kwargs))
+            return SimpleNamespace(embeddings=[[float(len(text))] for text in texts])
+
+    client = FakeVoyageClient()
+    embeddings = VoyageEmbeddings(
+        model="voyage-4-large",
+        api_key="test-voyage-key",
+        output_dimension=2048,
+        batch_size=2,
+        client=client,
+    )
+
+    assert embeddings.embed_documents(["aa", "bbb", "c"]) == [[2.0], [3.0], [1.0]]
+    assert embeddings.embed_query("question") == [8.0]
+
+    assert client.calls[0][1] == {
+        "model": "voyage-4-large",
+        "input_type": "document",
+        "truncation": True,
+        "output_dtype": "float",
+        "output_dimension": 2048,
+    }
+    assert client.calls[1][1]["input_type"] == "document"
+    assert client.calls[2][1] == {
+        "model": "voyage-4-large",
+        "input_type": "query",
+        "truncation": True,
+        "output_dtype": "float",
+        "output_dimension": 2048,
+    }
+
+
+def test_seed_embedding_models_includes_voyage_configs():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.db.models import EmbeddingModel
+    from app.db.session import Base
+    from app.services.storage_registry import seed_embedding_models
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    seed_embedding_models(db)
+    db.commit()
+
+    large = db.get(EmbeddingModel, "voyage-4-large-2048")
+    law = db.get(EmbeddingModel, "voyage-law-2")
+
+    assert large is not None
+    assert large.name == "voyage-4-large"
+    assert large.provider == "voyage"
+    assert large.dimensions == 2048
+    assert law is not None
+    assert law.name == "voyage-law-2"
+    assert law.provider == "voyage"
+    assert law.dimensions == 1024
+
+
+def test_create_vector_store_rejects_unavailable_embedding_model(monkeypatch):
+    import asyncio
+
+    from fastapi import HTTPException
+
+    from app.api.endpoints import storage
+    from app.models.storage import CreateVectorStoreRequest
+
+    class DummyRAGService:
+        settings = Settings(_env_file=None, openai_api_key="test-openai-key", voyage_api_key=None)
+
+    monkeypatch.setattr(storage, "get_rag_service", lambda: DummyRAGService())
+
+    request = CreateVectorStoreRequest(
+        name="Voyage store",
+        embedding_model="voyage-law-2",
+        chunk_size=1500,
+        chunk_overlap=200,
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(storage.create_vector_store(request, db=None))
+
+    assert exc.value.status_code == 400
+    assert exc.value.detail["error"] == "embedding_model_unavailable"
+
+
+def test_query_error_message_surfaces_embedding_availability_error():
+    from app.api.endpoints.query import _query_error_message
+    from app.services.embedding_factory import EmbeddingModelUnavailableError
+
+    cause = EmbeddingModelUnavailableError(
+        "Embedding model voyage-law-2 is unavailable because VOYAGE_API_KEY is not configured."
+    )
+    wrapped = Exception("RAG processing failed")  # noqa: TRY002 - test exception chaining
+    wrapped.__cause__ = cause
+
+    assert _query_error_message(wrapped) == str(cause)
+    assert _query_error_message(Exception("other")) == "An unexpected error occurred while processing your query."
+
+
 def test_settings_accepts_and_exports_langsmith_environment(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
     monkeypatch.setenv("langsmith_tracing", "true")

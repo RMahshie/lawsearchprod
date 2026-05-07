@@ -12,9 +12,9 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings
 
 from app.core.config import get_settings
+from app.services.embedding_factory import create_embeddings
 from app.services.vector_store_service import (
     clear_chroma_system_cache,
     division_acronym,
@@ -72,7 +72,7 @@ class IngestionService:
             shutil.rmtree(vectorstore_dir)
         vectorstore_dir.mkdir(parents=True, exist_ok=True)
 
-        embeddings = OpenAIEmbeddings(model=embedding_model)
+        embeddings = create_embeddings(embedding_model, self.settings)
         divisions_processed = 0
         partition_counts: dict[str, int] = {}
         total_chunks = 0
