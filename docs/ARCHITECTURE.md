@@ -66,6 +66,8 @@ Embedding Models are provider configurations: the persisted id identifies the La
 
 Saved question replay uses `vector_store_id + chunk_id` to hydrate source text from Chroma. If the Chroma chunk is missing, that source is skipped entirely, including its stored summary/snapshot labels.
 
+Deleting an inactive Vector Store deletes the Saved Questions that reference it, then removes the store registry row and Chroma files. The active Vector Store cannot be deleted.
+
 Saved query runs also store `number_annotations` as a JSON snapshot. Source annotations point to persisted chunk ids; derived annotations store equation text and input ids. Saved history does not recompute derivations.
 
 See [Number Provenance](NUMBER_PROVENANCE.md) for the marker and annotation contract.

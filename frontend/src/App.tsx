@@ -179,8 +179,24 @@ function AppContent() {
   };
 
   const handleDeleteStore = async (store: VectorStoreInfo) => {
-    await deleteVectorStore(store.id);
-    await queryClient.invalidateQueries({ queryKey: queryKeys.vectorStores });
+    const savedQuestionLabel = store.query_count === 1 ? 'saved question' : 'saved questions';
+    if (
+      store.query_count > 0
+      && !window.confirm(`Delete "${store.name}" and ${store.query_count.toLocaleString()} ${savedQuestionLabel}?`)
+    ) {
+      return;
+    }
+    setIngestStatus(null);
+    try {
+      await deleteVectorStore(store.id);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.vectorStores }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.conversations }),
+      ]);
+      setIngestStatus(`Deleted ${store.name}`);
+    } catch (error) {
+      setIngestStatus(error instanceof Error ? error.message : 'Could not delete vector store');
+    }
   };
 
   const submitCurrentQuery = () => {

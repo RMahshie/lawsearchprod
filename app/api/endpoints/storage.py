@@ -29,6 +29,7 @@ from app.services.embedding_factory import (
 from app.services.rag_service import get_rag_service
 from app.services.storage_registry import (
     activate_vector_store,
+    delete_vector_store_with_saved_questions,
     list_conversations,
     load_conversation,
     query_reference_count,
@@ -181,14 +182,12 @@ async def activate_store(
 )
 async def delete_store(
     store_id: str,
-    force: bool = False,
     db: Session = Depends(require_db),
 ) -> None:
-    """Delete an inactive vector store registry row and its Chroma files.
+    """Delete an inactive vector store, its saved questions, and its Chroma files.
 
     Args:
         store_id: Identifier of the vector store to delete.
-        force: Whether to allow deleting stores referenced by saved questions.
         db: Injected SQLAlchemy session.
 
     Returns:
@@ -207,17 +206,14 @@ async def delete_store(
             error="store_active",
             message="Cannot delete the active vector store",
         )
-    references = query_reference_count(db, store_id)
-    if references and not force:
-        raise api_error(
-            status_code=status.HTTP_409_CONFLICT,
-            error="store_referenced",
-            message=f"Vector store is referenced by {references} saved queries",
-            references=references,
-        )
     path = vector_store_path(store)
-    db.delete(store)
+    deleted_saved_questions = delete_vector_store_with_saved_questions(db, store)
     db.commit()
+    logger.info(
+        "Deleted vector store %s and %s saved questions",
+        store_id,
+        deleted_saved_questions,
+    )
 
     if path.exists() and path != Path(get_rag_service().settings.vectorstore_dir):
         shutil.rmtree(path)

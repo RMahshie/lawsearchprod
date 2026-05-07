@@ -687,6 +687,128 @@ def test_list_conversations_strips_hidden_number_markers_from_preview():
     assert summaries[0]["answer_preview"] == "Answer $10 for CRX"
 
 
+def test_delete_vector_store_with_saved_questions_removes_history_rows():
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import sessionmaker
+
+    from app.db.models import (
+        EmbeddingModel,
+        QueryDivisionResult,
+        QueryRun,
+        QuerySource,
+        VectorStore,
+        VectorStorePartition,
+    )
+    from app.db.session import Base
+    from app.services.storage_registry import delete_vector_store_with_saved_questions
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    db.add(EmbeddingModel(id="embed", name="text-embedding-3-large"))
+    db.add(
+        VectorStore(
+            id="store",
+            name="Old Store",
+            embedding_model_id="embed",
+            chunk_size=1000,
+            chunk_overlap=100,
+            relative_path="vector_stores/store",
+            status="ready",
+            is_active=False,
+        )
+    )
+    db.add(
+        VectorStorePartition(
+            id="partition",
+            vector_store_id="store",
+            division_key="CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+            store_name="CRX",
+            chunk_count=1,
+        )
+    )
+    db.add(
+        QueryRun(
+            id="query",
+            question="How much funding?",
+            answer="Answer",
+            vector_store_id="store",
+            processing_time=1.0,
+        )
+    )
+    db.add(
+        QueryDivisionResult(
+            id="division",
+            query_run_id="query",
+            division_key="CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS",
+            answer="Division answer",
+            chunks_retrieved=1,
+            sort_order=0,
+        )
+    )
+    db.add(
+        QuerySource(
+            id="source",
+            query_run_id="query",
+            query_division_result_id="division",
+            chunk_id="chunk",
+            rank=1,
+        )
+    )
+    db.commit()
+
+    deleted = delete_vector_store_with_saved_questions(db, db.get(VectorStore, "store"))
+    db.commit()
+
+    assert deleted == 1
+    assert db.get(VectorStore, "store") is None
+    assert db.scalar(select(QueryRun).where(QueryRun.id == "query")) is None
+    assert db.scalar(select(QueryDivisionResult).where(QueryDivisionResult.id == "division")) is None
+    assert db.scalar(select(QuerySource).where(QuerySource.id == "source")) is None
+    assert db.scalar(select(VectorStorePartition).where(VectorStorePartition.id == "partition")) is None
+
+
+def test_delete_store_endpoint_blocks_active_vector_store():
+    import asyncio
+
+    from fastapi import HTTPException
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.api.endpoints.storage import delete_store
+    from app.db.models import EmbeddingModel, VectorStore
+    from app.db.session import Base
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    db.add(EmbeddingModel(id="embed", name="text-embedding-3-large"))
+    db.add(
+        VectorStore(
+            id="active-store",
+            name="Active Store",
+            embedding_model_id="embed",
+            chunk_size=1000,
+            chunk_overlap=100,
+            relative_path="vector_stores/active-store",
+            status="ready",
+            is_active=True,
+        )
+    )
+    db.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(delete_store("active-store", db=db))
+
+    assert exc.value.status_code == 400
+    assert exc.value.detail["error"] == "store_active"
+    assert db.get(VectorStore, "active-store") is not None
+
+
 def test_save_query_response_persists_answer_mode_debug_metadata():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker

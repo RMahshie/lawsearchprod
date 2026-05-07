@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
@@ -300,6 +300,26 @@ def query_reference_count(db: Session, store_id: str) -> int:
         Number of saved query runs linked to the vector store.
     """
     return db.scalar(select(func.count()).select_from(QueryRun).where(QueryRun.vector_store_id == store_id)) or 0
+
+
+def delete_vector_store_with_saved_questions(db: Session, store: VectorStore) -> int:
+    """Delete a vector store and all saved questions backed by it.
+
+    Args:
+        db: Open SQLAlchemy session used for deletes.
+        store: Inactive VectorStore row to remove.
+
+    Returns:
+        Number of saved questions deleted.
+    """
+    query_ids = list(db.scalars(select(QueryRun.id).where(QueryRun.vector_store_id == store.id)))
+    if query_ids:
+        db.execute(delete(QuerySource).where(QuerySource.query_run_id.in_(query_ids)))
+        db.execute(delete(QueryDivisionResult).where(QueryDivisionResult.query_run_id.in_(query_ids)))
+        db.execute(delete(QueryRun).where(QueryRun.id.in_(query_ids)))
+    db.execute(delete(VectorStorePartition).where(VectorStorePartition.vector_store_id == store.id))
+    db.delete(store)
+    return len(query_ids)
 
 
 def save_query_response(
