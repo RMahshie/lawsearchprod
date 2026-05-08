@@ -33,7 +33,7 @@ __pycache__/
 # Log files
 *.log
 
-.claude/
+.claude/plans/
 
 .agents/plans/
 .agents/diagnostics/
