@@ -1,7 +1,7 @@
 """Embedding model eval runner.
 
 Usage:
-    python -m tests.evals.run
+    python -m tests.evals.embedding.run
 """
 
 from __future__ import annotations
@@ -25,9 +25,9 @@ from app.services.llm_factory import ModelSpec, create_chat_model
 from app.services.rag.llm_invocation import invoke_structured
 from app.services.rag.schemas import DivisionQueryPlan
 from app.services.vector_store_service import VectorStoreService, division_acronym
-from tests.evals.judge import judge_chunks
+from tests.evals.embedding.judge import judge_chunks
 from tests.evals.questions import EVAL_QUESTIONS, EvalQuestion
-from tests.evals.report import generate_report
+from tests.evals.embedding.report import generate_report
 
 logging.basicConfig(
     level=logging.INFO,
