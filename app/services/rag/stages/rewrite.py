@@ -23,6 +23,14 @@ _REWRITE_SYSTEM_PROMPT = (
     "Create one targeted retrieval query for each selected appropriations division. "
     "Keep the user's intent, but only include entities, programs, agencies, or terms "
     "likely relevant to that division. Do not force unrelated entities into every query. "
+    "For broad-topic questions, include concise statutory, account, program, agency, authority, "
+    "eligibility, and synonym language likely to appear in appropriations text for that division. "
+    "When the user names several broad needs, cover likely parallel account or program headings "
+    "for each need instead of giving only one example from the category. "
+    "Prefer appropriations account-heading and statutory-heading wording over common public-facing "
+    "program nicknames when both are likely. "
+    "Do this from the question and division context; do not add a static topic vocabulary. "
+    "For summary questions, preserve breadth across distinct provisions instead of narrowing to one amount. "
     "Return exact division names from the selected list."
 )
 

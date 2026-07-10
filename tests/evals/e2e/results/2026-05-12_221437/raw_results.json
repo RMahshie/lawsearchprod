@@ -1,0 +1,1507 @@
+[
+  {
+    "question_id": "broad_4",
+    "question": "What FY2026 funding is available for local law enforcement, community violence prevention, or police hiring?",
+    "answer_mode": "broad_topic_total",
+    "expected_answer_mode": "broad_topic_total",
+    "actual_answer_mode": "broad_topic_total",
+    "classify_match": true,
+    "expected_divisions": [
+      "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES"
+    ],
+    "actual_divisions": [
+      "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES"
+    ],
+    "route_match": true,
+    "answer_mode_reason": "The question asks about FY2026 funding for a broad topic (local law enforcement, community violence prevention, police hiring) likely spanning multiple accounts and programs, requiring aggregation of various funding types.",
+    "division_answers": [
+      {
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "answer": "### [CJS] COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES\n\nBottom line: Funding for the requested topics is spread across multiple DOJ/COPS accounts, and no clean division-wide total is available from the extracted facts because the figures mix account totals, suballocations, and program-specific lines.\n\nKey buckets:\n- Community Oriented Policing Services (COPS) programs: $800,000,000 [[num:src_cjs_a2285250_8ebb_40d4_9a2b_ced3cb951f4d_1]] appropriated to remain available until expended; within the COPS-related lines, $253,093,613 [[num:src_cjs_a2285250_8ebb_40d4_9a2b_ced3cb951f4d_2]] is for hiring and rehiring career law enforcement officers, and $32,000,000 [[num:src_cjs_a2285250_8ebb_40d4_9a2b_ced3cb951f4d_3]] is for improving Tribal law enforcement, including hiring, equipment, and training. Additional COPS grants include $53,000,000 [[num:src_cjs_62eafab4_cec8_4428_89f5_1e196c5fa9dc_1]] for STOP School Violence Act grants, $18,000,000 [[num:src_cjs_62eafab4_cec8_4428_89f5_1e196c5fa9dc_2]] for community policing development activities, and $15,000,000 [[num:src_cjs_62eafab4_cec8_4428_89f5_1e196c5fa9dc_3]] for Law Enforcement De-Escalation Training Act activities.\n- Edward Byrne Memorial Justice Assistance Grant program and other programs: $2,400,000,000 [[num:src_cjs_986f1b11_1c38_4952_8425_6334042e3993_1]] appropriated to remain available until expended; within that line, $964,000,000 [[num:src_cjs_986f1b11_1c38_4952_8425_6334042e3993_2]] is for the Edward Byrne Memorial Justice Assistance Grant program, $12,500,000 [[num:src_cjs_986f1b11_1c38_4952_8425_6334042e3993_3]] is for the VALOR initiative, and $6,000,000 [[num:src_cjs_986f1b11_1c38_4952_8425_6334042e3993_4]] is for officer training on responding to individuals with mental illness or disabilities.\n- Grants to improve the criminal justice response: $60,500,000 [[num:src_cjs_b555b317_54cf_4221_878d_d67385a2c1a6_1]]; within that, up to $4,000,000 [[num:src_cjs_b555b317_54cf_4221_878d_d67385a2c1a6_2]] is for a homicide reduction initiative, up to $2,000,000 [[num:src_cjs_b555b317_54cf_4221_878d_d67385a2c1a6_3]] is for a domestic violence lethality reduction initiative, and up to $5,000,000 [[num:src_cjs_b555b317_54cf_4221_878d_d67385a2c1a6_4]] is for the Policing and Prosecution Initiative.\n- Community violence prevention / police relations lines: $84,000,000 [[num:src_cjs_ee257d71_e20a_4bf8_b771_bdb06ef54f09_1]] for initiatives to improve police-community relations, including $15,000,000 [[num:src_cjs_ee257d71_e20a_4bf8_b771_bdb06ef54f09_2]] for body-worn camera grants, $19,000,000 [[num:src_cjs_ee257d71_e20a_4bf8_b771_bdb06ef54f09_3]] for a justice reinvestment initiative, and $50,000,000 [[num:src_cjs_ee257d71_e20a_4bf8_b771_bdb06ef54f09_4]] for a community violence intervention and prevention initiative; $20,000,000 [[num:src_cjs_e3914e61_5c3b_4fa5_af81_f7fe076d5220_1]] for Community Relations Service salaries and expenses; and $5,000,000 [[num:src_cjs_44fc3bd3_fc57_4ba2_b05f_feafe8243a42_1]] for trauma-informed, victim-centered training for law enforcement.\n- Other local-law-enforcement support: $13,000,000 [[num:src_cjs_3815a4ce_b459_4635_acf9_743d4d84beb0_1]] for Project Safe Neighborhoods grants and $3,000,000 [[num:src_cjs_3815a4ce_b459_4635_acf9_743d4d84beb0_2]] for a rural violent crime initiative; $11,500,000 [[num:src_cjs_396104ab_4b30_4cc8_bf86_c990483fbadc_1]] for activities authorized by the POLICE Act of 2016; and $235,000,000 [[num:src_cjs_78d2f7b9_8ddc_4c88_acb8_0b5f16b0fc7b_1]] for passenger motor vehicles for official use and motor vehicles for law enforcement use, of which $94,000,000 [[num:src_cjs_78d2f7b9_8ddc_4c88_acb8_0b5f16b0fc7b_2]] remains available until expended.\n\nLocal caveat: Some lines overlap conceptually, so I did not add account totals together with their named subprograms.",
+        "chunks_retrieved": 16
+      }
+    ],
+    "final_answer": "### [CJS] COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES\n\nBottom line: Funding for the requested topics is spread across multiple DOJ/COPS accounts, and no clean division-wide total is available from the extracted facts because the figures mix account totals, suballocations, and program-specific lines.\n\nKey buckets:\n- Community Oriented Policing Services (COPS) programs: $800,000,000 [[num:src_cjs_a2285250_8ebb_40d4_9a2b_ced3cb951f4d_1]] appropriated to remain available until expended; within the COPS-related lines, $253,093,613 [[num:src_cjs_a2285250_8ebb_40d4_9a2b_ced3cb951f4d_2]] is for hiring and rehiring career law enforcement officers, and $32,000,000 [[num:src_cjs_a2285250_8ebb_40d4_9a2b_ced3cb951f4d_3]] is for improving Tribal law enforcement, including hiring, equipment, and training. Additional COPS grants include $53,000,000 [[num:src_cjs_62eafab4_cec8_4428_89f5_1e196c5fa9dc_1]] for STOP School Violence Act grants, $18,000,000 [[num:src_cjs_62eafab4_cec8_4428_89f5_1e196c5fa9dc_2]] for community policing development activities, and $15,000,000 [[num:src_cjs_62eafab4_cec8_4428_89f5_1e196c5fa9dc_3]] for Law Enforcement De-Escalation Training Act activities.\n- Edward Byrne Memorial Justice Assistance Grant program and other programs: $2,400,000,000 [[num:src_cjs_986f1b11_1c38_4952_8425_6334042e3993_1]] appropriated to remain available until expended; within that line, $964,000,000 [[num:src_cjs_986f1b11_1c38_4952_8425_6334042e3993_2]] is for the Edward Byrne Memorial Justice Assistance Grant program, $12,500,000 [[num:src_cjs_986f1b11_1c38_4952_8425_6334042e3993_3]] is for the VALOR initiative, and $6,000,000 [[num:src_cjs_986f1b11_1c38_4952_8425_6334042e3993_4]] is for officer training on responding to individuals with mental illness or disabilities.\n- Grants to improve the criminal justice response: $60,500,000 [[num:src_cjs_b555b317_54cf_4221_878d_d67385a2c1a6_1]]; within that, up to $4,000,000 [[num:src_cjs_b555b317_54cf_4221_878d_d67385a2c1a6_2]] is for a homicide reduction initiative, up to $2,000,000 [[num:src_cjs_b555b317_54cf_4221_878d_d67385a2c1a6_3]] is for a domestic violence lethality reduction initiative, and up to $5,000,000 [[num:src_cjs_b555b317_54cf_4221_878d_d67385a2c1a6_4]] is for the Policing and Prosecution Initiative.\n- Community violence prevention / police relations lines: $84,000,000 [[num:src_cjs_ee257d71_e20a_4bf8_b771_bdb06ef54f09_1]] for initiatives to improve police-community relations, including $15,000,000 [[num:src_cjs_ee257d71_e20a_4bf8_b771_bdb06ef54f09_2]] for body-worn camera grants, $19,000,000 [[num:src_cjs_ee257d71_e20a_4bf8_b771_bdb06ef54f09_3]] for a justice reinvestment initiative, and $50,000,000 [[num:src_cjs_ee257d71_e20a_4bf8_b771_bdb06ef54f09_4]] for a community violence intervention and prevention initiative; $20,000,000 [[num:src_cjs_e3914e61_5c3b_4fa5_af81_f7fe076d5220_1]] for Community Relations Service salaries and expenses; and $5,000,000 [[num:src_cjs_44fc3bd3_fc57_4ba2_b05f_feafe8243a42_1]] for trauma-informed, victim-centered training for law enforcement.\n- Other local-law-enforcement support: $13,000,000 [[num:src_cjs_3815a4ce_b459_4635_acf9_743d4d84beb0_1]] for Project Safe Neighborhoods grants and $3,000,000 [[num:src_cjs_3815a4ce_b459_4635_acf9_743d4d84beb0_2]] for a rural violent crime initiative; $11,500,000 [[num:src_cjs_396104ab_4b30_4cc8_bf86_c990483fbadc_1]] for activities authorized by the POLICE Act of 2016; and $235,000,000 [[num:src_cjs_78d2f7b9_8ddc_4c88_acb8_0b5f16b0fc7b_1]] for passenger motor vehicles for official use and motor vehicles for law enforcement use, of which $94,000,000 [[num:src_cjs_78d2f7b9_8ddc_4c88_acb8_0b5f16b0fc7b_2]] remains available until expended.\n\nLocal caveat: Some lines overlap conceptually, so I did not add account totals together with their named subprograms.",
+    "retrieved_chunk_count": 16,
+    "retrieved_chunks": [
+      {
+        "chunk_id": "ee257d71-e20a-4bf8-b771-bdb06ef54f09",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.7653321027755737,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "ee257d71-e20a-4bf8-b771-bdb06ef54f09",
+          "division_acronym": "CJS",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 44,
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES"
+        },
+        "content_preview": "ugs and scheduled listed chemical \n                products; and\n                    (F) $185,000,000 is for a comprehensive opioid, \n                stimulant, and substance use disorder program;\n            (15) $2,500,000 for a competitive grant program authorized \n        by the Keep Young Athletes Safe Act;\n            (16) $82,000,000 for grants to be administered by the Bureau \n        of Justice Assistance for purposes authorized under the STOP \n        School Violence Act;\n            (17) $3,000,000 for grants to State and local law \n        enforcement agencies for the expenses associated with the \n        investigation and prosecution of criminal offenses involving \n        civil..."
+      },
+      {
+        "chunk_id": "438122ab-67d5-48d6-84b5-970b8cf4d182",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": -4.0,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "438122ab-67d5-48d6-84b5-970b8cf4d182",
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "division_acronym": "CJS",
+          "chunk_index": 1,
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm"
+        },
+        "content_preview": "ing \ninsurance on official motor vehicles; and rental of tie lines, \n$582,000,000, of which $94,000,000 shall remain available until \nSeptember 30, 2027:  Provided, That $20,000,000 is to be derived from \nfees to be retained and used by the International Trade Administration, \nnotwithstanding section 3302 of title 31, United States Code:  Provided \nfurther, That, of amounts provided under this heading, not less than \n$16,400,000 shall be for China antidumping and countervailing duty \nenforcement and compliance activities:  Provided \nfurther,  That the provisions of \nthe first sentence of section 105(f) and all of section 108(c) of the \nMutual Educational and Cultural Exchange Act of 1961 (22..."
+      },
+      {
+        "chunk_id": "e3914e61-5c3b-4fa5-af81-f7fe076d5220",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": -5.0,
+        "chunk_summary": null,
+        "metadata": {
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division_acronym": "CJS",
+          "chunk_id": "e3914e61-5c3b-4fa5-af81-f7fe076d5220",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_index": 23
+        },
+        "content_preview": "of buildings for protected witness \nsafesites; not to exceed $3,000,000 is for the purchase and maintenance \nof armored and other vehicles for witness security caravans; and not to \nexceed $35,000,000 is for the purchase, installation, maintenance, and \nupgrade of secure telecommunications equipment and a secure automated \ninformation network to store and retrieve the identities and locations \nof protected witnesses:  Provided, That amounts made available under \nthis heading may not be transferred pursuant to section 205 of this Act.\n\n           salaries and expenses, community relations service\n\n                      (including transfer of funds)\n\n    For necessary expenses of the Community..."
+      },
+      {
+        "chunk_id": "396104ab-4b30-4cc8-bf86-c990483fbadc",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": -2.0,
+        "chunk_summary": null,
+        "metadata": {
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "chunk_index": 49,
+          "division_acronym": "CJS",
+          "chunk_id": "396104ab-4b30-4cc8-bf86-c990483fbadc",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5"
+        },
+        "content_preview": "riated under this paragraph, $32,000,000 is \n        for improving Tribal law enforcement, including hiring, \n        equipment, training, anti-methamphetamine activities, and anti-\n        opioid activities:  Provided further, That of the amounts \n        appropriated under this paragraph, $44,000,000 is for regional \n        information sharing activities, as authorized by part M of title \n        I of the 1968 Act, which shall be transferred to and merged with \n        ``Research, Evaluation, and Statistics'' for administration by \n        the Office of Justice Programs:  Provided further, That of the \n        amounts appropriated under this paragraph, no less than \n        $4,000,000 is..."
+      },
+      {
+        "chunk_id": "44fc3bd3-fc57-4ba2-b05f-feafe8243a42",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": -9.0,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_index": 35,
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division_acronym": "CJS",
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_id": "44fc3bd3-fc57-4ba2-b05f-feafe8243a42"
+        },
+        "content_preview": "]\n\n            (23) $4,500,000 is for grants for outreach and services to \n        underserved populations, as authorized by section 120 of the \n        2005 Act;\n            (24) $3,000,000 is for an initiative to provide financial \n        assistance to victims, including evaluation of the effectiveness \n        of funded projects:  Provided, That  the \n        definitions and grant conditions in section 40002 of the 1994 \n        Act shall apply to this initiative;\n            (25) $5,000,000 is for trauma-informed, victim-centered \n        training for law enforcement, and related research and \n        evaluation activities, as authorized by section 41701 of the \n        1994 Act;..."
+      },
+      {
+        "chunk_id": "a2285250-8ebb-40d4-9a2b-ced3cb951f4d",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.7791628837585449,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "a2285250-8ebb-40d4-9a2b-ced3cb951f4d",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "division_acronym": "CJS",
+          "chunk_index": 48,
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES"
+        },
+        "content_preview": "his Act and shall not be available for obligation or expenditure \nexcept in compliance with the procedures set forth in that section.\n\n                  Community Oriented Policing Services\n\n              community oriented policing services programs\n\n                      (including transfer of funds)\n\n    For activities authorized by the Violent Crime Control and Law \nEnforcement Act of 1994 (Public Law 103-322); the Omnibus Crime Control \nand Safe Streets Act of 1968 (``the 1968 Act''); the Violence Against \nWomen and Department of Justice Reauthorization Act of 2005 (Public Law \n109-162) (``the 2005 Act''); the American Law Enforcement Heroes Act of \n2017 (Public Law 115-37); the Law Enf..."
+      },
+      {
+        "chunk_id": "adbf04a2-d23e-4883-98c3-17499a603e36",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 1.3277881145477295,
+        "chunk_summary": null,
+        "metadata": {
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_id": "adbf04a2-d23e-4883-98c3-17499a603e36",
+          "chunk_index": 47,
+          "division_acronym": "CJS",
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5"
+        },
+        "content_preview": "08 \n        Act (Public Law 110-401) shall not apply for purposes of this \n        Act);\n            (6) $4,500,000 for child abuse training programs for \n        judicial personnel and practitioners, as authorized by section \n        222 of the 1990 Act; and\n            (7) $2,000,000 for a program to improve juvenile indigent \n        defense:\n\n  Provided, That not more than 10 percent of each amount may be used for \nresearch, evaluation, and statistics activities designed to benefit the \nprograms or activities authorized:  Provided further, That not more than \n2 percent of the amounts designated under paragraphs (1) through (3) and \n(6) may be used for training and\n\n[[Page 140 STAT. 35]]..."
+      },
+      {
+        "chunk_id": "e8a76109-44b1-471f-9daf-ea3018132572",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.8915057182312012,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "e8a76109-44b1-471f-9daf-ea3018132572",
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "division_acronym": "CJS",
+          "chunk_index": 36,
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5"
+        },
+        "content_preview": "istance Act (34 U.S.C. 11291 et seq.); the Prosecutorial Remedies and \nOther Tools to end the Exploitation of Children Today Act of 2003 \n(Public Law 108-21) (``the PROTECT Act''); the Justice for All Act of \n2004 (Public Law 108-405); the Violence Against Women and Department of \nJustice Reauthorization Act of 2005 (Public Law 109-162) (``the 2005 \nAct''); the Victims of Child Abuse Act of 1990 (title II of Public Law \n101-647); the Second Chance Act of 2007 (Public Law 110-199); the \nVictims of Crime Act of 1984 (chapter XIV of title II of Public Law 98-\n473); the Adam Walsh Child Protection and Safety Act of 2006 (Public Law \n109-248) (``the Adam Walsh Act''); the PROTECT Our Children Act..."
+      },
+      {
+        "chunk_id": "294694a6-f22d-4bb8-903b-dfe19fa0a439",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.9586789608001709,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_index": 37,
+          "chunk_id": "294694a6-f22d-4bb8-903b-dfe19fa0a439",
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "division_acronym": "CJS",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5"
+        },
+        "content_preview": "Control and Law Enforcement Act of 1994 \n(Public Law 103-322) (``the 1994 Act''); the Omnibus Crime Control and \nSafe Streets Act of 1968 (Public Law 90-351) (``the 1968 Act''); the \nJustice for All Act of 2004 (Public Law 108-405); the Victims of Child \nAbuse Act of 1990 (Public Law 101-647) (``the 1990 Act''); the \nTrafficking Victims Protection Reauthorization Act of 2005 (Public Law \n109-164) (``the TVPRA of 2005''); the Violence Against Women and \nDepartment of Justice Reauthorization Act of 2005 (Public Law 109-162) \n(``the 2005 Act''); the Adam Walsh Child Protection and Safety Act of \n2006 (Public Law 109-248) (``the Adam Walsh Act''); the Victims of \nTrafficking and Violence Protect..."
+      },
+      {
+        "chunk_id": "3815a4ce-b459-4635-acf9-743d4d84beb0",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.9598252177238464,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_index": 39,
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_id": "3815a4ce-b459-4635-acf9-743d4d84beb0",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division_acronym": "CJS"
+        },
+        "content_preview": "of 2022 \n                (Public Law 117-325);\n                    (D) $2,500,000 is for a student loan repayment \n                assistance program pursuant to section 952 of Public Law \n                110-315;\n                    (E) $15,000,000 is for prison rape prevention and \n                prosecution grants to States and units of local \n                government, and other programs, as authorized by PREA;\n                    (F) $2,500,000 is for the Missing Americans Alert \n                Program (title XXIV of the 1994 Act), as amended by \n                Kevin and Avonte's Law;\n                    (G) $13,000,000 is for grants authorized under the \n                Project Saf..."
+      },
+      {
+        "chunk_id": "986f1b11-1c38-4952-8425-6334042e3993",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.9566646814346313,
+        "chunk_summary": null,
+        "metadata": {
+          "division_acronym": "CJS",
+          "chunk_id": "986f1b11-1c38-4952-8425-6334042e3993",
+          "chunk_index": 38,
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm"
+        },
+        "content_preview": "f Public Law 115-141); \nthe Project Safe Neighborhoods Grant Program Authorization Act of 2018 \n(Public Law 115-185); the SUPPORT for Patients and Communities Act \n(Public Law 115-271); the Second Chance Reauthorization Act of 2018 \n(Public Law 115-391); the Matthew Shepard and James Byrd, Jr. Hate \nCrimes Prevention Act (Public Law 111-84); the Ashanti Alert Act of 2018 \n(Public Law 115-401); the Missing Persons and Unidentified Remains Act \nof 2019 (Public Law 116-277); the Jabara-Heyer NO HATE Act (34 U.S.C. \n30507); the Violence Against Women Act Reauthorization Act of 2022 \n(division W of Public Law 117-103) (``the 2022 Act''); the Daniel Anderl \nJudicial Security and Privacy\n\n[[Page 14..."
+      },
+      {
+        "chunk_id": "62eafab4-cec8-4428-89f5-1e196c5fa9dc",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 1.1528832912445068,
+        "chunk_summary": null,
+        "metadata": {
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_id": "62eafab4-cec8-4428-89f5-1e196c5fa9dc",
+          "division_acronym": "CJS",
+          "chunk_index": 50,
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5"
+        },
+        "content_preview": "ith high rates of primary \n        treatment admissions for heroin and other opioids:  Provided, \n        That  these funds \n        shall be utilized for investigative purposes to locate or \n        investigate illicit activities, including activities related to \n        the distribution of heroin or unlawful distribution of \n        prescription opioids, or unlawful heroin and prescription opioid \n        traffickers through statewide collaboration;\n            (5) $53,000,000 is for competitive grants to be administered \n        by the Community Oriented Policing Services Office for purposes \n        authorized under the STOP School Violence Act (title V of \n        division S of Public L..."
+      },
+      {
+        "chunk_id": "b555b317-54cf-4221-878d-d67385a2c1a6",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.9763211011886597,
+        "chunk_summary": null,
+        "metadata": {
+          "division_acronym": "CJS",
+          "chunk_index": 32,
+          "chunk_id": "b555b317-54cf-4221-878d-d67385a2c1a6",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm"
+        },
+        "content_preview": "on and \n        Statistics'' for administration by the Office of Justice \n        Programs;\n            (4) $17,000,000 is for a grant program to provide services \n        to advocate for and respond to youth victims of domestic \n        violence, dating violence, sexual assault, and stalking; \n        assistance to children and youth exposed to such violence; \n        assistance to middle and high school students through education \n        and other services related to such violence; and programs to \n        engage men and youth in preventing domestic violence, dating \n        violence, sexual assault, and stalking:  Provided, That \n        unobligated balances available for the programs au..."
+      },
+      {
+        "chunk_id": "fb25df82-5e8b-438c-96f7-908db124a6d7",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 1.1967320442199707,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "chunk_id": "fb25df82-5e8b-438c-96f7-908db124a6d7",
+          "division_acronym": "CJS",
+          "chunk_index": 81,
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm"
+        },
+        "content_preview": "not \nbe from amounts that were designated by the Congress as an emergency or \ndisaster relief requirement pursuant to the concurrent resolution on the \nbudget or the Balanced Budget and Emergency Deficit Control Act of 1985.\n    (f) The amounts rescinded pursuant to subsections (b) and (c) shall \nnot be from--\n            (1) amounts provided under subparagraph (Q) of paragraph (1) \n        under the heading ``State and Local Law Enforcement Activities--\n        Office of Justice Programs--State and Local Law Enforcement \n        Assistance'' in title II of division B of Public Law 117-103 or \n        Public Law 117-328, or amounts provided under subparagraph (R) \n        of paragraph (1) un..."
+      },
+      {
+        "chunk_id": "28b66e70-41bf-4d94-a751-6fd4fa097898",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.929460883140564,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 45,
+          "division_acronym": "CJS",
+          "chunk_id": "28b66e70-41bf-4d94-a751-6fd4fa097898",
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm"
+        },
+        "content_preview": "(22) $7,500,000 for a grant program as authorized by the \n        Daniel Anderl Judicial Security and Privacy Act of 2022 (Public \n        Law 117-263):\n\n  Provided, That, if a unit of local government uses any of the funds \nmade available under this heading to increase the number of law \nenforcement officers, the unit of local government will achieve a net \ngain in the number of law enforcement officers who perform non-\nadministrative public sector safety service:  Provided further, That in \nthe spending plan submitted pursuant to section 528 of this Act, the \nOffice of Justice Programs shall specifically and explicitly identify \nall changes in the administration of competitive grant progra..."
+      },
+      {
+        "chunk_id": "78d2f7b9-8ddc-4c88-acb8-0b5f16b0fc7b",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": -4.0,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 2,
+          "chunk_id": "78d2f7b9-8ddc-4c88-acb8-0b5f16b0fc7b",
+          "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+          "division_acronym": "CJS",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm"
+        },
+        "content_preview": "-232; 132 Stat. 2208; 50 U.S.C. 4801 et \nseq.), and as authorized by section 1(b) of the Act of June 15, 1917 (40 \nStat. 223; 22 U.S.C. 401(b)); and purchase of passenger motor vehicles \nfor official use and motor vehicles for law enforcement use with special \nrequirement vehicles eligible for purchase without regard to any price \nlimitation otherwise established by law, $235,000,000, of which \n$94,000,000 shall remain available until expended:  Provided, That \nthe   provisions of the first sentence of \nsection 105(f) and all of section 108(c) of the Mutual Educational and \nCultural Exchange Act of 1961 (22 U.S.C. 2455(f) and 2458(c)) shall \napply in carrying out these activities:  Provided..."
+      }
+    ],
+    "mapped_chunk_count": 16,
+    "mapped_chunks": [
+      {
+        "chunk_id": "ee257d71-e20a-4bf8-b771-bdb06ef54f09",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.7653321027755737,
+        "chunk_snapshot": "$50 million for community violence intervention and prevention",
+        "chunk_summary": "The chunk lists $84 million for police-community relations, including $50 million for community violence intervention, and a hiring condition for local law enforcement.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 5,
+          "not_responsive": 3
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $84,000,000 [[num:src_cjs_ee257d71_e20a_4bf8_b771_bdb06ef54f09_1]] for initiatives to improve police-community relations, of which $15,000,000 [[num:src_cjs_ee257d71_e20a_4bf8_b771_bdb06ef54f09_2]] is for a competitive matching grant program for purchases of body-worn cameras for State, local, and Tribal law enforcement; $19,000,000 [[num:src_cjs_ee257d71_e20a_4bf8_b771_bdb06ef54f09_3]] is for a justice reinvestment initiative, for activities related to criminal justice reform and recidivism reduction; and $50,000,000 [[num:src_cjs_ee257d71_e20a_4bf8_b771_bdb06ef54f09_4]] is for a community violence intervention and prevention initiative. [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly funds community violence prevention ($50M) and police-community relations, which includes police hiring-related activities.",
+            "source_numbers": [
+              {
+                "figure": "$84,000,000",
+                "value": 84000000.0,
+                "label": "Initiatives to improve police-community relations total"
+              },
+              {
+                "figure": "$15,000,000",
+                "value": 15000000.0,
+                "label": "Body-worn camera grants"
+              },
+              {
+                "figure": "$19,000,000",
+                "value": 19000000.0,
+                "label": "Justice reinvestment initiative"
+              },
+              {
+                "figure": "$50,000,000",
+                "value": 50000000.0,
+                "label": "Community violence intervention and prevention initiative"
+              }
+            ]
+          },
+          {
+            "fact": "- $3,000,000 for grants to State and local law enforcement agencies for the expenses associated with the investigation and prosecution of criminal offenses involving civil rights. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Funds state and local law enforcement but for civil rights investigations, not directly for community violence prevention or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$3,000,000",
+                "value": 3000000.0,
+                "label": "Civil rights investigation grants"
+              }
+            ]
+          },
+          {
+            "fact": "- $17,000,000 for grants to State, local, and Tribal law enforcement agencies to conduct educational outreach and training on hate crimes and to investigate and prosecute hate crimes. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Funds law enforcement training and outreach but focused on hate crimes, not directly community violence prevention or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$17,000,000",
+                "value": 17000000.0,
+                "label": "Hate crimes outreach and prosecution grants"
+              }
+            ]
+          },
+          {
+            "fact": "- $82,000,000 for grants to be administered by the Bureau of Justice Assistance for purposes authorized under the STOP School Violence Act. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Funds school violence prevention, which is related to community violence prevention but not directly local law enforcement or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$82,000,000",
+                "value": 82000000.0,
+                "label": "STOP School Violence Act grants"
+              }
+            ]
+          },
+          {
+            "fact": "- $9,000,000 for grants specified in paragraph (20) under the heading 'State and Local Law Enforcement Assistance' in division B of Public Law 117-328. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Funds state and local law enforcement assistance but the specific program is not detailed; related but not clearly within scope.",
+            "source_numbers": [
+              {
+                "figure": "$9,000,000",
+                "value": 9000000.0,
+                "label": "State and Local Law Enforcement Assistance grants (reference)"
+              }
+            ]
+          },
+          {
+            "fact": "- $9,000,000 for programs authorized under the Jabara-Heyer NO HATE Act. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Funds hate crime reporting and prevention, related to law enforcement but not directly community violence prevention or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$9,000,000",
+                "value": 9000000.0,
+                "label": "NO HATE Act programs"
+              }
+            ]
+          },
+          {
+            "fact": "- $7,500,000 for a grant program as authorized by the Daniel Anderl Judicial Security and Privacy Act of 2022. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Funds judicial security and privacy, unrelated to local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$7,500,000",
+                "value": 7500000.0,
+                "label": "Judicial Security and Privacy Act grants"
+              }
+            ]
+          },
+          {
+            "fact": "- $2,500,000 for a competitive grant program authorized by the Keep Young Athletes Safe Act. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Funds youth athlete safety, unrelated to law enforcement or violence prevention.",
+            "source_numbers": [
+              {
+                "figure": "$2,500,000",
+                "value": 2500000.0,
+                "label": "Keep Young Athletes Safe Act grants"
+              }
+            ]
+          },
+          {
+            "fact": "- $185,000,000 is for a comprehensive opioid, stimulant, and substance use disorder program. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Funds substance use disorder programs, not directly related to law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$185,000,000",
+                "value": 185000000.0,
+                "label": "Opioid and substance use disorder program"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "438122ab-67d5-48d6-84b5-970b8cf4d182",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": -4.0,
+        "chunk_snapshot": "$235,000,000 for Bureau of Industry and Security operations",
+        "chunk_summary": "This chunk provides $235 million for Commerce Department law enforcement vehicles, not relevant to local police hiring or community violence prevention.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- The Bureau of Industry and Security operations and administration account includes $235,000,000 for necessary expenses, of which $94,000,000 shall remain available until expended; the account includes purchase of passenger motor vehicles for official use and motor vehicles for law enforcement use. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The fact mentions law enforcement use of motor vehicles, which is related to local law enforcement, but the funding is for the Bureau of Industry and Security, not for local law enforcement, community violence prevention, or police hiring. The amount is not specifically for the requested topics.",
+            "source_numbers": [
+              {
+                "figure": "$235,000,000",
+                "value": 235000000.0,
+                "label": "Bureau of Industry and Security operations and administration total"
+              },
+              {
+                "figure": "$94,000,000",
+                "value": 94000000.0,
+                "label": "Bureau of Industry and Security operations and administration multi-year availability"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "e3914e61-5c3b-4fa5-af81-f7fe076d5220",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": -5.0,
+        "chunk_snapshot": "Community Relations Service $20,000,000 for violence prevention",
+        "chunk_summary": "This chunk provides $20 million for the Community Relations Service\u2019s violence prevention activities, directly relevant to community violence prevention funding.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "For necessary expenses of the Community Relations Service, $20,000,000 [[num:src_cjs_e3914e61_5c3b_4fa5_af81_f7fe076d5220_1]]: Provided, That notwithstanding section 205 of this Act, upon a determination by the Attorney General that emergent circumstances require additional funding for conflict resolution and violence prevention activities of the Community Relations Service, the Attorney General may transfer such amounts to the Community Relations Service, from available appropriations for the current fiscal year for the Department of Justice, as may be necessary to respond to such circumstances.",
+            "responsiveness_tier": "direct",
+            "reason": "The Community Relations Service provides conflict resolution and violence prevention activities, which are directly relevant to community violence prevention.",
+            "source_numbers": [
+              {
+                "figure": "$20,000,000",
+                "value": 20000000.0,
+                "label": "Community Relations Service salaries and expenses"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "396104ab-4b30-4cc8-bf86-c990483fbadc",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": -2.0,
+        "chunk_snapshot": "$32,000,000 for Tribal law enforcement hiring",
+        "chunk_summary": "This chunk provides specific FY2026 funding amounts for tribal law enforcement hiring and other police grants, directly answering part of the question.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 5,
+          "not_responsive": 3
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $32,000,000 is for improving Tribal law enforcement, including hiring, equipment, training, anti-methamphetamine activities, and anti-opioid activities. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Tribal law enforcement is related to local law enforcement but not directly within the scope of local law enforcement, community violence prevention, or police hiring generally.",
+            "source_numbers": [
+              {
+                "figure": "$32,000,000",
+                "value": 32000000.0,
+                "label": "Tribal law enforcement"
+              }
+            ]
+          },
+          {
+            "fact": "- $44,000,000 is for regional information sharing activities, which shall be transferred to and merged with 'Research, Evaluation, and Statistics' for administration by the Office of Justice Programs. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Regional information sharing activities are not directly related to local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$44,000,000",
+                "value": 44000000.0,
+                "label": "Regional information sharing"
+              }
+            ]
+          },
+          {
+            "fact": "- No less than $4,000,000 is to support the Tribal Access Program. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Tribal Access Program is not within the scope of local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$4,000,000",
+                "value": 4000000.0,
+                "label": "Tribal Access Program"
+              }
+            ]
+          },
+          {
+            "fact": "- $10,000,000 is for training, peer mentoring, mental health program activities, and other support services as authorized under the LEMHW Act and the STOIC Act. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Training and support services for law enforcement are related but not specifically for local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$10,000,000",
+                "value": 10000000.0,
+                "label": "Training and support services under LEMHW Act and STOIC Act"
+              }
+            ]
+          },
+          {
+            "fact": "- $5,500,000 is for the collaborative reform model of technical assistance in furtherance of section 1701 of title I of the 1968 Act. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Collaborative reform model technical assistance is not directly related to local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$5,500,000",
+                "value": 5500000.0,
+                "label": "Collaborative reform model technical assistance"
+              }
+            ]
+          },
+          {
+            "fact": "- $11,500,000 [[num:src_cjs_396104ab_4b30_4cc8_bf86_c990483fbadc_1]] is for activities authorized by the POLICE Act of 2016 (Public Law 114-199). [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "The POLICE Act of 2016 is directly related to police hiring and law enforcement activities.",
+            "source_numbers": [
+              {
+                "figure": "$11,500,000",
+                "value": 11500000.0,
+                "label": "POLICE Act of 2016 activities"
+              }
+            ]
+          },
+          {
+            "fact": "- $13,500,000 is for competitive grants to State law enforcement agencies in States with high seizures of precursor chemicals, finished methamphetamine, laboratories, and laboratory dump seizures. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Grants to state law enforcement agencies for methamphetamine-related investigations are related to law enforcement but not specifically local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$13,500,000",
+                "value": 13500000.0,
+                "label": "Competitive grants for methamphetamine investigations"
+              }
+            ]
+          },
+          {
+            "fact": "- $34,500,000 is for competitive grants to statewide law enforcement agencies in States with high rates of primary treatment admissions for heroin and other opioids. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Grants for opioid-related investigations are related to law enforcement but not specifically local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$34,500,000",
+                "value": 34500000.0,
+                "label": "Competitive grants for opioid investigations"
+              }
+            ]
+          },
+          {
+            "fact": "- $53,000,000 is for competitive grants to law enforcement agencies for various purposes (text cut off). [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The text is cut off, but competitive grants to law enforcement agencies are related to the topic.",
+            "source_numbers": [
+              {
+                "figure": "$53,000,000",
+                "value": 53000000.0,
+                "label": "Competitive grants to law enforcement agencies (cut off)"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "44fc3bd3-fc57-4ba2-b05f-feafe8243a42",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": -9.0,
+        "chunk_snapshot": "$5,000,000 for local law enforcement grants.",
+        "chunk_summary": "This chunk provides $5 million for local law enforcement grants targeting cybercrimes, but lacks funding for police hiring or community violence prevention.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 2,
+          "not_responsive": 2
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $5,000,000 [[num:src_cjs_44fc3bd3_fc57_4ba2_b05f_feafe8243a42_1]] is for trauma-informed, victim-centered training for law enforcement, and related research and evaluation activities, as authorized by section 41701 of the 1994 Act; [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly funds law enforcement training, which is related to police hiring and community violence prevention.",
+            "source_numbers": [
+              {
+                "figure": "$5,000,000",
+                "value": 5000000.0,
+                "label": "trauma-informed training for law enforcement"
+              }
+            ]
+          },
+          {
+            "fact": "- $5,000,000 is for local law enforcement grants for prevention, enforcement, and prosecution of cybercrimes against individuals, as authorized by section 1401 of the 2022 Act, and for a National Resource Center on Cybercrimes Against Individuals, as authorized by section 1402 of the 2022 Act; [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Funds local law enforcement grants but for cybercrimes, not directly for general community violence prevention or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$5,000,000",
+                "value": 5000000.0,
+                "label": "local law enforcement grants for cybercrimes"
+              }
+            ]
+          },
+          {
+            "fact": "- $4,500,000 is for grants for outreach and services to underserved populations, as authorized by section 120 of the 2005 Act; [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Related to community services but not specifically law enforcement, violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$4,500,000",
+                "value": 4500000.0,
+                "label": "grants for outreach to underserved populations"
+              }
+            ]
+          },
+          {
+            "fact": "- $3,000,000 is for an initiative to provide financial assistance to victims, including evaluation of the effectiveness of funded projects; [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Victim assistance, not directly related to law enforcement, violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$3,000,000",
+                "value": 3000000.0,
+                "label": "financial assistance to victims"
+              }
+            ]
+          },
+          {
+            "fact": "- $12,000,000 is for grants to support access to sexual assault nurse examinations, as authorized by section 304 of title III of the 2004 Act; [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Sexual assault nurse examinations, not directly related to law enforcement, violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$12,000,000",
+                "value": 12000000.0,
+                "label": "grants for sexual assault nurse examinations"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "a2285250-8ebb-40d4-9a2b-ced3cb951f4d",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.7791628837585449,
+        "chunk_snapshot": "$800 million for Community Oriented Policing Services",
+        "chunk_summary": "This chunk reveals $800 million for FY2026 community policing, including $253 million for officer hiring, directly addressing the question.",
+        "relevance_counts": {
+          "direct": 3,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- Community Oriented Policing Services programs are appropriated $800,000,000 [[num:src_cjs_a2285250_8ebb_40d4_9a2b_ced3cb951f4d_1]], to remain available until expended. [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "The account directly funds local law enforcement and community violence prevention activities, including police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$800,000,000",
+                "value": 800000000.0,
+                "label": "Community Oriented Policing Services total appropriation"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the amount provided, $253,093,613 [[num:src_cjs_a2285250_8ebb_40d4_9a2b_ced3cb951f4d_2]] is for grants under section 1701 of title I of the 1968 Act for the hiring and rehiring of additional career law enforcement officers. [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "This suballocation directly funds police hiring, a key component of the question.",
+            "source_numbers": [
+              {
+                "figure": "$253,093,613",
+                "value": 253093613.0,
+                "label": "Hiring and rehiring of career law enforcement officers"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the amounts appropriated for hiring, $32,000,000 [[num:src_cjs_a2285250_8ebb_40d4_9a2b_ced3cb951f4d_3]] is for improving Tribal law enforcement, including hiring, equipment, training, anti-methamphetamine activities, and anti-opioid activities. [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "This suballocation supports local law enforcement in Tribal areas, which falls under the question's scope.",
+            "source_numbers": [
+              {
+                "figure": "$32,000,000",
+                "value": 32000000.0,
+                "label": "Tribal law enforcement improvement"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the amounts appropriated for hiring, $44,000,000 is for regional information sharing activities, as authorized by part M of title I of the 1968 Act, which shall be transferred to and merged with 'Research, Evaluation'. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Regional information sharing is related to law enforcement but not directly funding local police hiring or community violence prevention.",
+            "source_numbers": [
+              {
+                "figure": "$44,000,000",
+                "value": 44000000.0,
+                "label": "Regional information sharing activities"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "adbf04a2-d23e-4883-98c3-17499a603e36",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 1.3277881145477295,
+        "chunk_snapshot": "Community Oriented Policing Services program",
+        "chunk_summary": "This chunk shows $34.8 million for public safety officer benefits and references COPS programs, directly relevant to local law enforcement and police hiring funding.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $34,800,000 for payments authorized by section 1201(b) of such Act and for educational assistance authorized by section 1218 of such Act, to remain available until expended, under Public Safety Officer Benefits. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Public Safety Officer Benefits are related to law enforcement but not specifically local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$34,800,000",
+                "value": 34800000.0,
+                "label": "Public Safety Officer Benefits"
+              }
+            ]
+          },
+          {
+            "fact": "- Community Oriented Policing Services programs are authorized for activities under the Violent Crime Control and Law Enforcement Act of 1994 and the Omnibus Crime Control and Safe Streets Act of 1968, but no specific dollar amount is provided in this chunk. [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "Community Oriented Policing Services directly relates to police hiring and local law enforcement, but the chunk does not provide a dollar figure.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "e8a76109-44b1-471f-9daf-ea3018132572",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.8915057182312012,
+        "chunk_snapshot": "State and local law enforcement assistance",
+        "chunk_summary": "This chunk shows $55 million for state and local law enforcement assistance, directly relevant to funding for local police hiring and related programs.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- For grants, contracts, cooperative agreements, and other assistance authorized by the Violent Crime Control and Law Enforcement Act of 1994, the Omnibus Crime Control and Safe Streets Act of 1968, and other acts, $55,000,000, to remain available until expended, of which $33,000,000 is for criminal justice statistics programs and other activities and $22,000,000 is for research, development, and evaluation programs. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The heading 'state and local law enforcement assistance' is directly relevant to local law enforcement, but the specific suballocations are for statistics and research, not for police hiring or community violence prevention grants. The main amount is for assistance but the suballocations narrow the scope.",
+            "source_numbers": [
+              {
+                "figure": "$55,000,000",
+                "value": 55000000.0,
+                "label": "State and local law enforcement assistance total"
+              },
+              {
+                "figure": "$33,000,000",
+                "value": 33000000.0,
+                "label": "Criminal justice statistics programs"
+              },
+              {
+                "figure": "$22,000,000",
+                "value": 22000000.0,
+                "label": "Research, development, and evaluation programs"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "294694a6-f22d-4bb8-903b-dfe19fa0a439",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.9586789608001709,
+        "chunk_snapshot": "No FY2026 funding for local law enforcement.",
+        "chunk_summary": "The chunk lists only historical laws and provides no FY2026 funding details, making it unhelpful for the question.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 3,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- The chunk lists the STOP School Violence Act of 2018 (title V of division S of Public Law 115-141) as a relevant authority, which provides funding for school violence prevention, including law enforcement and community violence prevention. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The STOP School Violence Act is related to community violence prevention and may involve law enforcement, but the chunk does not provide a specific FY2026 funding amount or appropriation for local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": []
+          },
+          {
+            "fact": "- The chunk lists the Project Safe Neighborhoods Grant Program Authorization Act of 2018 (Public Law 115-185) as a relevant authority, which provides grants for law enforcement and community violence prevention. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Project Safe Neighborhoods is directly related to law enforcement and community violence prevention, but the chunk does not provide a specific FY2026 funding amount.",
+            "source_numbers": []
+          },
+          {
+            "fact": "- The chunk lists the Comprehensive Addiction and Recovery Act of 2016 (Public Law 114-198) (CARA) as a relevant authority, which may include funding for law enforcement and community prevention related to addiction. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "CARA is related to addiction recovery and may involve law enforcement, but it is not specifically about local law enforcement, community violence prevention, or police hiring, and no FY2026 amount is provided.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "3815a4ce-b459-4635-acf9-743d4d84beb0",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.9598252177238464,
+        "chunk_snapshot": "$537,978,926 for OJP Byrne discretionary grants to improve criminal justice",
+        "chunk_summary": "This chunk lists specific dollar amounts for various law enforcement and violence prevention grants, providing evidence of funding allocations.",
+        "relevance_counts": {
+          "direct": 2,
+          "adjacent": 3,
+          "not_responsive": 7
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $13,000,000 [[num:src_cjs_3815a4ce_b459_4635_acf9_743d4d84beb0_1]] is for grants authorized under the Project Safe Neighborhoods Grant Authorization Act of 2018 (Public Law 115-185); [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "Project Safe Neighborhoods grants directly support local law enforcement and community violence prevention.",
+            "source_numbers": [
+              {
+                "figure": "$13,000,000",
+                "value": 13000000.0,
+                "label": "Project Safe Neighborhoods grants"
+              }
+            ]
+          },
+          {
+            "fact": "- $3,000,000 [[num:src_cjs_3815a4ce_b459_4635_acf9_743d4d84beb0_2]] is for a rural violent crime initiative, including assistance for law enforcement; [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "Rural violent crime initiative includes assistance for law enforcement, directly relevant to local law enforcement funding.",
+            "source_numbers": [
+              {
+                "figure": "$3,000,000",
+                "value": 3000000.0,
+                "label": "rural violent crime initiative"
+              }
+            ]
+          },
+          {
+            "fact": "- $537,978,926 is for discretionary grants to improve the functioning of the criminal justice system, to prevent or combat juvenile delinquency, and to assist victims of crime (other than compensation), which shall be made available for the OJP--Byrne projects, and in the amounts, specified in the table titled \"Communi [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Discretionary grants for criminal justice system improvement may include community violence prevention but are broad and not specifically targeted to the user's topic.",
+            "source_numbers": [
+              {
+                "figure": "$537,978,926",
+                "value": 537978926.0,
+                "label": "discretionary grants for criminal justice system"
+              }
+            ]
+          },
+          {
+            "fact": "- $15,000,000 is for prison rape prevention and prosecution grants to States and units of local government, and other programs, as authorized by PREA; [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Prison rape prevention grants are not directly related to local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$15,000,000",
+                "value": 15000000.0,
+                "label": "prison rape prevention grants"
+              }
+            ]
+          },
+          {
+            "fact": "- $2,500,000 is for a student loan repayment assistance program pursuant to section 952 of Public Law 110-315; [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Student loan repayment assistance is unrelated to law enforcement or violence prevention.",
+            "source_numbers": [
+              {
+                "figure": "$2,500,000",
+                "value": 2500000.0,
+                "label": "student loan repayment assistance"
+              }
+            ]
+          },
+          {
+            "fact": "- $2,500,000 is for the Missing Americans Alert Program (title XXIV of the 1994 Act), as amended by Kevin and Avonte's Law; [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Missing Americans Alert Program is not directly related to the requested topics.",
+            "source_numbers": [
+              {
+                "figure": "$2,500,000",
+                "value": 2500000.0,
+                "label": "Missing Americans Alert Program"
+              }
+            ]
+          },
+          {
+            "fact": "- $11,500,000 is for the Capital Litigation Improvement Grant Program, as authorized by section 426 of Public Law 108-405, and for grants for wrongful conviction review; [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Capital litigation and wrongful conviction review are not directly related to local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$11,500,000",
+                "value": 11500000.0,
+                "label": "Capital Litigation Improvement Grant Program"
+              }
+            ]
+          },
+          {
+            "fact": "- $3,000,000 is for the program specified in paragraph (1)(I) under the heading \"State and Local Law Enforcement Assistance\" in division B of Public Law 117-328; [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The program is under 'State and Local Law Enforcement Assistance' but the specific program is not identified; may be related but not clearly within scope.",
+            "source_numbers": [
+              {
+                "figure": "$3,000,000",
+                "value": 3000000.0,
+                "label": "program under State and Local Law Enforcement Assistance"
+              }
+            ]
+          },
+          {
+            "fact": "- $1,000,000 is for the purposes of the Ashanti Alert Communications Network as authorized under the Ashanti Alert Act of 2018 (Public Law 115-401); [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Ashanti Alert Communications Network is for missing persons alerts, not directly related to law enforcement or violence prevention.",
+            "source_numbers": [
+              {
+                "figure": "$1,000,000",
+                "value": 1000000.0,
+                "label": "Ashanti Alert Communications Network"
+              }
+            ]
+          },
+          {
+            "fact": "- $2,750,000 is for a grant program to replicate and support family-based alternative sentencing programs; [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Alternative sentencing programs may relate to community violence prevention but are not directly about law enforcement or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$2,750,000",
+                "value": 2750000.0,
+                "label": "family-based alternative sentencing programs"
+              }
+            ]
+          },
+          {
+            "fact": "- $3,000,000 is for grants authorized under the Missing Persons and Unidentified Remains Act of 2019 (Public Law 116-277); [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Missing persons grants are not directly related to the requested topics.",
+            "source_numbers": [
+              {
+                "figure": "$3,000,000",
+                "value": 3000000.0,
+                "label": "Missing Persons and Unidentified Remains Act grants"
+              }
+            ]
+          },
+          {
+            "fact": "- $1,000,000 is for the purposes authorized under section 1506 of the 2022 Act; [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Unspecified purposes under section 1506 of the 2022 Act; not clearly related to the topics.",
+            "source_numbers": [
+              {
+                "figure": "$1,000,000",
+                "value": 1000000.0,
+                "label": "purposes under section 1506 of the 2022 Act"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "986f1b11-1c38-4952-8425-6334042e3993",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.9566646814346313,
+        "chunk_snapshot": "FY2026 $964 million for Edward Byrne Justice Assistance Grant",
+        "chunk_summary": "This chunk shows $2.4 billion in FY2026 funding, including $964 million for the Byrne JAG program, directly supporting local law enforcement and violence prevention.",
+        "relevance_counts": {
+          "direct": 4,
+          "adjacent": 1,
+          "not_responsive": 3
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $2,400,000,000 [[num:src_cjs_986f1b11_1c38_4952_8425_6334042e3993_1]] for the Edward Byrne Memorial Justice Assistance Grant program and other programs, to remain available until expended. [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "The Edward Byrne Memorial Justice Assistance Grant program is a primary federal funding source for state and local law enforcement, which directly supports the user's topic of local law enforcement funding.",
+            "source_numbers": [
+              {
+                "figure": "$2,400,000,000",
+                "value": 2400000000.0,
+                "label": "Edward Byrne Memorial Justice Assistance Grant program and other programs"
+              }
+            ]
+          },
+          {
+            "fact": "- $964,000,000 [[num:src_cjs_986f1b11_1c38_4952_8425_6334042e3993_2]] for the Edward Byrne Memorial Justice Assistance Grant program as authorized by subpart 1 of part E of title I of the 1968 Act. [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "This is a suballocation of the total for the Byrne JAG program, which directly funds local law enforcement.",
+            "source_numbers": [
+              {
+                "figure": "$964,000,000",
+                "value": 964000000.0,
+                "label": "Edward Byrne Memorial Justice Assistance Grant program"
+              }
+            ]
+          },
+          {
+            "fact": "- $12,500,000 [[num:src_cjs_986f1b11_1c38_4952_8425_6334042e3993_3]] for an Officer Robert Wilson III memorial initiative on Preventing Violence Against Law Enforcement and Ensuring Officer Resilience and Survivability (VALOR). [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "This initiative directly supports law enforcement officer safety and violence prevention, aligning with community violence prevention and police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$12,500,000",
+                "value": 12500000.0,
+                "label": "VALOR initiative"
+              }
+            ]
+          },
+          {
+            "fact": "- $6,000,000 [[num:src_cjs_986f1b11_1c38_4952_8425_6334042e3993_4]] for a grant program for State and local law enforcement to provide officer training on responding to individuals with mental illness or disabilities. [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "This grant program directly funds local law enforcement training, which is relevant to police hiring and community violence prevention.",
+            "source_numbers": [
+              {
+                "figure": "$6,000,000",
+                "value": 6000000.0,
+                "label": "Officer training on mental illness/disabilities"
+              }
+            ]
+          },
+          {
+            "fact": "- $15,000,000 for prison rape prevention and prosecution grants to States and units of local government, and other programs, as authorized by PREA. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "While related to law enforcement and local government, prison rape prevention is not directly about local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$15,000,000",
+                "value": 15000000.0,
+                "label": "Prison rape prevention and prosecution grants"
+              }
+            ]
+          },
+          {
+            "fact": "- $3,000,000 for the operation, maintenance, and expansion of the National Missing and Unidentified Persons System. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "This funding is for a missing persons system, not directly related to local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$3,000,000",
+                "value": 3000000.0,
+                "label": "National Missing and Unidentified Persons System"
+              }
+            ]
+          },
+          {
+            "fact": "- $2,500,000 is for a student loan repayment assistance program pursuant to section 952 of Public Law 110-315. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Student loan repayment assistance is not related to local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$2,500,000",
+                "value": 2500000.0,
+                "label": "Student loan repayment assistance program"
+              }
+            ]
+          },
+          {
+            "fact": "- $2,500,000 is for the Missing Americans Alert. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Missing Americans Alert is not directly related to local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$2,500,000",
+                "value": 2500000.0,
+                "label": "Missing Americans Alert"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "62eafab4-cec8-4428-89f5-1e196c5fa9dc",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 1.1528832912445068,
+        "chunk_snapshot": "$53 million for COPS Office STOP School Violence grants",
+        "chunk_summary": "This chunk lists specific FY2026 appropriations, including $53 million for STOP School Violence grants and $401 million for law enforcement technologies, directly answering available funding.",
+        "relevance_counts": {
+          "direct": 3,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "$53,000,000 [[num:src_cjs_62eafab4_cec8_4428_89f5_1e196c5fa9dc_1]] is for competitive grants to be administered by the Community Oriented Policing Services Office for purposes authorized under the STOP School Violence Act (title V of division S of Public Law 115-141).",
+            "responsiveness_tier": "direct",
+            "reason": "Directly funds school violence prevention grants administered by COPS, which is related to community violence prevention and police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$53,000,000",
+                "value": 53000000.0,
+                "label": "STOP School Violence Act grants"
+              }
+            ]
+          },
+          {
+            "fact": "$18,000,000 [[num:src_cjs_62eafab4_cec8_4428_89f5_1e196c5fa9dc_2]] is for community policing development activities in furtherance of section 1701 of title I of the 1968 Act (34 U.S.C. 10381).",
+            "responsiveness_tier": "direct",
+            "reason": "Directly funds community policing development, which supports local law enforcement and community violence prevention.",
+            "source_numbers": [
+              {
+                "figure": "$18,000,000",
+                "value": 18000000.0,
+                "label": "Community policing development activities"
+              }
+            ]
+          },
+          {
+            "fact": "$401,406,387 is for a law enforcement technologies and interoperable communications program, and related law enforcement and public safety equipment, which shall be made available for the COPS Tech projects.",
+            "responsiveness_tier": "adjacent",
+            "reason": "Funds law enforcement technologies and equipment, which supports local law enforcement but is not directly for community violence prevention or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$401,406,387",
+                "value": 401406387.0,
+                "label": "Law enforcement technologies and interoperable communications program"
+              }
+            ]
+          },
+          {
+            "fact": "$15,000,000 [[num:src_cjs_62eafab4_cec8_4428_89f5_1e196c5fa9dc_3]] is for activities authorized by the Law Enforcement De-Escalation Training Act of 2022 (Public Law 117-325).",
+            "responsiveness_tier": "direct",
+            "reason": "Directly funds law enforcement de-escalation training, which is a form of community violence prevention and supports police hiring/training.",
+            "source_numbers": [
+              {
+                "figure": "$15,000,000",
+                "value": 15000000.0,
+                "label": "Law Enforcement De-Escalation Training Act activities"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "b555b317-54cf-4221-878d-d67385a2c1a6",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.9763211011886597,
+        "chunk_snapshot": "$60.5 million for criminal justice response grants",
+        "chunk_summary": "This chunk provides FY2026 funding for criminal justice response grants and policing initiatives, relevant to local law enforcement and violence prevention.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 4,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $60,500,000 [[num:src_cjs_b555b317_54cf_4221_878d_d67385a2c1a6_1]] is for grants to improve the criminal justice response as authorized by part U of title I of the 1968 Act, of which up to $4,000,000 [[num:src_cjs_b555b317_54cf_4221_878d_d67385a2c1a6_2]] is for a homicide reduction initiative; up to $2,000,000 [[num:src_cjs_b555b317_54cf_4221_878d_d67385a2c1a6_3]] is for a domestic violence lethality reduction initiative; and up to $5,000,000 [[num:src_cjs_b555b317_54cf_4221_878d_d67385a2c1a6_4]] is for an initiative to promote effective policing and prosecution responses to domestic violence, dating violence, sexual assault, and stalking, including evaluation of the effectiveness of funded interventions (\"Policing and Prosecution Initiative\"). [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "The grant program for improving criminal justice response includes initiatives for homicide reduction, domestic violence lethality reduction, and policing/prosecution responses, which are directly relevant to local law enforcement and community violence prevention.",
+            "source_numbers": [
+              {
+                "figure": "$60,500,000",
+                "value": 60500000.0,
+                "label": "Grants to improve criminal justice response"
+              },
+              {
+                "figure": "$4,000,000",
+                "value": 4000000.0,
+                "label": "Homicide reduction initiative"
+              },
+              {
+                "figure": "$2,000,000",
+                "value": 2000000.0,
+                "label": "Domestic violence lethality reduction initiative"
+              },
+              {
+                "figure": "$5,000,000",
+                "value": 5000000.0,
+                "label": "Policing and Prosecution Initiative"
+              }
+            ]
+          },
+          {
+            "fact": "- $79,500,000 is for sexual assault victims assistance, as authorized by section 41601 of the 1994 Act. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Sexual assault victims assistance is related to community violence prevention but not directly about local law enforcement or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$79,500,000",
+                "value": 79500000.0,
+                "label": "Sexual assault victims assistance"
+              }
+            ]
+          },
+          {
+            "fact": "- $50,500,000 is for rural domestic violence and child abuse enforcement assistance grants, as authorized by section 40295 of the 1994 Act. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Rural domestic violence and child abuse enforcement assistance is related to community violence prevention but not directly about local law enforcement or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$50,500,000",
+                "value": 50500000.0,
+                "label": "Rural domestic violence and child abuse enforcement assistance grants"
+              }
+            ]
+          },
+          {
+            "fact": "- $25,000,000 is for grants to reduce violent crimes against women on campus, as authorized by section 304 of the 2005 Act, of which $12,500,000 is for grants to Historically Black Colleges and Universities, Hispanic-Serving Institutions, and Tribal colleges and universities. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Grants to reduce violent crimes against women on campus are related to community violence prevention but not directly about local law enforcement or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$25,000,000",
+                "value": 25000000.0,
+                "label": "Grants to reduce violent crimes against women on campus"
+              },
+              {
+                "figure": "$12,500,000",
+                "value": 12500000.0,
+                "label": "Grants to HBCUs, HSIs, and Tribal colleges"
+              }
+            ]
+          },
+          {
+            "fact": "- $17,000,000 is for a grant program to provide services to advocate for and respond to youth victims of domestic violence, dating violence, sexual assault, and stalking; assistance to children and youth exposed to such violence; assistance to middle and high school students through education and other services related to such violence; and programs to engage men and youth in preventing domestic violence, dating violence, sexual assault, and stalking. [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "This grant program focuses on youth victims and prevention of domestic/sexual violence, which is related to community violence prevention but not directly about local law enforcement or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$17,000,000",
+                "value": 17000000.0,
+                "label": "Grant program for youth victims and prevention"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "fb25df82-5e8b-438c-96f7-908db124a6d7",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 1.1967320442199707,
+        "chunk_snapshot": "FY2026 funding for Office of Justice Programs and COPS",
+        "chunk_summary": "This chunk lists prior law enforcement appropriations exempt from rescission, showing which past funding streams remain protected.",
+        "relevance_counts": {
+          "direct": 2,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "The amounts rescinded pursuant to subsections (b) and (c) shall not be from amounts provided under subparagraph (Q) of paragraph (1) under the heading \"State and Local Law Enforcement Activities--Office of Justice Programs--State and Local Law Enforcement Assistance\" in title II of division B of Public Law 117-103 or Public Law 117-328, or amounts provided under subparagraph (R) of paragraph (1) under the heading \"State and Local Law Enforcement Activities--Office of Justice Programs--State and Local Law Enforcement Assistance\" in title II of division C of Public Law 118-42.",
+            "responsiveness_tier": "direct",
+            "reason": "The fact protects funding for State and Local Law Enforcement Assistance, which directly supports local law enforcement and community violence prevention.",
+            "source_numbers": []
+          },
+          {
+            "fact": "The amounts rescinded pursuant to subsections (b) and (c) shall not be from amounts provided under paragraph (7) under the heading \"State and Local Law Enforcement Activities--Community Oriented Policing Services--Community Oriented Policing Services Programs\" in title II of division B of Public Law 117-103 or Public Law 117-328, or amounts provided under paragraph (7) under the heading \"State and Local Law Enforcement Activities--Community Oriented Policing Services--Community Oriented Policing Services Programs\" in title II of division C of Public Law 118-42.",
+            "responsiveness_tier": "direct",
+            "reason": "The fact protects funding for Community Oriented Policing Services Programs, which directly supports police hiring and local law enforcement.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "28b66e70-41bf-4d94-a751-6fd4fa097898",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": 0.929460883140564,
+        "chunk_snapshot": "$7.5 million for the Daniel Anderl Judicial Security grant program",
+        "chunk_summary": "This chunk shows $7.5 million for a grant program that allows local governments to increase law enforcement officer hiring if they achieve a net gain.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 1,
+          "not_responsive": 2
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $7,500,000 for a grant program as authorized by the Daniel Anderl Judicial Security and Privacy Act of 2022 (Public Law 117-263). [CJS]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The grant program is for judicial security and privacy, not directly for local law enforcement, community violence prevention, or police hiring. However, it involves law enforcement officers and could be considered related.",
+            "source_numbers": [
+              {
+                "figure": "$7,500,000",
+                "value": 7500000.0,
+                "label": "Grant program under Daniel Anderl Act"
+              }
+            ]
+          },
+          {
+            "fact": "- $375,000,000 for juvenile justice programs, to remain available until expended. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Juvenile justice programs are not directly related to local law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$375,000,000",
+                "value": 375000000.0,
+                "label": "Juvenile justice programs"
+              }
+            ]
+          },
+          {
+            "fact": "- $65,000,000 for programs authorized by section 221 of the 1974 Act, and for training and technical assistance to assist small, nonprofit organizations with the Federal grants process. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "This is a suballocation within juvenile justice programs, not related to the requested topics.",
+            "source_numbers": [
+              {
+                "figure": "$65,000,000",
+                "value": 65000000.0,
+                "label": "Programs under section 221 of 1974 Act"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "78d2f7b9-8ddc-4c88-acb8-0b5f16b0fc7b",
+        "division": "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
+        "division_acronym": "CJS",
+        "score": -4.0,
+        "chunk_snapshot": "$235,000,000 for law enforcement vehicle purchases",
+        "chunk_summary": "Contains $235 million for law enforcement motor vehicles, which may support local police but not directly address hiring or violence prevention.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 0,
+          "not_responsive": 2
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $235,000,000 [[num:src_cjs_78d2f7b9_8ddc_4c88_acb8_0b5f16b0fc7b_1]] for purchase of passenger motor vehicles for official use and motor vehicles for law enforcement use with special requirement vehicles eligible for purchase without regard to any price limitation otherwise established by law, of which $94,000,000 [[num:src_cjs_78d2f7b9_8ddc_4c88_acb8_0b5f16b0fc7b_2]] shall remain available until expended. [CJS]",
+            "responsiveness_tier": "direct",
+            "reason": "Provides funding for law enforcement vehicles, which is directly relevant to police hiring and local law enforcement.",
+            "source_numbers": [
+              {
+                "figure": "$235,000,000",
+                "value": 235000000.0,
+                "label": "Motor vehicles for law enforcement use"
+              },
+              {
+                "figure": "$94,000,000",
+                "value": 94000000.0,
+                "label": "Of which to remain available until expended"
+              }
+            ]
+          },
+          {
+            "fact": "- $400,000,000 for economic development assistance programs, including trade adjustment assistance and programs authorized by the Stevenson-Wydler Technology Innovation Act, to remain available until expended. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Economic development assistance is not directly related to law enforcement, community violence prevention, or police hiring.",
+            "source_numbers": [
+              {
+                "figure": "$400,000,000",
+                "value": 400000000.0,
+                "label": "Economic development assistance programs"
+              }
+            ]
+          },
+          {
+            "fact": "- $66,000,000 for necessary expenses of administering the economic development assistance programs. [CJS]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Administrative expenses for economic development are unrelated to law enforcement or violence prevention.",
+            "source_numbers": [
+              {
+                "figure": "$66,000,000",
+                "value": 66000000.0,
+                "label": "Salaries and expenses for economic development administration"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "judge": {
+      "fact_checks": [
+        {
+          "fact": "Local law enforcement, community violence prevention, and police hiring funding is primarily in OJP and COPS",
+          "found": true,
+          "evidence": "Funding for the requested topics is spread across multiple DOJ/COPS accounts; COPS programs: $800,000,000; Edward Byrne Memorial Justice Assistance Grant program and other programs: $2,400,000,000 (implicitly OJP)."
+        },
+        {
+          "fact": "OJP is $2,400,000,000",
+          "found": true,
+          "evidence": "Edward Byrne Memorial Justice Assistance Grant program and other programs: $2,400,000,000 appropriated."
+        },
+        {
+          "fact": "OJP includes $964,000,000 for the Edward Byrne Memorial JAG program",
+          "found": true,
+          "evidence": "within that line, $964,000,000 is for the Edward Byrne Memorial Justice Assistance Grant program."
+        },
+        {
+          "fact": "COPS programs total $800,000,000",
+          "found": true,
+          "evidence": "Community Oriented Policing Services (COPS) programs: $800,000,000 appropriated."
+        },
+        {
+          "fact": "COPS includes $253,093,613 for hiring and rehiring additional career law enforcement officers",
+          "found": true,
+          "evidence": "within the COPS-related lines, $253,093,613 is for hiring and rehiring career law enforcement officers."
+        },
+        {
+          "fact": "COPS includes $84,000,000 for police-community relations",
+          "found": false,
+          "evidence": "Answer lists $84,000,000 for police-community relations but does not state it is part of COPS; appears as a separate bucket."
+        },
+        {
+          "fact": "COPS includes $50,000,000 for community violence intervention and prevention",
+          "found": false,
+          "evidence": "Answer mentions $50,000,000 for community violence intervention but does not associate it with COPS."
+        },
+        {
+          "fact": "COPS includes $18,000,000 for community policing development",
+          "found": true,
+          "evidence": "Additional COPS grants include ... $18,000,000 for community policing development activities."
+        },
+        {
+          "fact": "COPS includes $15,000,000 for de-escalation training",
+          "found": true,
+          "evidence": "Additional COPS grants include ... $15,000,000 for Law Enforcement De-Escalation Training Act activities."
+        },
+        {
+          "fact": "COPS includes $32,000,000 for Tribal law enforcement hiring and activities",
+          "found": true,
+          "evidence": "and $32,000,000 is for improving Tribal law enforcement, including hiring, equipment, and training."
+        },
+        {
+          "fact": "Other targeted grants include $5,000,000 for cybercrimes against individuals and $7,500,000 for the Daniel Anderl Judicial Security and Privacy Act grant program",
+          "found": false,
+          "evidence": "No mention of $5,000,000 cybercrimes or $7,500,000 Daniel Anderl grants."
+        }
+      ],
+      "error_checks": [
+        {
+          "error": "Should not present one clean additive total of all listed figures",
+          "triggered": false,
+          "evidence": "Answer states 'no clean division-wide total is available' and does not sum figures."
+        },
+        {
+          "error": "Should not add nested COPS program amounts on top of the $800,000,000 COPS total",
+          "triggered": false,
+          "evidence": "COPS subprograms are described inside the $800M without double-counting."
+        },
+        {
+          "error": "Should not add Byrne JAG on top of OJP as if it were separate from OJP",
+          "triggered": false,
+          "evidence": "Byrne JAG is correctly nested within the $2.4B OJP line."
+        },
+        {
+          "error": "Should not omit either OJP/Byrne JAG or COPS hiring/community violence funding",
+          "triggered": false,
+          "evidence": "Both OJP/JAG and COPS hiring/community violence amounts are included."
+        },
+        {
+          "error": "Should not route outside CJS",
+          "triggered": false,
+          "evidence": "Answer is scoped under [CJS] COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES."
+        }
+      ],
+      "structural_checks": {
+        "passed": false,
+        "issues": [
+          "Police-community relations ($84M) and community violence intervention ($50M) should be nested under COPS instead of listed as separate top-level buckets."
+        ]
+      },
+      "overall_score": 7,
+      "reasoning": "The answer correctly reports most large funding lines and avoids prohibited errors, but fails to nest two COPS subprograms under the parent account and omits two minor targeted grant amounts ($5M cybercrimes, $7.5M Daniel Anderl), resulting in moderate fact and structural gaps.",
+      "question_id": "broad_4"
+    }
+  }
+]

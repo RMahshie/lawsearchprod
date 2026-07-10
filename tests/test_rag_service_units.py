@@ -327,10 +327,17 @@ def test_classify_prompt_uses_answer_mode_examples(monkeypatch):
     assert "Set answer_mode to one of" in prompt[0].content
     assert "The mode examples below are illustrative, not exhaustive" in prompt[0].content
     assert "asking for major allowed uses does not by itself mean reconciliation_breakdown" in prompt[0].content
+    assert "whether an explicit amount exists" in prompt[0].content
+    assert "What funding mechanism does the continuing appropriations act use" in prompt[0].content
+    assert "avoid a detailed dollar breakdown" in prompt[0].content
     assert "Use reconciliation_breakdown only when the user asks for breakdown, allocation, line items" in prompt[0].content
-    assert "What amount is appropriated for the FDA Salaries and Expenses account" in prompt[0].content
-    assert "Break down FDA Salaries and Expenses by center and user-fee source" in prompt[0].content
-    assert "If the best mode is ambiguous, use broad_topic_total" in prompt[0].content
+    assert "What amount is appropriated for a named account" in prompt[0].content
+    assert "Break down a named account by activity and financing source" in prompt[0].content
+    assert "specific dollar amount for this topic, or only a continuing-appropriations mechanism" in prompt[0].content
+    assert "describe what a division/account does" in prompt[0].content
+    assert "What kinds of projects or activities does this division generally support" in prompt[0].content
+    assert "What is the difference between regular appropriations and continuing appropriations" in prompt[0].content
+    assert "otherwise prefer general_summary for explanatory coverage questions" in prompt[0].content
     assert "answer_mode_flags.mixed_financial_types=true" in prompt[0].content
     assert "Allowed FY2026 divisions and routing hints:" not in prompt[0].content
 
@@ -364,6 +371,8 @@ def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
     assert "Allowed FY2026 divisions and routing hints:" in prompt[1].content
     assert "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS" in prompt[1].content
     assert "FEMA" in prompt[1].content
+    assert "regular versus continuing appropriations" in prompt[1].content
+    assert "rate-for-operations" in prompt[1].content
     assert "DEPARTMENT OF HOMELAND SECURITY" not in prompt[1].content
     assert "Select the relevant appropriations divisions" in prompt[0].content
     assert "Do not classify the answer style" in prompt[0].content
@@ -371,6 +380,7 @@ def test_route_prompt_uses_fy2026_labels_and_aliases(monkeypatch):
     assert "FDA Salaries and Expenses" in prompt[0].content
     assert "not LHHS" in prompt[0].content
     assert "NIH, CDC, CMS" in prompt[0].content
+    assert "regular versus continuing appropriations" in prompt[0].content
     assert "EPA routes to DEPARTMENT OF THE INTERIOR" in prompt[0].content
     assert "Set answer_mode to one of" not in prompt[0].content
     assert "What amount is appropriated for the FDA Salaries and Expenses account" not in prompt[0].content
@@ -421,6 +431,31 @@ def test_route_returns_incompatible_answer_when_no_valid_fy2026_division(monkeyp
     assert "answer_mode" not in result
 
 
+def test_route_uses_configured_alias_rescue_when_router_returns_no_division(monkeypatch):
+    from app.services.rag_service import RouteDecision
+
+    llm = CapturingStructuredLLM(RouteDecision(divisions=[]))
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+    service.settings = get_settings()
+
+    result = service._route_divisions(
+        {
+            "query_id": "query-test",
+            "question": "What is the difference between regular appropriations and continuing appropriations?",
+            "thinking_speed": "normal",
+            "answer_mode": "general_summary",
+            "answer_mode_flags": {"mixed_financial_types": False},
+            "answer_mode_reason": "Conceptual appropriations comparison.",
+        }
+    )
+
+    assert result["selected_divisions"] == [
+        "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"
+    ]
+    assert "final_answer" not in result
+
+
 def test_route_normalizes_known_division_acronyms(monkeypatch):
     from app.core.config import FY2026_DIVISIONS
     from app.services.rag_service import RouteDecision
@@ -441,6 +476,15 @@ def test_route_normalizes_known_division_acronyms(monkeypatch):
     assert result["selected_divisions"] == [FY2026_DIVISIONS[0]]
     assert "answer_mode" not in result
     assert "final_answer" not in result
+
+
+def test_e2e_judge_answer_strips_hidden_number_markers():
+    from tests.evals.e2e.run import answer_for_judge
+
+    assert (
+        answer_for_judge("The amount is $1,000 [[num:src_ag_123]] and [[num:...]] for the account.")
+        == "The amount is $1,000  and  for the account."
+    )
 
 
 def test_query_source_model_does_not_persist_source_text_or_scores():
@@ -1554,6 +1598,394 @@ def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
     ]
 
 
+def test_broad_retrieval_preserves_primary_rewritten_hits_before_original_query():
+    class FakeVectorStore:
+        def __init__(self):
+            self.calls = []
+
+        def retrieve(self, question, division, k, vectorstore_root, embedding_model):
+            self.calls.append((question, division, k, vectorstore_root, embedding_model))
+            prefix = "rewritten" if question == "division-specific account language" else "original"
+            return [
+                {
+                    "chunk_id": f"{prefix}-{index}",
+                    "division": division,
+                    "division_acronym": "AG",
+                    "content": f"{prefix} content {index}",
+                    "chunk_summary": None,
+                    "score": 0.1,
+                    "metadata": {},
+                }
+                for index in range(k)
+            ]
+
+    service = RAGService.__new__(RAGService)
+    vectorstores = FakeVectorStore()
+    service.vectorstores = vectorstores
+
+    result = service._retrieve_division(
+        {
+            "query_id": "query-test",
+            "question": "original user topic wording",
+            "retrieval_query": "division-specific account language",
+            "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+            "max_results": 8,
+            "vector_store_root": "/tmp/store",
+            "vector_store_embedding_model": "text-embedding-3-large",
+            "answer_mode": "broad_topic_total",
+            "answer_mode_flags": {"mixed_financial_types": False},
+        }
+    )
+
+    assert vectorstores.calls == [
+        (
+            "division-specific account language",
+            "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+            8,
+            "/tmp/store",
+            "text-embedding-3-large",
+        ),
+        (
+            "original user topic wording",
+            "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+            8,
+            "/tmp/store",
+            "text-embedding-3-large",
+        ),
+    ]
+    assert [chunk["chunk_id"] for chunk in result["retrieved_chunks"]] == [
+        "rewritten-0",
+        "rewritten-1",
+        "rewritten-2",
+        "rewritten-3",
+        "rewritten-4",
+        "original-0",
+        "original-1",
+        "original-2",
+    ]
+
+
+def test_broad_retrieval_uses_user_facets_not_alias_sweep():
+    division = "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES"
+
+    class FakeSettings:
+        debug = False
+        routing_aliases = {
+            division: (
+                "THUD, Transportation, DOT, FAA, airport grants, highways, transit, rail, "
+                "HUD, housing, rental assistance, community development."
+            ),
+        }
+
+    class FakeVectorStore:
+        def __init__(self):
+            self.retrieve_calls = []
+            self.keyword_calls = []
+
+        def retrieve(self, question, division, k, vectorstore_root, embedding_model):
+            self.retrieve_calls.append((question, division, k, vectorstore_root, embedding_model))
+            prefix = "primary" if question == "tenant rental housing accounts" else "original"
+            return [
+                {
+                    "chunk_id": f"{prefix}-{index}",
+                    "division": division,
+                    "division_acronym": "THUD",
+                    "content": f"{prefix} content {index}",
+                    "chunk_summary": None,
+                    "score": 0.1,
+                    "metadata": {},
+                }
+                for index in range(k)
+            ]
+
+        def keyword_retrieve(self, question, division, k, vectorstore_root, embedding_model):
+            self.keyword_calls.append((question, division, k, vectorstore_root, embedding_model))
+            return []
+
+    service = RAGService.__new__(RAGService)
+    service.settings = FakeSettings()
+    vectorstores = FakeVectorStore()
+    service.vectorstores = vectorstores
+
+    result = service._retrieve_division(
+        {
+            "query_id": "query-test",
+            "question": "What FY2026 funding is available for affordable housing or rental assistance?",
+            "retrieval_query": "tenant rental housing accounts",
+            "division": division,
+            "max_results": 8,
+            "vector_store_root": "/tmp/store",
+            "vector_store_embedding_model": "text-embedding-3-large",
+            "answer_mode": "broad_topic_total",
+            "answer_mode_flags": {"mixed_financial_types": True},
+        }
+    )
+
+    assert [call[0] for call in vectorstores.keyword_calls] == [
+        "What FY2026 funding is available for affordable housing or rental assistance?",
+        "affordable housing",
+        "rental assistance",
+    ]
+    assert [call[0] for call in vectorstores.retrieve_calls] == [
+        "tenant rental housing accounts",
+        "What FY2026 funding is available for affordable housing or rental assistance?",
+        "affordable housing",
+        "rental assistance",
+    ]
+    assert not any("airport grants" in call[0] for call in vectorstores.keyword_calls)
+    assert not any("community development" in call[0] for call in vectorstores.keyword_calls)
+    retrieved_ids = [chunk["chunk_id"] for chunk in result["retrieved_chunks"]]
+    assert retrieved_ids[:5] == [
+        "primary-0",
+        "primary-1",
+        "primary-2",
+        "primary-3",
+        "primary-4",
+    ]
+
+
+def test_broad_retrieval_adds_bounded_previous_context_neighbors():
+    class FakeVectorStore:
+        def __init__(self):
+            self.index_calls = []
+
+        def retrieve(self, question, division, k, vectorstore_root, embedding_model):
+            prefix = "primary" if question == "rewritten topic" else "original"
+            chunks = [
+                {
+                    "chunk_id": f"{prefix}-{index}",
+                    "division": division,
+                    "division_acronym": "INT",
+                    "content": f"{prefix} ordinary content {index}",
+                    "chunk_summary": None,
+                    "score": 0.1,
+                    "metadata": {"chunk_index": 10 + index},
+                }
+                for index in range(k)
+            ]
+            chunks[0]["content"] = f"of the literal topic cleanup grant $1 for {prefix}"
+            chunks[2]["content"] = (
+                "Environmental Response, Compensation, and Liability Act literal topic grants $2"
+            )
+            return chunks
+
+        def keyword_retrieve(self, question, division, k, vectorstore_root, embedding_model):
+            return []
+
+        def get_chunk_by_index(self, division, chunk_index, vectorstore_root, embedding_model):
+            self.index_calls.append((division, chunk_index, vectorstore_root, embedding_model))
+            return {
+                "chunk_id": f"previous-{chunk_index}",
+                "division": division,
+                "division_acronym": "INT",
+                "content": f"previous content {chunk_index}",
+                "chunk_summary": None,
+                "score": None,
+                "metadata": {"chunk_index": chunk_index},
+            }
+
+    service = RAGService.__new__(RAGService)
+    vectorstores = FakeVectorStore()
+    service.vectorstores = vectorstores
+
+    result = service._retrieve_division(
+        {
+            "query_id": "query-test",
+            "question": "literal topic",
+            "retrieval_query": "rewritten topic",
+            "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+            "max_results": 8,
+            "vector_store_root": "/tmp/store",
+            "vector_store_embedding_model": "text-embedding-3-large",
+            "answer_mode": "broad_topic_total",
+            "answer_mode_flags": {"mixed_financial_types": False},
+        }
+    )
+
+    assert vectorstores.index_calls == [
+        ("DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES", 9, "/tmp/store", "text-embedding-3-large"),
+        ("DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES", 11, "/tmp/store", "text-embedding-3-large"),
+        ("DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES", 13, "/tmp/store", "text-embedding-3-large"),
+    ]
+    assert [chunk["chunk_id"] for chunk in result["retrieved_chunks"]] == [
+        "previous-9",
+        "primary-0",
+        "previous-11",
+        "primary-1",
+        "primary-2",
+        "previous-13",
+        "primary-3",
+        "primary-4",
+    ]
+
+
+def test_broad_retrieval_adds_bounded_following_context_neighbors():
+    class FakeVectorStore:
+        def __init__(self):
+            self.index_calls = []
+
+        def retrieve(self, question, division, k, vectorstore_root, embedding_model):
+            return [
+                {
+                    "chunk_id": f"primary-{index}",
+                    "division": division,
+                    "division_acronym": "THUD",
+                    "content": (
+                        "HUD rental assistance program text under this heading"
+                        if index == 0
+                        else f"ordinary content {index}"
+                    ),
+                    "chunk_summary": None,
+                    "score": 0.1,
+                    "metadata": {"chunk_index": 101 + index},
+                }
+                for index in range(k)
+            ]
+
+        def keyword_retrieve(self, question, division, k, vectorstore_root, embedding_model):
+            return []
+
+        def get_chunk_by_index(self, division, chunk_index, vectorstore_root, embedding_model):
+            self.index_calls.append((division, chunk_index, vectorstore_root, embedding_model))
+            return {
+                "chunk_id": f"context-{chunk_index}",
+                "division": division,
+                "division_acronym": "THUD",
+                "content": f"context content {chunk_index}",
+                "chunk_summary": None,
+                "score": None,
+                "metadata": {"chunk_index": chunk_index},
+            }
+
+    service = RAGService.__new__(RAGService)
+    vectorstores = FakeVectorStore()
+    service.vectorstores = vectorstores
+    division = "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES"
+
+    result = service._retrieve_division(
+        {
+            "query_id": "query-test",
+            "question": "What funding is available for rental assistance?",
+            "retrieval_query": "HUD rental accounts",
+            "division": division,
+            "max_results": 6,
+            "vector_store_root": "/tmp/store",
+            "vector_store_embedding_model": "text-embedding-3-large",
+            "answer_mode": "broad_topic_total",
+            "answer_mode_flags": {"mixed_financial_types": False},
+        }
+    )
+
+    assert vectorstores.index_calls == [
+        (division, 102, "/tmp/store", "text-embedding-3-large"),
+    ]
+    assert [chunk["chunk_id"] for chunk in result["retrieved_chunks"]][:3] == [
+        "primary-0",
+        "context-102",
+        "primary-1",
+    ]
+
+
+def test_general_summary_retrieval_adds_alias_coverage_keyword_query():
+    division = "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES"
+
+    class FakeSettings:
+        debug = False
+        routing_aliases = {
+            division: (
+                "THUD, Transportation, DOT, FAA, airport grants, highways, transit, rail, "
+                "HUD, housing, rental assistance, community development."
+            ),
+        }
+
+    class FakeVectorStore:
+        def __init__(self):
+            self.retrieve_calls = []
+            self.keyword_calls = []
+
+        def retrieve(self, question, division, k, vectorstore_root, embedding_model):
+            self.retrieve_calls.append((question, division, k, vectorstore_root, embedding_model))
+            return [
+                {
+                    "chunk_id": f"primary-{index}",
+                    "division": division,
+                    "division_acronym": "THUD",
+                    "content": f"primary content {index}",
+                    "chunk_summary": None,
+                    "score": 0.1,
+                    "metadata": {},
+                }
+                for index in range(k)
+            ]
+
+        def keyword_retrieve(self, question, division, k, vectorstore_root, embedding_model):
+            self.keyword_calls.append((question, division, k, vectorstore_root, embedding_model))
+            if "rental assistance" not in question:
+                return []
+            return [
+                {
+                    "chunk_id": f"coverage-{index}",
+                    "division": division,
+                    "division_acronym": "THUD",
+                    "content": f"coverage content {index}",
+                    "chunk_summary": None,
+                    "score": -1.0,
+                    "metadata": {},
+                }
+                for index in range(k)
+            ]
+
+    service = RAGService.__new__(RAGService)
+    service.settings = FakeSettings()
+    vectorstores = FakeVectorStore()
+    service.vectorstores = vectorstores
+
+    result = service._retrieve_division(
+        {
+            "query_id": "query-test",
+            "question": "Summarize local government coverage in this division",
+            "retrieval_query": "Summarize local government coverage in this division",
+            "division": division,
+            "max_results": 6,
+            "vector_store_root": "/tmp/store",
+            "vector_store_embedding_model": "text-embedding-3-large",
+            "answer_mode": "general_summary",
+            "answer_mode_flags": {"mixed_financial_types": False},
+        }
+    )
+
+    assert vectorstores.keyword_calls
+    assert any(
+        "rental assistance" in call[0] and "oversight restrictions requirements" in call[0]
+        for call in vectorstores.keyword_calls
+    )
+    assert any(
+        "airport grants" in call[0] and "highways" in call[0]
+        for call in vectorstores.keyword_calls
+    )
+    retrieved_ids = [chunk["chunk_id"] for chunk in result["retrieved_chunks"]]
+    assert retrieved_ids[0] == "primary-0"
+    assert "coverage-0" in retrieved_ids[:4]
+    assert "primary-1" in retrieved_ids[:5]
+
+
+def test_retrieval_phrase_facets_extract_llm_account_phrases():
+    from app.services.rag.stages.retrieve import _retrieval_phrase_facets
+
+    assert _retrieval_phrase_facets(
+        "FY2026 topic words Community Development Block Grant "
+        "Section 8 Account-Based Rental Assistance Public Housing Capital Fund "
+        "Operating Fund Homeless Assistance Grants Emergency Solutions Grant"
+    ) == [
+        "Community Development Block Grant",
+        "Section 8 Account-Based Rental Assistance",
+        "Public Housing Capital Fund",
+        "Operating Fund",
+        "Homeless Assistance Grants",
+        "Emergency Solutions Grant",
+    ]
+
+
 def test_rewrite_division_queries_falls_back_for_missing_division(monkeypatch):
     from app.services.rag_service import DivisionQueryDecision, DivisionQueryPlan
 
@@ -1580,6 +2012,34 @@ def test_rewrite_division_queries_falls_back_for_missing_division(monkeypatch):
     assert result["division_queries"] == [
         {"division": "AAA", "division_acronym": "A", "query": "AAA-specific funding"},
         {"division": "BBB", "division_acronym": "B", "query": "How much funding for AAA and BBB?"},
+    ]
+
+
+def test_rewrite_does_not_append_static_topic_vocabulary(monkeypatch):
+    from app.services.rag_service import DivisionQueryDecision, DivisionQueryPlan
+
+    _patch_create_chat_model(
+        monkeypatch,
+        lambda model, task, reasoning_effort=None: FakeRewriteLLM(
+            DivisionQueryPlan(
+                division_queries=[
+                    DivisionQueryDecision(division="EPA", query="EPA cleanup funding"),
+                ]
+            )
+        ),
+    )
+    service = RAGService.__new__(RAGService)
+
+    result = service._rewrite_division_queries(
+        {
+            "query_id": "query-test",
+            "question": "What FY2026 funding is available for brownfields cleanup or remediation?",
+            "selected_divisions": ["EPA"],
+        }
+    )
+
+    assert result["division_queries"] == [
+        {"division": "EPA", "division_acronym": "E", "query": "EPA cleanup funding"},
     ]
 
 
@@ -1689,14 +2149,17 @@ def test_reduce_prompt_includes_accounting_scope_examples(monkeypatch):
     assert "Preserve enough detail to audit the math" in prompt
     assert "Use the markdown structure above when the user asks for a breakdown" in prompt
     assert "Keep Included for amounts that directly answer the requested breakdown" in prompt
+    assert "do not put a broad parent account total in Included as if the whole account is the requested topic" in prompt
+    assert "Do not present a topical subtotal unless every component in the subtotal is listed" in prompt
+    assert "preserve every retrieved in-scope line item for those categories" in prompt
+    assert "Keep sibling parent lines distinct" in prompt
     assert "Do not use internal pipeline language in the answer" in prompt
     assert "When explaining uncertainty, do not say the extracted facts do not resolve it" in prompt
     assert "separate programmatic/activity allocations from financing-source or fee-source amounts" in prompt
     assert "For combined-topic questions, provide one total found per topic" in prompt
     assert "Reconciliation example:" in prompt
-    assert "Immigration-related total found" in prompt
-    assert "Combined FEMA + immigration-related total found" in prompt
-    assert "Do not add the ICE enforcement/detention/removal component separately" in prompt
+    assert "one total found per topic and a combined topic total found" in prompt
+    assert "Do not add a child component separately" in prompt
     assert "Direct account reduce prompt:" not in prompt
     assert "Responsiveness rules:" not in prompt
     assert "Reduce compactness rules:" not in prompt
@@ -1749,12 +2212,12 @@ def test_reduce_prompt_uses_direct_account_module_without_unrelated_examples(mon
     assert "category-only bullets" in prompt
     assert "do not list every center, activity, rent line, transfer, limitation, or user-fee amount" in prompt
     assert "name categories only" in prompt
-    assert "do not include center-by-center dollar figures" in prompt
+    assert "do not include activity-by-activity dollar figures" in prompt
     assert "do not list individual user-fee dollar figures" in prompt
     assert "Bad answer pattern:" in prompt
     assert "Do not create Included / Not added separately sections" in prompt
     assert "FDA Salaries and Expenses" in prompt
-    assert "do not include the separate nearby $3,000,000 provision" in prompt
+    assert "do not include separate nearby provisions" in prompt
     assert "Reconciliation example:" not in prompt
     assert "Mixed financial types example:" not in prompt
     assert "Preserve all relevant dollar figures from the extracted facts" not in prompt
@@ -1800,16 +2263,17 @@ def test_reduce_prompt_uses_broad_topic_mode_owned_mixed_financial_rules(monkeyp
     assert "Active safety flags: mixed_financial_types" in prompt
     assert "Broad topic total reduce prompt:" in prompt
     assert "Output a compact division brief for synthesis, not a full ledger" in prompt
-    assert "Key buckets: <2-4 bullets max" in prompt
+    assert "Key buckets: <3-6 compact bullets when needed" in prompt
     assert "Do not create separate bullets for suballocations within the same parent account" in prompt
-    assert "Omit tiny sub-set-asides, internal earmarks, administrative amounts" in prompt
+    assert "keep smaller suballocations when they directly match a named user topic" in prompt
     assert "Do not compute or lead with a mixed identified total unless the user explicitly asks" in prompt
     assert "Before aggregating, classify each amount internally by financial type" in prompt
     assert "Do not add account totals plus suballocations" in prompt
     assert "rural water/wastewater infrastructure" in prompt
-    assert "one Rural Water and Waste Disposal Program Account bullet" in prompt
-    assert "Do not split every section 306 set-aside into separate bullets" in prompt
-    assert "Do not present direct loans plus guarantees plus grants as one clean total" in prompt
+    assert "one controlling account/program bullet" in prompt
+    assert "Do not split every minor set-aside into separate bullets" in prompt
+    assert "Do not present loan authority plus grants or subsidy costs as one clean total" in prompt
+    assert "check the user-stated topics against the Direct facts" in prompt
     assert "Target 8-12 substantive bullets" not in prompt
     assert "Mixed financial-type safety rules:" not in prompt
     assert "Reconciliation and breakdown reduce prompt:" not in prompt
@@ -1854,6 +2318,89 @@ def test_map_prompt_filters_unrelated_dollars_for_funding_mechanisms(monkeypatch
     assert "Preserve relationship language such as 'of which', 'to remain available', 'derived from fees'" in prompt
     assert "Return fact-level responsiveness tiers: direct, adjacent, or not_responsive" in prompt
     assert "A single chunk may contain a mix of direct, adjacent, and not_responsive facts" in prompt
+
+
+def test_broad_map_prompt_preserves_multi_topic_and_fragment_matches():
+    from app.services.rag_prompting import build_map_prompt
+
+    prompt = build_map_prompt(
+        question="What funding is available for cleanup, grants, or fee authorities?",
+        chunk_content="of section 1234, $10,000,000. The Administrator may collect fees.",
+        division_acronym="INT",
+        answer_mode="broad_topic_total",
+        answer_mode_flags={"mixed_financial_types": True},
+    )
+
+    assert "Selected answer_mode: broad_topic_total" in prompt
+    assert "evaluate each named topic independently" in prompt
+    assert "statutory authority references, public-law references, and account headings" in prompt
+    assert "If a retrieved chunk begins mid-sentence" in prompt
+    assert "do not discard them solely because preceding sentence context is missing" in prompt
+    assert "continued account heading, continued statutory title, or continued enumerated list" in prompt
+    assert "parent heading or lead-in phrase is in an adjacent Chunk" in prompt
+
+
+def test_general_summary_map_prompt_anchors_named_entity_scope():
+    from app.services.rag_prompting import build_map_prompt
+
+    prompt = build_map_prompt(
+        question="In plain English, what does this division do for the FDA?",
+        chunk_content="The Food and Nutrition Service supports SNAP. FDA Salaries and Expenses uses fees.",
+        division_acronym="AG",
+        answer_mode="general_summary",
+        answer_mode_flags={},
+    )
+
+    assert "Selected answer_mode: general_summary" in prompt
+    assert "Direct facts must materially involve that named target" in prompt
+    assert "Other agencies or programs in the same Division are adjacent or not_responsive" in prompt
+
+
+def test_general_summary_reduce_prompt_preserves_categories_without_detail(monkeypatch):
+    from app.services.rag_service import MarkedAnswer
+
+    llm = CapturingStructuredLLM(MarkedAnswer(answer="Answer"))
+    _patch_create_chat_model(monkeypatch, lambda model, task, reasoning_effort=None: llm)
+    service = RAGService.__new__(RAGService)
+
+    service._reduce_division(
+        {
+            "question": "In plain English, summarize what this division covers without doing a detail",
+            "query_id": "query-test",
+            "division": "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES",
+            "division_acronym": "EWD",
+            "mapped_items": [
+                {
+                    "chunk_id": "chunk-1",
+                    "division": "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES",
+                    "division_acronym": "EWD",
+                    "extracted_facts": "Direct facts:\n- The division supports DOE energy, Corps civil works, and water infrastructure finance.",
+                    "chunk_summary": "summary",
+                    "chunk_snapshot": "snapshot",
+                    "source_content": "content",
+                    "score": 0.1,
+                    "metadata": {},
+                    "number_annotations": [],
+                }
+            ],
+            "chunks_retrieved": 1,
+            "thinking_speed": "normal",
+            "answer_mode": "general_summary",
+            "answer_mode_flags": {},
+        }
+    )
+
+    prompt = llm.prompts[0]
+    assert "Selected answer_mode: general_summary" in prompt
+    assert "Do not use internal pipeline language in the answer" in prompt
+    assert "do not include named program dollar figures inside category lists" in prompt
+    assert "Do not replace a retrieved category list with vague wording" in prompt
+    assert "preserve the formal account/program heading" in prompt
+    assert "must not collapse named categories into \"multiple sources\"" in prompt
+    assert "Preserve financing-mechanism nouns" in prompt
+    assert "Plain-English summaries should still mention how the work is supported or controlled" in prompt
+    assert "For division-wide coverage questions, keep distinct program families" in prompt
+    assert "Preserve concrete deadlines, timeframes, named recipients" in prompt
 
 
 def test_map_chunk_tracks_fact_level_relevance_and_marks_direct_numbers_only(monkeypatch):
@@ -1985,6 +2532,7 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     assert "organize by specificity before account detail" in prompt
     assert "Use one heading per controlling account" in prompt
     assert "Preserve direct subamounts that help the user identify funding sources" in prompt
+    assert "make a coverage pass before finalizing" in prompt
     assert "Use valid markdown bullets for all account details and nested amounts" in prompt
     assert "Label each amount by financial type" in prompt
     assert "Do not repeat the same agency, account, bucket, or dollar figure" in prompt
@@ -1993,7 +2541,7 @@ def test_synthesis_prompt_preserves_scoped_buckets_and_caveats(monkeypatch):
     assert "Do not compute or lead with a mixed identified total unless the user explicitly asks" in prompt
     assert "Good pattern:" in prompt
     assert "Bad pattern:" in prompt
-    assert "USDA RUS — same account/heading" in prompt
+    assert "Agency Program Office — same account/heading" in prompt
     assert "## By Agency / Account" not in prompt
     assert "Synthesis rules:" not in prompt
     assert "Mixed financial-type safety rules:" not in prompt
@@ -2012,8 +2560,21 @@ def test_synthesis_prompts_are_mode_owned():
             "## Not Added Separately",
             "Do not flatten a structured reduce answer into dense paragraphs",
             "programmatic/activity allocations and financing-source or fee-source amounts",
+            "clean topical subtotal must be either source-backed",
+            "preserve the retrieved line items for those categories",
+            "Keep sibling parent lines distinct",
         ],
-        "general_summary": ["General summary synthesis prompt:", "Do not force accounting sections"],
+        "general_summary": [
+            "General summary synthesis prompt:",
+            "Do not force accounting sections",
+            "suppress program-by-program dollar figures",
+            "Preserve major coverage categories",
+            "Plain-English summaries should still preserve mechanisms and obligations",
+            "preserve the formal account/program heading and compact named support categories",
+            "Preserve financing-mechanism nouns",
+            "Preserve concrete category names",
+            "For multi-Division summary questions",
+        ],
     }
 
     for mode, expected_fragments in cases.items():

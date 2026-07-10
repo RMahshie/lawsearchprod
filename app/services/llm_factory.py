@@ -84,9 +84,9 @@ DEEPSEEK_MODEL_STRATEGIES = {
         "classify": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
         "route": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
         "rewrite": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
-        "map": ModelSpec("deepseek-v4-flash", provider="deepseek"),
+        "map": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
         "summary": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
-        "reduce": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
+        "reduce": ModelSpec("deepseek-v4-pro", provider="deepseek", reasoning_effort="high"),
         "synthesize": ModelSpec("deepseek-v4-pro", provider="deepseek", reasoning_effort="max"),
     },
 }

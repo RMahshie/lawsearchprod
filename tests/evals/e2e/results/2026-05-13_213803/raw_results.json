@@ -1,0 +1,1185 @@
+[
+  {
+    "question_id": "summary_1",
+    "question": "In plain English, what does the FY2026 Agriculture division do for the FDA?",
+    "answer_mode": "general_summary",
+    "expected_answer_mode": "general_summary",
+    "actual_answer_mode": "general_summary",
+    "classify_match": true,
+    "expected_divisions": [
+      "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES"
+    ],
+    "actual_divisions": [
+      "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES"
+    ],
+    "route_match": true,
+    "answer_mode_reason": "User asks for a plain English explanation of what the division does, no dollar breakdown.",
+    "division_answers": [
+      {
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "answer": "### [AG] AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES\n\nThe FY2026 Agriculture act funds the FDA\u2019s Salaries and Expenses account and directs how that money can be used, including support for the Human Foods Program and related field activities $1,171,319,000 [[num:src_ag_78bb81a7_2736_4db7_96b1_5a0e24971044_6]] and the FDA\u2019s major centers and programs.\n\n- It sets aside at least $15,000,000 [[num:src_ag_b9334bc1_3b42_4f87_9b47_7824d5cc66d0_8]] for inspections of foreign seafood manufacturers and field examinations of imported seafood.\n- It sets aside at least $10,000,000 [[num:src_ag_b9334bc1_3b42_4f87_9b47_7824d5cc66d0_9]] for pilots to increase unannounced foreign inspections, and keeps that money available until expended.\n- It requires at least $200,000,000 [[num:src_ag_19c8bdaf_e285_4e2c_a7ef_1487cfebfd32_1]] in tobacco fee funding for enforcement against e-cigarettes, vapes, and other ENDS, including at least $2,000,000 [[num:src_ag_19c8bdaf_e285_4e2c_a7ef_1487cfebfd32_2]] for a federal multi-agency task force.\n- It directs FDA to update its ENDS enforcement priorities to cover flavored disposable ENDS products, define \u201cdisposable ENDS product,\u201d and report semi-annually to the Committees on Appropriations on progress removing illegal ENDS products from the market, with the first report due within 180 days.\n- It also requires FDA, within 180 days, to report on retailer education about identifying legal products, and to work with industry stakeholders to update acceptable market names for certain fish species within 30 days of enactment.\n- It places several limits on FDA\u2019s regulatory activity: no use of funds to create a new general user-fee program under 31 U.S.C. 9701, no new guidelines or regulations in general, no new rule on electronic distribution of prescribing information unless Congress acts, no new Listeria guidance for low-risk ready-to-eat foods until FDA considers new science, and no final population-wide sodium reduction actions until an assessment of short-term targets is completed.\n\nIt also excludes certain FY2027-assessed user fees paid in FY2026 from the heading and otherwise uses user-fee and appropriated funding to support FDA\u2019s work.",
+        "chunks_retrieved": 16
+      }
+    ],
+    "final_answer": "### [AG] AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES\n\nThe FY2026 Agriculture act funds the FDA\u2019s Salaries and Expenses account and directs how that money can be used, including support for the Human Foods Program and related field activities $1,171,319,000 [[num:src_ag_78bb81a7_2736_4db7_96b1_5a0e24971044_6]] and the FDA\u2019s major centers and programs.\n\n- It sets aside at least $15,000,000 [[num:src_ag_b9334bc1_3b42_4f87_9b47_7824d5cc66d0_8]] for inspections of foreign seafood manufacturers and field examinations of imported seafood.\n- It sets aside at least $10,000,000 [[num:src_ag_b9334bc1_3b42_4f87_9b47_7824d5cc66d0_9]] for pilots to increase unannounced foreign inspections, and keeps that money available until expended.\n- It requires at least $200,000,000 [[num:src_ag_19c8bdaf_e285_4e2c_a7ef_1487cfebfd32_1]] in tobacco fee funding for enforcement against e-cigarettes, vapes, and other ENDS, including at least $2,000,000 [[num:src_ag_19c8bdaf_e285_4e2c_a7ef_1487cfebfd32_2]] for a federal multi-agency task force.\n- It directs FDA to update its ENDS enforcement priorities to cover flavored disposable ENDS products, define \u201cdisposable ENDS product,\u201d and report semi-annually to the Committees on Appropriations on progress removing illegal ENDS products from the market, with the first report due within 180 days.\n- It also requires FDA, within 180 days, to report on retailer education about identifying legal products, and to work with industry stakeholders to update acceptable market names for certain fish species within 30 days of enactment.\n- It places several limits on FDA\u2019s regulatory activity: no use of funds to create a new general user-fee program under 31 U.S.C. 9701, no new guidelines or regulations in general, no new rule on electronic distribution of prescribing information unless Congress acts, no new Listeria guidance for low-risk ready-to-eat foods until FDA considers new science, and no final population-wide sodium reduction actions until an assessment of short-term targets is completed.\n\nIt also excludes certain FY2027-assessed user fees paid in FY2026 from the heading and otherwise uses user-fee and appropriated funding to support FDA\u2019s work.",
+    "retrieved_chunk_count": 16,
+    "retrieved_chunks": [
+      {
+        "chunk_id": "b9334bc1-3b42-4f87-9b47-7824d5cc66d0",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": 0.7232298851013184,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_id": "b9334bc1-3b42-4f87-9b47-7824d5cc66d0",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+          "division_acronym": "AG",
+          "chunk_index": 49
+        },
+        "content_preview": "that amounts \nof such fees assessed for fiscal year 2027 for which the Secretary \naccepts payment in fiscal year 2026 shall not be included in amounts \nunder this heading:  Provided further, That none of these funds shall be \nused to develop, establish, or operate any program of user fees \nauthorized by 31 U.S.C. 9701:  Provided further, That of the total \namount appropriated: (1) $1,171,319,000 shall be for the Human Foods \nProgram and for related field activities, including inspections, \ninvestigations, and import operations, conducted by the Human Foods \nProgram, the Office of Inspections and Investigations, or the Office of \nthe Chief Scientist, of which no less than $15,000,000 shall be..."
+      },
+      {
+        "chunk_id": "b6e73232-2a44-4303-8207-7cb61254b8c1",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -34.0,
+        "chunk_summary": null,
+        "metadata": {
+          "division_acronym": "AG",
+          "chunk_index": 73,
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "chunk_id": "b6e73232-2a44-4303-8207-7cb61254b8c1",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES"
+        },
+        "content_preview": "stance, consider those communities which are ``Areas Rural \nin Character'':  Provided, That not more than 10 percent of the funds \nmade available under the heading ``Distance Learning, Telemedicine, and \nBroadband Program'' for the purposes of the pilot program established by \nsection 779 of Public Law 115-141 may be used for this purpose.\n\n    Sec. 748.  In addition to amounts otherwise made available by this \nAct and notwithstanding the last sentence of 16 U.S.C. 1310, there is \nappropriated $2,000,000, to remain available until expended, to \nimplement non-renewable agreements on eligible lands, including flooded \nagricultural lands, as determined by the Secretary, under the Water Bank \nAc..."
+      },
+      {
+        "chunk_id": "160a4a3e-e145-4648-b90b-06162c1802d7",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -31.0,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 33,
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "chunk_id": "160a4a3e-e145-4648-b90b-06162c1802d7",
+          "division_acronym": "AG",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES"
+        },
+        "content_preview": "hall be for Agriculture Innovation \nCenters authorized pursuant to section 6402 of Public Law 107-171.\n\n               rural microentrepreneur assistance program\n\n    For the principal amount of direct loans as authorized by section \n379E of the Consolidated Farm and Rural Development Act (7 U.S.C. \n2008s), $17,000,000.\n    For the cost of loans and grants, $4,000,000 under the same terms \nand conditions as authorized by section 379E of the Consolidated Farm \nand Rural Development Act (7 U.S.C. 2008s).\n\n                    rural energy for america program\n\n    For the principal amount of loan guarantees, under the same terms \nand conditions as authorized by section 9007 of the Farm Security..."
+      },
+      {
+        "chunk_id": "975fe0b7-0b30-43cb-8f57-30dba8e2cecb",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -17.0,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_index": 43,
+          "division_acronym": "AG",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "chunk_id": "975fe0b7-0b30-43cb-8f57-30dba8e2cecb",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES"
+        },
+        "content_preview": "on 16 of the Food and \nNutrition Act of 2008:  Provided further, That of the funds made \navailable under this heading, $998,000 may be used to provide nutrition \neducation\n\n[[Page 139 STAT. 535]]\n\nservices to State agencies and Federally Recognized Tribes participating \nin the Food Distribution Program on Indian Reservations:  Provided \nfurther, That of the funds made available under this heading, \n$3,000,000, to remain available until September 30, 2027, shall be used \nto carry out section 4003(b) of Public Law 115-334 relating to \ndemonstration projects for tribal organizations:  Provided further, That \nof the funds made available under this heading, $4,000,000 shall be used \nto carry out..."
+      },
+      {
+        "chunk_id": "2c5c897a-7236-482a-a978-ead062fa9e6f",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -4.0,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 74,
+          "chunk_id": "2c5c897a-7236-482a-a978-ead062fa9e6f",
+          "division_acronym": "AG",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES"
+        },
+        "content_preview": "ed through any Community Project \nFunding/Congressionally Directed Spending.\n\n    Sec. 751.  There is hereby appropriated $2,000,000, to remain \navailable until expended, to carry out section 758 of division B of \nPublic Law 118-42, in addition to amounts otherwise available for such \npurpose.\n    Sec. 752.    None of the funds \nappropriated or otherwise made available by this Act may be used by the \nFood and Drug Administration (FDA) to issue or promote any new \nguidelines or regulations applicable to food manufacturers of low risk \nready-to-eat (RTE) foods for Listeria monocytogenes (Lm) until the FDA \nconsiders the available new science in developing the Compliance Policy \nGuide (CPG), Gu..."
+      },
+      {
+        "chunk_id": "23026b6e-34de-44a4-99b3-87608e5a1df4",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -8.0,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_index": 8,
+          "chunk_id": "23026b6e-34de-44a4-99b3-87608e5a1df4",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "division_acronym": "AG"
+        },
+        "content_preview": "emain available until expended and of which $7,000,000 shall \nremain available until September 30, 2027:  Provided, That of the \namounts provided under this heading, $13,560,000 shall be for the \npurposes, and in the amounts, specified for this account in the table \ntitled ``Community Project Funding/Congressionally Directed Spending'' \nin the explanatory statement described in section 4 (in the matter \npreceding division A of this consolidated Act), to remain available \nuntil expended, which shall not be subject to section 6(c) and section \n6(d) of the Research Facilities Act (7 U.S.C. 390d):  Provided further, \nThat each institution eligible to receive funds under the Evans-Allen \nprogram..."
+      },
+      {
+        "chunk_id": "48486ec1-0b3e-45b6-aa51-f412bf2cf1d2",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": 0.8556925654411316,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_index": 93,
+          "division_acronym": "AG",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "chunk_id": "48486ec1-0b3e-45b6-aa51-f412bf2cf1d2",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5"
+        },
+        "content_preview": "such notification shall include the \nrecipient of the award, the amount of the award, the fiscal year for \nwhich the funds for the award were appropriated, the account\n\n[[Page 139 STAT. 563]]\n\nand program, project, or activity from which the funds are being drawn, \nthe title of the award, and a detailed justification for the \ntermination.\n\n    This division may be cited as the ``Agriculture, Rural Development, \nFood and Drug Administration, and Related Agency Appropriations Act, \n2026''."
+      },
+      {
+        "chunk_id": "4362b986-c9fb-48ae-a507-eefb8e8c847f",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": 1.588484287261963,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "4362b986-c9fb-48ae-a507-eefb8e8c847f",
+          "chunk_index": 82,
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division_acronym": "AG"
+        },
+        "content_preview": "rting ``2026''.\n    Sec. 775.    None of the funds appropriated or \notherwise made available by this Act may be used by the Food and Drug \nAdministration to develop, issue, promote, or advance any final \nguidelines or new regulations applicable to food manufacturers for long-\nterm population-wide sodium reduction actions until an assessment is \ncompleted on the impact of the short-term sodium reduction targets.\n\n    Sec. 776.  There is hereby appropriated $3,000,000, to remain \navailable until expended, for the Secretary of Agriculture to conduct a \nnew pilot program to support on-the-ground local Energy Circuit Riders \nwho provide professional support to rural communities for the purpose of..."
+      },
+      {
+        "chunk_id": "cd117800-23cc-4673-8cd2-158000b5658d",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": 0.9990959763526917,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_id": "cd117800-23cc-4673-8cd2-158000b5658d",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "division_acronym": "AG",
+          "chunk_index": 80,
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES"
+        },
+        "content_preview": "te the FDA document titled ``Enforcement Priorities for Electronic \nNicotine Delivery Systems (ENDS) and Other Deemed Products on the Market \nWithout Premarket Authorization'', published in January 2020 and updated \nin April 2020, to expand FDA's prioritized enforcement to flavored \ndisposable ENDS products in addition to cartridge-based products and to \ndefine the term ``disposable ENDS product.''\n\n    (c)   The Commissioner of Food \nand Drugs shall submit a semi-annual written report to the Committees on \nAppropriations of both Houses of Congress on the progress that the \nCenter for Tobacco Products is making in removing all illegal ENDS \nproducts from the market:  Provided, That the initi..."
+      },
+      {
+        "chunk_id": "78bb81a7-2736-4db7-96b1-5a0e24971044",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": 0.7241921424865723,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "78bb81a7-2736-4db7-96b1-5a0e24971044",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "division_acronym": "AG",
+          "chunk_index": 48
+        },
+        "content_preview": "thorized by 21 U.S.C. 379j, and \nshall be credited to this account and remain available until expended; \n$670,900,000 shall be derived from human generic drug user fees \nauthorized by 21 U.S.C. 379j-42, and shall be credited to this account \nand remain available until expended; $55,841,000 shall be derived from \nbiosimilar biological product user fees authorized by 21 U.S.C. 379j-52, \nand shall be credited to this account and remain available until \nexpended; $36,152,000 shall be derived from animal drug user fees \nauthorized by 21 U.S.C. 379j-12, and shall be credited to this account \nand remain available until expended; $26,724,000 shall be derived from \ngeneric new animal drug user fees a..."
+      },
+      {
+        "chunk_id": "63e9c56d-df97-40f1-929a-3d94301d4efe",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -33.0,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "63e9c56d-df97-40f1-929a-3d94301d4efe",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 63,
+          "division_acronym": "AG",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES"
+        },
+        "content_preview": "nds made available by this Act may be used \nto propose, promulgate, or implement any rule, or take any other action \nwith respect to, allowing or requiring information intended for a \nprescribing health care professional, in the case of a drug or \nbiological product subject to section 503(b)(1) of the Federal Food, \nDrug, and Cosmetic Act (21 U.S.C. 353(b)(1)), to be distributed to such \nprofessional electronically (in lieu of in paper form) unless and until \na Federal law is enacted to allow or require such distribution.\n    Sec. 723.    For the \npurposes of determining eligibility or level of program assistance for \nRural Housing Service programs the Secretary shall not include \nincarcerat..."
+      },
+      {
+        "chunk_id": "b47d5108-4b53-443f-95f2-5aaf676170de",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -28.0,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division_acronym": "AG",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+          "chunk_id": "b47d5108-4b53-443f-95f2-5aaf676170de",
+          "chunk_index": 35
+        },
+        "content_preview": "e provided to a consortium formed pursuant to \nsection 325 of Public Law 105-83:  Provided further, \nThat   not more than 2 percent of the funding provided \nfor section 306D of the Consolidated Farm and Rural Development Act may \nbe used by the State of Alaska for training and technical assistance \nprograms and not more than 2 percent of the funding provided for section \n306D of the Consolidated Farm and Rural Development Act may be used by a \nconsortium formed pursuant to section 325 of Public Law 105-83 for \ntraining and technical assistance programs:  Provided \nfurther,   That $35,000,000 of the amount \nappropriated under this heading shall be for technical assistance grants \nfor rural wa..."
+      },
+      {
+        "chunk_id": "b10a6105-8509-40a2-92d6-e364aa35a2e8",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -15.0,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "b10a6105-8509-40a2-92d6-e364aa35a2e8",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+          "chunk_index": 29,
+          "division_acronym": "AG"
+        },
+        "content_preview": "ied for this \naccount in the table titled ``Community Project Funding/Congressionally \nDirected Spending'' in the explanatory statement described in section 4 \n(in the matter preceding division A of this consolidated Act):  \nProvided, That $5,000,000 of the amount appropriated under this heading \nshall be available for a Rural Community Development Initiative:  \nProvided further, That such funds shall be used solely to develop the \ncapacity and ability of private, nonprofit community-based housing and \ncommunity development organizations, low-income rural communities, and \nFederally Recognized Native American Tribes to undertake projects to \nimprove housing, community facilities, community a..."
+      },
+      {
+        "chunk_id": "19c8bdaf-e285-4e2c-a7ef-1487cfebfd32",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -4.0,
+        "chunk_summary": null,
+        "metadata": {
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "division_acronym": "AG",
+          "chunk_index": 79,
+          "chunk_id": "19c8bdaf-e285-4e2c-a7ef-1487cfebfd32"
+        },
+        "content_preview": "cit Control Act \nof 1985.\n    Sec. 770.  Of the unobligated balances from prior year \nappropriations made available in the ``Working Capital Fund'', \n$78,000,000 are hereby permanently rescinded:  Provided, That no amounts \nmay be rescinded from amounts that were designated by the Congress as an \nemergency requirement pursuant to a concurrent resolution on the budget \nor the Balanced Budget and Emergency Deficit Control Act of 1985.\n    Sec. 771.    None of the \nfunds made available to the Department of Agriculture in this or any \nother Act may be used to close or consolidate the resources or locations \nof any existing Agricultural Research Service laboratories and \nfacilities without prior..."
+      },
+      {
+        "chunk_id": "3e1c5bb8-996f-4b83-8401-6e95ac7704a5",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -8.0,
+        "chunk_summary": null,
+        "metadata": {
+          "division_acronym": "AG",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "chunk_index": 75,
+          "chunk_id": "3e1c5bb8-996f-4b83-8401-6e95ac7704a5"
+        },
+        "content_preview": "ervices \nperformed by APHIS employees are determined by the Administrator of the \nAnimal and Plant Health Inspection Service to be in response to an \nanimal disease or plant health emergency outbreak, any premium pay that \nis funded, either directly or through reimbursement, shall be exempted \nfrom the aggregate of basic pay and premium pay calculated under section \n5547(b)(1) and (2) of title 5, United States Code, and any other \nprovision of law limiting the aggregate amount of premium pay payable on \na biweekly or calendar year basis.\n\n    Sec. 756.  None of the funds made available by this Act may be used \nto pay the salaries or expenses of personnel--\n            (1) to inspect horses u..."
+      },
+      {
+        "chunk_id": "6d65e1a5-220e-4b91-beb1-65b889a825ce",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": 0.9238788485527039,
+        "chunk_summary": null,
+        "metadata": {
+          "source_file": "FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division_acronym": "AG",
+          "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+          "chunk_id": "6d65e1a5-220e-4b91-beb1-65b889a825ce",
+          "chunk_index": 0
+        },
+        "content_preview": "DIVISION  B--\n   AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND \nRELATED AGENCY APPROPRIATIONS ACT, 2026\n\n                                 TITLE I\n\n                          AGRICULTURAL PROGRAMS\n\n                   Processing, Research, and Marketing\n\n                         Office of the Secretary\n\n                     (including transfers of funds)\n\n    For necessary expenses of the Office of the Secretary, $46,361,000 \nof which not to exceed $7,000,000 shall be available for the immediate \nOffice of the Secretary, of which $500,000 shall be for the \nestablishment of a Seafood Industry Liaison; not to exceed $1,700,000 \nshall be available for the Office of Homeland Sec..."
+      }
+    ],
+    "mapped_chunk_count": 16,
+    "mapped_chunks": [
+      {
+        "chunk_id": "b9334bc1-3b42-4f87-9b47-7824d5cc66d0",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": 0.7232298851013184,
+        "chunk_snapshot": "Provides $1.17B for FDA Human Foods Program.",
+        "chunk_summary": "This chunk shows exact funding amounts for FDA's major programs in FY2026, explaining how the Agriculture division allocates money for food safety, drugs, devices, and more.",
+        "relevance_counts": {
+          "direct": 4,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FDA appropriation is allocated among its centers and programs, including the Human Foods Program, Center for Drug Evaluation and Research, Center for Biologics Evaluation and Research, Center for Veterinary Medicine, Center for Devices and Radiological Health, National Center for Toxicological Research, and Center for Tobacco Products, with specific amounts for each and restrictions on user fees and foreign inspections.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly describes what the FY2026 Agriculture division does for the FDA by listing the funded centers and programs.",
+            "source_numbers": [
+              {
+                "figure": "$1,171,319,000",
+                "value": 1171319000.0,
+                "label": "Human Foods Program"
+              },
+              {
+                "figure": "$2,496,766,000",
+                "value": 2496766000.0,
+                "label": "Center for Drug Evaluation and Research"
+              },
+              {
+                "figure": "$601,291,000",
+                "value": 601291000.0,
+                "label": "Center for Biologics Evaluation and Research"
+              },
+              {
+                "figure": "$278,185,000",
+                "value": 278185000.0,
+                "label": "Center for Veterinary Medicine"
+              },
+              {
+                "figure": "$894,063,000",
+                "value": 894063000.0,
+                "label": "Center for Devices and Radiological Health"
+              },
+              {
+                "figure": "$71,758,000",
+                "value": 71758000.0,
+                "label": "National Center for Toxicological Research"
+              },
+              {
+                "figure": "$688,038,000",
+                "value": 688038000.0,
+                "label": "Center for Tobacco Products"
+              }
+            ]
+          },
+          {
+            "fact": "The appropriation includes restrictions: user fees assessed for FY2027 but paid in FY2026 are excluded from the heading, and none of the funds may be used to develop, establish, or operate any program of user fees authorized by 31 U.S.C. 9701.",
+            "responsiveness_tier": "direct",
+            "reason": "Describes restrictions on the FDA appropriation, which is part of what the division does for the FDA.",
+            "source_numbers": []
+          },
+          {
+            "fact": "Within the Human Foods Program, no less than $15,000,000 [[num:src_ag_b9334bc1_3b42_4f87_9b47_7824d5cc66d0_8]] shall be used for inspections of foreign seafood manufacturers and field examinations of imported seafood.",
+            "responsiveness_tier": "direct",
+            "reason": "Specific set-aside within the FDA appropriation.",
+            "source_numbers": [
+              {
+                "figure": "$15,000,000",
+                "value": 15000000.0,
+                "label": "Foreign seafood inspections"
+              }
+            ]
+          },
+          {
+            "fact": "Within the Center for Drug Evaluation and Research, no less than $10,000,000 [[num:src_ag_b9334bc1_3b42_4f87_9b47_7824d5cc66d0_9]] shall be for pilots to increase unannounced foreign inspections and shall remain available until expended.",
+            "responsiveness_tier": "direct",
+            "reason": "Specific set-aside within the FDA appropriation.",
+            "source_numbers": [
+              {
+                "figure": "$10,000,000",
+                "value": 10000000.0,
+                "label": "Unannounced foreign inspection pilots"
+              }
+            ]
+          },
+          {
+            "fact": "The appropriation also includes $205,180,000 for Rent and Related (incomplete in chunk).",
+            "responsiveness_tier": "adjacent",
+            "reason": "Part of the FDA appropriation but incomplete detail.",
+            "source_numbers": [
+              {
+                "figure": "$205,180,000",
+                "value": 205180000.0,
+                "label": "Rent and Related"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "b6e73232-2a44-4303-8207-7cb61254b8c1",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -34.0,
+        "chunk_snapshot": "Prohibits FDA from using funds for new guidelines or regulations.",
+        "chunk_summary": "This chunk shows the Agriculture division blocks FDA from using its funds to issue or promote new guidelines or regulations.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FDA is prohibited from using any funds appropriated or otherwise made available by this Act to issue or promote any new guidelines or regulations.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly addresses what the Agriculture division does for the FDA: it imposes a restriction on FDA activities.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "160a4a3e-e145-4648-b90b-06162c1802d7",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -31.0,
+        "chunk_snapshot": "USDA Rural Water and Waste Disposal Program Account with $1.015 billion direct loans",
+        "chunk_summary": "This chunk details USDA rural development funding, not FDA's Agriculture division, showing it does not answer the question about FDA.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 4,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FY2026 Agriculture division provides funding for the Rural Utilities Service's rural water and waste disposal program account, including direct and guaranteed loans for water, waste water, waste disposal, and solid waste management programs.",
+            "responsiveness_tier": "adjacent",
+            "reason": "The chunk does not mention the FDA; it covers USDA rural development programs. This fact is adjacent as it describes a major activity in the Agriculture division but not FDA-related.",
+            "source_numbers": [
+              {
+                "figure": "$1,015,000,000",
+                "value": 1015000000.0,
+                "label": "Rural water and waste disposal direct loans"
+              },
+              {
+                "figure": "$50,000,000",
+                "value": 50000000.0,
+                "label": "Rural water and waste disposal guaranteed loans"
+              },
+              {
+                "figure": "$445,864,564",
+                "value": 445864564.0,
+                "label": "Cost of direct loans, loan guarantees and grants for rural water programs"
+              }
+            ]
+          },
+          {
+            "fact": "The division also funds the rural microentrepreneur assistance program with $17,000,000 for direct loans and $4,000,000 for the cost of loans and grants.",
+            "responsiveness_tier": "adjacent",
+            "reason": "This is a USDA rural development program, not FDA-related.",
+            "source_numbers": [
+              {
+                "figure": "$17,000,000",
+                "value": 17000000.0,
+                "label": "Rural microentrepreneur assistance direct loans"
+              },
+              {
+                "figure": "$4,000,000",
+                "value": 4000000.0,
+                "label": "Rural microentrepreneur assistance cost of loans and grants"
+              }
+            ]
+          },
+          {
+            "fact": "The division provides $100,000,000 for the rural energy for America program loan guarantees.",
+            "responsiveness_tier": "adjacent",
+            "reason": "This is a USDA rural energy program, not FDA-related.",
+            "source_numbers": [
+              {
+                "figure": "$100,000,000",
+                "value": 100000000.0,
+                "label": "Rural energy for America program loan guarantees"
+              }
+            ]
+          },
+          {
+            "fact": "The division funds the healthy food financing initiative with $50,000 for the cost of loans and grants to support projects providing access to healthy food in underserved areas.",
+            "responsiveness_tier": "adjacent",
+            "reason": "This is a USDA nutrition initiative, not FDA-related.",
+            "source_numbers": [
+              {
+                "figure": "$50,000",
+                "value": 50000.0,
+                "label": "Healthy food financing initiative cost of loans and grants"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "975fe0b7-0b30-43cb-8f57-30dba8e2cecb",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -17.0,
+        "chunk_snapshot": "Agriculture division provides $551M for commodity and disaster assistance.",
+        "chunk_summary": "This chunk shows FY2026 funding allocations for USDA nutrition education and commodity assistance programs, illustrating federal support for food distribution.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 2,
+          "not_responsive": 1
+        },
+        "relevance_facts": [
+          {
+            "fact": "The Commodity Assistance Program provides $551,070,000 for necessary expenses to carry out disaster and commodity assistance, to remain available through September 30, 2027.",
+            "responsiveness_tier": "adjacent",
+            "reason": "The chunk is from the Agriculture division, but the question asks about the FDA, which is not mentioned. This fact is about a different program within the same division.",
+            "source_numbers": [
+              {
+                "figure": "$551,070,000",
+                "value": 551070000.0,
+                "label": "Commodity Assistance Program total"
+              }
+            ]
+          },
+          {
+            "fact": "Of the Commodity Assistance Program funds, $460,000,000 is for the Commodity Supplemental Food Program, $80,000,000 for the Emergency Food Assistance Act of 1983, $1,070,000 for assistance for the nuclear affected islands, and $10,000,000 for the Farmers' Market Nutrition Program.",
+            "responsiveness_tier": "adjacent",
+            "reason": "These are suballocations within the Commodity Assistance Program, not related to FDA.",
+            "source_numbers": [
+              {
+                "figure": "$460,000,000",
+                "value": 460000000.0,
+                "label": "Commodity Supplemental Food Program"
+              },
+              {
+                "figure": "$80,000,000",
+                "value": 80000000.0,
+                "label": "Emergency Food Assistance Act of 1983"
+              },
+              {
+                "figure": "$1,070,000",
+                "value": 1070000.0,
+                "label": "Assistance for nuclear affected islands"
+              },
+              {
+                "figure": "$10,000,000",
+                "value": 10000000.0,
+                "label": "Farmers' Market Nutrition Program"
+              }
+            ]
+          },
+          {
+            "fact": "The chunk includes provisions for nutrition education services to State agencies and Federally Recognized Tribes, demonstration projects for tribal organizations, and other activities under the Food and Nutrition Act of 2008, but these are not related to FDA.",
+            "responsiveness_tier": "not_responsive",
+            "reason": "These provisions are about food and nutrition programs, not FDA.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "2c5c897a-7236-482a-a978-ead062fa9e6f",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -4.0,
+        "chunk_snapshot": "FDA restricted on new Listeria guidelines for low-risk foods",
+        "chunk_summary": "This chunk shows the FY2026 Agriculture bill restricts the FDA from issuing new Listeria guidelines for low-risk foods until reviewing new science.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 1,
+          "not_responsive": 3
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FY2026 Agriculture division restricts FDA from using funds to issue or promote new guidelines or regulations for Listeria monocytogenes in low-risk RTE foods until the FDA considers new science in developing the Compliance Policy Guide.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly addresses FDA restrictions in the Agriculture division.",
+            "source_numbers": []
+          },
+          {
+            "fact": "The division provides $2,000,000 for carrying out section 758 of division B of Public Law 118-42, to remain available until expended.",
+            "responsiveness_tier": "adjacent",
+            "reason": "Related to FDA but not directly about FDA's operations; it's a separate appropriation.",
+            "source_numbers": [
+              {
+                "figure": "$2,000,000",
+                "value": 2000000.0,
+                "label": "Section 758 appropriation"
+              }
+            ]
+          },
+          {
+            "fact": "The division provides $4,000,000 for cotton classing activities, to remain available until September 30, 2027, treated as funds collected by fees.",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Unrelated to FDA; pertains to cotton classing.",
+            "source_numbers": [
+              {
+                "figure": "$4,000,000",
+                "value": 4000000.0,
+                "label": "Cotton classing appropriation"
+              }
+            ]
+          },
+          {
+            "fact": "The division provides $700,000 for the Office of Tribal Relations for bison slaughtering, processing, and voluntary meat inspection fees.",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Unrelated to FDA; pertains to USDA Office of Tribal Relations.",
+            "source_numbers": [
+              {
+                "figure": "$700,000",
+                "value": 700000.0,
+                "label": "Office of Tribal Relations appropriation"
+              }
+            ]
+          },
+          {
+            "fact": "The division exempts APHIS employee premium pay for emergency animal disease or plant health outbreaks from aggregate pay limits.",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Unrelated to FDA; pertains to APHIS.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "23026b6e-34de-44a4-99b3-87608e5a1df4",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -8.0,
+        "chunk_snapshot": "Funds $561.1 million for cooperative extension activities.",
+        "chunk_summary": "This chunk details USDA funding for research and extension, not the FDA\u2019s Agriculture division, so it does not answer the question.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FY2026 Agriculture division provides funding for the Native American Institutions Endowment Fund, extension activities, and various education grants and research initiatives under the National Institute of Food and Agriculture.",
+            "responsiveness_tier": "adjacent",
+            "reason": "The chunk does not mention the FDA; it covers NIFA programs and other agriculture-related accounts. The fact is adjacent because it describes what the Agriculture division does, but not specifically for the FDA.",
+            "source_numbers": [
+              {
+                "figure": "$11,880,000",
+                "value": 11880000.0,
+                "label": "Native American Institutions Endowment Fund"
+              },
+              {
+                "figure": "$561,100,000",
+                "value": 561100000.0,
+                "label": "Extension Activities"
+              },
+              {
+                "figure": "$7,000,000",
+                "value": 7000000.0,
+                "label": "Remain available until expended"
+              },
+              {
+                "figure": "$13,560,000",
+                "value": 13560000.0,
+                "label": "Community Project Funding/Congressionally Directed Spending"
+              },
+              {
+                "figure": "$33,500,000",
+                "value": 33500000.0,
+                "label": "Extension Activities remain available until expended"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "48486ec1-0b3e-45b6-aa51-f412bf2cf1d2",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": 0.8556925654411316,
+        "chunk_snapshot": "FY2026 Agriculture division provides appropriations to the FDA.",
+        "chunk_summary": "This chunk identifies the bill that funds the FDA\u2019s FY2026 agriculture division, showing the legal source of its appropriation.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "This division may be cited as the \"Agriculture, Rural Development, Food and Drug Administration, and Related Agency Appropriations Act, 2026\".",
+            "responsiveness_tier": "direct",
+            "reason": "Directly identifies the division and its scope, which includes FDA.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "4362b986-c9fb-48ae-a507-eefb8e8c847f",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": 1.588484287261963,
+        "chunk_snapshot": "USDA $3M pilot for rural energy circuit riders",
+        "chunk_summary": "This chunk shows the FY2026 Agriculture division restricts FDA from issuing sodium reduction rules and directs FDA to update fish market names.",
+        "relevance_counts": {
+          "direct": 2,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "The division restricts FDA from using funds to develop, issue, promote, or advance final guidelines or new regulations for long-term population-wide sodium reduction actions until an assessment of short-term targets is completed.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly describes a restriction on FDA's activities in the FY2026 Agriculture division.",
+            "source_numbers": []
+          },
+          {
+            "fact": "The division directs FDA to engage with industry stakeholders to update acceptable market names for specific fish species within 30 days of enactment.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly describes a directive to FDA in the FY2026 Agriculture division.",
+            "source_numbers": []
+          },
+          {
+            "fact": "The division appropriates $3,000,000 for a new pilot program by the Secretary of Agriculture to support Energy Circuit Riders in rural communities.",
+            "responsiveness_tier": "adjacent",
+            "reason": "Relates to the Agriculture division but involves USDA, not FDA.",
+            "source_numbers": [
+              {
+                "figure": "$3,000,000",
+                "value": 3000000.0,
+                "label": "Pilot program for Energy Circuit Riders"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "cd117800-23cc-4673-8cd2-158000b5658d",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": 0.9990959763526917,
+        "chunk_snapshot": "Requires FY2026 FDA user fees to comply with existing authorization laws.",
+        "chunk_summary": "This shows that for FY2026, FDA must follow current user fee laws, ensuring funding for tobacco product enforcement stays authorized.",
+        "relevance_counts": {
+          "direct": 5,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FDA is directed to expand prioritized enforcement to flavored disposable ENDS products in addition to cartridge-based products and to define the term 'disposable ENDS product'.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly describes an FDA enforcement action in the Agriculture division.",
+            "source_numbers": []
+          },
+          {
+            "fact": "The Commissioner of Food and Drugs must submit a semi-annual written report to the Committees on Appropriations on progress removing illegal ENDS products from the market, with the initial report due within 180 days of enactment.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly describes an FDA reporting requirement in the Agriculture division.",
+            "source_numbers": []
+          },
+          {
+            "fact": "Section 801(a) of the FD&C Act is amended to insert 'tobacco product' alongside 'drug' and 'device' in certain sentences.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly describes an FDA-related statutory amendment in the Agriculture division.",
+            "source_numbers": []
+          },
+          {
+            "fact": "Within 180 days, the FDA must submit a report to the Committees on Appropriations detailing activities to educate retailers on determining which products are legal for sale.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly describes an FDA retailer education reporting requirement in the Agriculture division.",
+            "source_numbers": []
+          },
+          {
+            "fact": "Fees derived from amounts assessed and collected for FY2026, credited under the FDA Salaries and Expenses heading, must comply with provisions in current user fee authorizations, appropriations Acts, and commitment letters.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly describes a funding mechanism for FDA in the Agriculture division.",
+            "source_numbers": [
+              {
+                "figure": "fiscal year 2026",
+                "label": "FY2026 user fee compliance requirement"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "78bb81a7-2736-4db7-96b1-5a0e24971044",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": 0.7241921424865723,
+        "chunk_snapshot": "FY2026 FDA user fees from multiple product categories",
+        "chunk_summary": "This chunk shows the FDA's FY2026 funding relies on user fees from drugs, devices, and tobacco, explaining how the Agriculture division finances FDA operations.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FDA's Salaries and Expenses account is funded through a combination of appropriations and user fees from various sources, including prescription drugs, medical devices, human generic drugs, biosimilar biological products, animal drugs, generic new animal drugs, and tobacco products. User fees exceeding fiscal year 2026 limitations are also appropriated and credited to the account. A portion of the total appropriation ($1,171,319,000 [[num:src_ag_78bb81a7_2736_4db7_96b1_5a0e24971044_6]]) is designated for the Human Foods Program and related field activities.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly describes what the FY2026 Agriculture division does for the FDA: it provides funding through appropriations and user fees, with specific allocations for the Human Foods Program.",
+            "source_numbers": [
+              {
+                "figure": "$670,900,000",
+                "value": 670900000.0,
+                "label": "human generic drug user fees"
+              },
+              {
+                "figure": "$55,841,000",
+                "value": 55841000.0,
+                "label": "biosimilar biological product user fees"
+              },
+              {
+                "figure": "$36,152,000",
+                "value": 36152000.0,
+                "label": "animal drug user fees"
+              },
+              {
+                "figure": "$26,724,000",
+                "value": 26724000.0,
+                "label": "generic new animal drug user fees"
+              },
+              {
+                "figure": "$712,000,000",
+                "value": 712000000.0,
+                "label": "tobacco product user fees"
+              },
+              {
+                "figure": "$1,171,319,000",
+                "value": 1171319000.0,
+                "label": "Human Foods Program and related field activities"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "63e9c56d-df97-40f1-929a-3d94301d4efe",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -33.0,
+        "chunk_snapshot": "Restricts FDA from requiring electronic prescribing info distribution.",
+        "chunk_summary": "This chunk shows that FY2026 funds cannot be used to let FDA allow electronic drug prescribing info instead of paper, unless a new law passes.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 3,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FY2026 Agriculture division restricts FDA from using funds to propose, promulgate, or implement any rule allowing or requiring electronic distribution of prescribing information for certain drugs unless a federal law is enacted.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly describes a restriction on FDA's regulatory authority.",
+            "source_numbers": []
+          },
+          {
+            "fact": "The division prohibits using funds to implement, administer, or enforce the 'variety' requirements of the SNAP retailer standards final rule.",
+            "responsiveness_tier": "adjacent",
+            "reason": "Related to USDA, not FDA, but still within the Agriculture division.",
+            "source_numbers": []
+          },
+          {
+            "fact": "The division includes provisions for Rural Housing Service programs (excluding incarcerated populations from eligibility) and allows USDA to increase loan/loan guarantee program levels by up to 25% with congressional notification.",
+            "responsiveness_tier": "adjacent",
+            "reason": "Related to USDA programs, not FDA, but within the same division.",
+            "source_numbers": []
+          },
+          {
+            "fact": "The division restricts use of credit card refunds/rebates transferred to the Working Capital Fund without prior approval and limits obligations to acquisition of property, plant, equipment, and IT systems for USDA agencies.",
+            "responsiveness_tier": "adjacent",
+            "reason": "Related to USDA administrative funds, not FDA.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "b47d5108-4b53-443f-95f2-5aaf676170de",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -28.0,
+        "chunk_snapshot": "Provides $35 million for rural water technical assistance grants.",
+        "chunk_summary": "This chunk details USDA funding for rural water systems, not the FDA's Agriculture division, so it provides no evidence for the question.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FY2026 Agriculture division provides funding for the Rural Community Advancement Program, which includes technical assistance grants for rural water and waste systems, a circuit rider program, solid waste management grants, grants under section 306(a)(2)(a) of the Consolidated Farm and Rural Development Act, and a transfer to the Rural Utilities Service High Energy Cost Grants Account.",
+            "responsiveness_tier": "adjacent",
+            "reason": "The chunk does not mention the FDA; it covers rural development programs under the Agriculture division. The fact is adjacent because it describes what the division does, but not for the FDA.",
+            "source_numbers": [
+              {
+                "figure": "$35,000,000",
+                "value": 35000000.0,
+                "label": "Technical assistance grants for rural water and waste systems"
+              },
+              {
+                "figure": "$23,900,000",
+                "value": 23900000.0,
+                "label": "Circuit rider program for rural water systems"
+              },
+              {
+                "figure": "$4,000,000",
+                "value": 4000000.0,
+                "label": "Solid waste management grants"
+              },
+              {
+                "figure": "$250,488,564",
+                "value": 250488564.0,
+                "label": "Grants under section 306(a)(2)(a)"
+              },
+              {
+                "figure": "$8,000,000",
+                "value": 8000000.0,
+                "label": "Transfer to Rural Utilities Service High Energy Cost Grants Account"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "b10a6105-8509-40a2-92d6-e364aa35a2e8",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -15.0,
+        "chunk_snapshot": "Agriculture division's $5M Rural Community Development Initiative",
+        "chunk_summary": "This chunk shows the Agriculture division funds rural development projects, not FDA activities, clarifying that FDA\u2019s role is handled elsewhere in FY2026.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 0,
+          "not_responsive": 1
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FY2026 Agriculture division provides funding for the FDA, but the chunk does not contain FDA-specific provisions; it covers Rural Community Development Initiative and community facilities grants under the Rural Development account.",
+            "responsiveness_tier": "not_responsive",
+            "reason": "The chunk does not mention the FDA; it pertains to USDA Rural Development programs.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "19c8bdaf-e285-4e2c-a7ef-1487cfebfd32",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -4.0,
+        "chunk_snapshot": "FDA uses $200 million in tobacco fees for e-cigarette enforcement.",
+        "chunk_summary": "This chunk shows that the Agriculture appropriations bill mandates FDA use at least $200 million in tobacco fees for e-cigarette enforcement.",
+        "relevance_counts": {
+          "direct": 3,
+          "adjacent": 0,
+          "not_responsive": 2
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FDA receives funding under the heading 'Department of Health and Human Services--Food and Drug Administration--Salaries and Expenses' in this Act, with a requirement that not less than $200,000,000 [[num:src_ag_19c8bdaf_e285_4e2c_a7ef_1487cfebfd32_1]] from tobacco product user fees be used for enforcement activities related to e-cigarettes, vapes, and other ENDS, including at least $2,000,000 [[num:src_ag_19c8bdaf_e285_4e2c_a7ef_1487cfebfd32_2]] for a federal multi-agency task force.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly describes a funding requirement and enforcement mandate for the FDA within the Agriculture division.",
+            "source_numbers": [
+              {
+                "figure": "$200,000,000",
+                "value": 200000000.0,
+                "label": "FDA enforcement for ENDS"
+              },
+              {
+                "figure": "$2,000,000",
+                "value": 2000000.0,
+                "label": "Multi-agency task force on ENDS"
+              }
+            ]
+          },
+          {
+            "fact": "The Commissioner of Food and Drugs must update the FDA's ENDS enforcement priorities document within 365 days to include flavored disposable ENDS products and define 'disposable ENDS product'.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly imposes a reporting and regulatory update requirement on the FDA.",
+            "source_numbers": []
+          },
+          {
+            "fact": "The Commissioner of Food and Drugs must submit semi-annual written reports to the Committees on Appropriations on enforcement activities.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly imposes a reporting requirement on the FDA.",
+            "source_numbers": []
+          },
+          {
+            "fact": "Section 770 rescinds $78,000,000 from unobligated balances in the Working Capital Fund, but this applies to the Department of Agriculture, not FDA.",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Pertains to USDA, not FDA.",
+            "source_numbers": [
+              {
+                "figure": "$78,000,000",
+                "value": 78000000.0,
+                "label": "Rescission from Working Capital Fund"
+              }
+            ]
+          },
+          {
+            "fact": "Section 771 prohibits using funds to close or consolidate Agricultural Research Service laboratories without prior notification and approval of the Committees on Appropriations.",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Pertains to USDA Agricultural Research Service, not FDA.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "3e1c5bb8-996f-4b83-8401-6e95ac7704a5",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": -8.0,
+        "chunk_snapshot": "Appropriates $2,000,000 for wetland compliance.",
+        "chunk_summary": "The chunk contains no evidence about the FDA's Agriculture division, because it focuses on USDA horse inspections and alcohol guidelines, not FDA functions.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 2,
+          "not_responsive": 2
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FY2026 Agriculture division includes provisions for APHIS employee premium pay exemption during animal disease or plant health emergency outbreaks.",
+            "responsiveness_tier": "adjacent",
+            "reason": "APHIS is part of USDA, not FDA; the provision is related to USDA employees, not FDA.",
+            "source_numbers": []
+          },
+          {
+            "fact": "The division prohibits using funds to inspect horses under the Federal Meat Inspection Act and related regulations.",
+            "responsiveness_tier": "adjacent",
+            "reason": "Horse inspection is under USDA, not FDA; the provision does not directly involve FDA.",
+            "source_numbers": []
+          },
+          {
+            "fact": "The division appropriates $2,000,000 for wetland compliance under section 2103 of Public Law 115-334.",
+            "responsiveness_tier": "not_responsive",
+            "reason": "This appropriation is for USDA wetland compliance, not FDA.",
+            "source_numbers": [
+              {
+                "figure": "$2,000,000",
+                "value": 2000000.0,
+                "label": "Wetland compliance appropriation"
+              }
+            ]
+          },
+          {
+            "fact": "The division appropriates $3,000,000 for the emergency and transitional pet shelter and housing assistance grant program.",
+            "responsiveness_tier": "not_responsive",
+            "reason": "This grant program is administered by USDA, not FDA.",
+            "source_numbers": [
+              {
+                "figure": "$3,000,000",
+                "value": 3000000.0,
+                "label": "Pet shelter grant program"
+              }
+            ]
+          },
+          {
+            "fact": "The division requires the Secretaries of HHS and Agriculture to base alcohol consumption recommendations in the 2025 Dietary Guidelines for Americans solely on the NASEM report and scientific knowledge.",
+            "responsiveness_tier": "direct",
+            "reason": "FDA is part of HHS; this provision directly governs how the Dietary Guidelines (which FDA may use) are developed, involving the Secretary of HHS.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "6d65e1a5-220e-4b91-beb1-65b889a825ce",
+        "division": "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+        "division_acronym": "AG",
+        "score": 0.9238788485527039,
+        "chunk_snapshot": "",
+        "chunk_summary": "This chunk contains USDA Office of the Secretary funding, evidence that the Agriculture division's FY2026 budget does not directly fund FDA.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "The FY2026 Agriculture division provides funding for the Office of the Secretary, including various suballocations for offices such as Homeland Security, Tribal Relations, Partnerships and Public Engagement, and Communications, and authorizes transfers of funds.",
+            "responsiveness_tier": "adjacent",
+            "reason": "The chunk covers the Office of the Secretary under Agricultural Programs, not the FDA. It is adjacent because it is part of the same division but does not directly address FDA.",
+            "source_numbers": [
+              {
+                "figure": "$46,361,000",
+                "value": 46361000.0,
+                "label": "Office of the Secretary total"
+              },
+              {
+                "figure": "$7,000,000",
+                "value": 7000000.0,
+                "label": "Immediate Office of the Secretary"
+              },
+              {
+                "figure": "$500,000",
+                "value": 500000.0,
+                "label": "Seafood Industry Liaison"
+              },
+              {
+                "figure": "$1,700,000",
+                "value": 1700000.0,
+                "label": "Office of Homeland Security"
+              },
+              {
+                "figure": "$5,190,000",
+                "value": 5190000.0,
+                "label": "Office of Tribal Relations"
+              },
+              {
+                "figure": "$1,000,000",
+                "value": 1000000.0,
+                "label": "Tribal Public Health Resource Center"
+              },
+              {
+                "figure": "$5,250,000",
+                "value": 5250000.0,
+                "label": "Office of Partnerships and Public Engagement"
+              },
+              {
+                "figure": "$1,500,000",
+                "value": 1500000.0,
+                "label": "7 U.S.C. 2279(c)(5)"
+              },
+              {
+                "figure": "$18,721,000",
+                "value": 18721000.0,
+                "label": "Office of the Assistant Secretary for Administration"
+              },
+              {
+                "figure": "$17,015,000",
+                "value": 17015000.0,
+                "label": "Departmental Administration"
+              },
+              {
+                "figure": "$3,500,000",
+                "value": 3500000.0,
+                "label": "Office of Assistant Secretary for Congressional Relations"
+              },
+              {
+                "figure": "$5,000,000",
+                "value": 5000000.0,
+                "label": "Office of Communications"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "judge": {
+      "fact_checks": [
+        {
+          "fact": "The FY2026 Agriculture division funds FDA salaries and expenses",
+          "found": true,
+          "evidence": "The FY2026 Agriculture act funds the FDA\u2019s Salaries and Expenses account and directs how that money can be used, including support for the Human Foods Program and related field activities $1,171,319,000 and the FDA\u2019s major centers and programs."
+        },
+        {
+          "fact": "FDA activities are supported by user fees for prescription drugs, medical devices, human generic drugs, biosimilars, animal drugs, generic new animal drugs, and tobacco products",
+          "found": false,
+          "evidence": "not found"
+        },
+        {
+          "fact": "The FDA Commissioner must submit a detailed obligation plan to the Appropriations Committees within 30 days of enactment",
+          "found": false,
+          "evidence": "not found"
+        },
+        {
+          "fact": "The division bars use of funds to implement electronic distribution of prescribing information for certain drugs unless federal law authorizes it",
+          "found": true,
+          "evidence": "no new rule on electronic distribution of prescribing information unless Congress acts"
+        }
+      ],
+      "error_checks": [
+        {
+          "error": "Should not turn the answer into a reconciliation ledger",
+          "triggered": false,
+          "evidence": "not triggered"
+        },
+        {
+          "error": "Should not list every FDA center/activity dollar amount",
+          "triggered": false,
+          "evidence": "not triggered"
+        },
+        {
+          "error": "Should not list every user-fee dollar amount",
+          "triggered": false,
+          "evidence": "not triggered"
+        },
+        {
+          "error": "Should not omit the electronic prescribing-information restriction",
+          "triggered": false,
+          "evidence": "not triggered"
+        },
+        {
+          "error": "Should not route outside Agriculture",
+          "triggered": false,
+          "evidence": "not triggered"
+        }
+      ],
+      "structural_checks": {
+        "passed": true,
+        "issues": []
+      },
+      "overall_score": 5,
+      "reasoning": "The answer provides a good overview of funding and restrictions but misses two required facts: the list of specific user fees and the obligation plan requirement. It correctly includes the electronic prescribing restriction and avoids structural errors.",
+      "question_id": "summary_1"
+    }
+  }
+]

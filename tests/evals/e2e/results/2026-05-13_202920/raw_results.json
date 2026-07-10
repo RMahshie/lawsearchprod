@@ -1,0 +1,1017 @@
+[
+  {
+    "question_id": "broad_2",
+    "question": "What FY2026 funding is available for a city seeking affordable housing, rental assistance, or homelessness services?",
+    "answer_mode": "broad_topic_total",
+    "expected_answer_mode": "broad_topic_total",
+    "actual_answer_mode": "broad_topic_total",
+    "classify_match": true,
+    "expected_divisions": [
+      "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES"
+    ],
+    "actual_divisions": [
+      "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES"
+    ],
+    "route_match": true,
+    "answer_mode_reason": "User asks about FY2026 funding for a broad topic (affordable housing, rental assistance, homelessness services) across agencies or accounts.",
+    "division_answers": [
+      {
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "answer": "### [THUD] TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES\n\nBottom line: HUD has separate FY2026 funding lanes for public housing, tenant-based rental assistance, project-based rental assistance, homeless assistance grants, Section 811 supportive housing, and Choice Neighborhoods; no clean division-wide total is available because the facts mix account totals, suballocations, and renewal authorities.\n\nKey buckets:\n- Public Housing Fund: $8,319,393,000 [[num:src_thud_9841cfd4_18e8_4504_8843_461e06569ba5_1]] for 2026 public housing operations and capital/management activities; within that, $4,687,393,000 [[num:src_thud_9841cfd4_18e8_4504_8843_461e06569ba5_2]] is for the operating fund formula, $337,000,000 [[num:src_thud_9841cfd4_18e8_4504_8843_461e06569ba5_3]] is for need-based shortfalls, and $3,200,000,000 [[num:src_thud_9841cfd4_18e8_4504_8843_461e06569ba5_4]] is for the capital fund formula.\n- Tenant-based rental assistance: $34,438,557,000 [[num:src_thud_4a3a0d30_b7b3_442e_8ee2_d6e04108d60d_1]] is available for FY2026, plus $4,000,000,000 [[num:src_thud_4a3a0d30_b7b3_442e_8ee2_d6e04108d60d_2]] previously appropriated for the same heading and $4,000,000,000 [[num:src_thud_4a3a0d30_b7b3_442e_8ee2_d6e04108d60d_3]] available on October 1, 2026; of the sums appropriated, $34,957,000,000 [[num:src_thud_4a3a0d30_b7b3_442e_8ee2_d6e04108d60d_4]] is for renewals of expiring section 8 tenant-based annual contributions contracts.\n- Project-based rental assistance: $18,143,000,000 [[num:src_thud_f1b2363f_5009_4e7f_a53a_19d7a641efa5_1]] is available for FY2026, plus $400,000,000 [[num:src_thud_f1b2363f_5009_4e7f_a53a_19d7a641efa5_2]] previously appropriated and $400,000,000 [[num:src_thud_f1b2363f_5009_4e7f_a53a_19d7a641efa5_3]] available on October 1, 2026.\n- Homeless assistance grants: $4,417,000,000 [[num:src_thud_e0672ad1_4356_43e9_afad_46ca77ac5d8b_1]] is appropriated, including $290,000,000 [[num:src_thud_e0672ad1_4356_43e9_afad_46ca77ac5d8b_2]] for emergency solutions grants and $4,010,000,000 [[num:src_thud_e0672ad1_4356_43e9_afad_46ca77ac5d8b_3]] for the continuum of care program and rural housing stability assistance; the bill also directs non-competitive renewals for certain expiring homeless projects in 2026.\n- Section 811 supportive housing: $287,000,000 [[num:src_thud_853b7fb5_28ff_4aa9_be82_2ff235743a46_1]] is available for project rental assistance to state housing finance agencies and supportive services for persons with disabilities.\n- Choice Neighborhoods Initiative: $25,000,000 [[num:src_thud_f70814d7_3213_4d74_969b_06ce52e722c1_1]] is available for competitive transformation and rehabilitation grants.\n\nLocal caveat: The renewal directives for homeless assistance and section 8 vouchers are rules for how existing funding is reused; they should not be added as new budget authority.",
+        "chunks_retrieved": 16
+      }
+    ],
+    "final_answer": "### [THUD] TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES\n\nBottom line: HUD has separate FY2026 funding lanes for public housing, tenant-based rental assistance, project-based rental assistance, homeless assistance grants, Section 811 supportive housing, and Choice Neighborhoods; no clean division-wide total is available because the facts mix account totals, suballocations, and renewal authorities.\n\nKey buckets:\n- Public Housing Fund: $8,319,393,000 [[num:src_thud_9841cfd4_18e8_4504_8843_461e06569ba5_1]] for 2026 public housing operations and capital/management activities; within that, $4,687,393,000 [[num:src_thud_9841cfd4_18e8_4504_8843_461e06569ba5_2]] is for the operating fund formula, $337,000,000 [[num:src_thud_9841cfd4_18e8_4504_8843_461e06569ba5_3]] is for need-based shortfalls, and $3,200,000,000 [[num:src_thud_9841cfd4_18e8_4504_8843_461e06569ba5_4]] is for the capital fund formula.\n- Tenant-based rental assistance: $34,438,557,000 [[num:src_thud_4a3a0d30_b7b3_442e_8ee2_d6e04108d60d_1]] is available for FY2026, plus $4,000,000,000 [[num:src_thud_4a3a0d30_b7b3_442e_8ee2_d6e04108d60d_2]] previously appropriated for the same heading and $4,000,000,000 [[num:src_thud_4a3a0d30_b7b3_442e_8ee2_d6e04108d60d_3]] available on October 1, 2026; of the sums appropriated, $34,957,000,000 [[num:src_thud_4a3a0d30_b7b3_442e_8ee2_d6e04108d60d_4]] is for renewals of expiring section 8 tenant-based annual contributions contracts.\n- Project-based rental assistance: $18,143,000,000 [[num:src_thud_f1b2363f_5009_4e7f_a53a_19d7a641efa5_1]] is available for FY2026, plus $400,000,000 [[num:src_thud_f1b2363f_5009_4e7f_a53a_19d7a641efa5_2]] previously appropriated and $400,000,000 [[num:src_thud_f1b2363f_5009_4e7f_a53a_19d7a641efa5_3]] available on October 1, 2026.\n- Homeless assistance grants: $4,417,000,000 [[num:src_thud_e0672ad1_4356_43e9_afad_46ca77ac5d8b_1]] is appropriated, including $290,000,000 [[num:src_thud_e0672ad1_4356_43e9_afad_46ca77ac5d8b_2]] for emergency solutions grants and $4,010,000,000 [[num:src_thud_e0672ad1_4356_43e9_afad_46ca77ac5d8b_3]] for the continuum of care program and rural housing stability assistance; the bill also directs non-competitive renewals for certain expiring homeless projects in 2026.\n- Section 811 supportive housing: $287,000,000 [[num:src_thud_853b7fb5_28ff_4aa9_be82_2ff235743a46_1]] is available for project rental assistance to state housing finance agencies and supportive services for persons with disabilities.\n- Choice Neighborhoods Initiative: $25,000,000 [[num:src_thud_f70814d7_3213_4d74_969b_06ce52e722c1_1]] is available for competitive transformation and rehabilitation grants.\n\nLocal caveat: The renewal directives for homeless assistance and section 8 vouchers are rules for how existing funding is reused; they should not be added as new budget authority.",
+    "retrieved_chunk_count": 16,
+    "retrieved_chunks": [
+      {
+        "chunk_id": "dd24bc4e-988f-40b9-b288-6b4ef4527339",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.5920132398605347,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "chunk_id": "dd24bc4e-988f-40b9-b288-6b4ef4527339",
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+          "chunk_index": 173,
+          "division_acronym": "THUD"
+        },
+        "content_preview": "titive grant amounts \nmade available under such heading: Provided, That the amount of any \nforgone increases in tenant rent payments due to the implementation of \nsuch rent incentives shall be factored into the public housing agency's \ngeneral operating fund eligibility pursuant to the formula under the \nheading ``Public Housing Fund'': Provided further, That the amount of \nany foregone increases in tenant rent payments due to the implementation \nof such rent incentives implemented on behalf of residents of a project \nwith assistance converted from public housing to project-based rental \nassistance under section 8 of the United States Housing Act of 1937 (42 \nU.S.C. 1437f) or assistance unde..."
+      },
+      {
+        "chunk_id": "be8ce007-1475-4560-acd3-5a9f40672d6c",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.6296967267990112,
+        "chunk_summary": null,
+        "metadata": {
+          "division_acronym": "THUD",
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 174,
+          "chunk_id": "be8ce007-1475-4560-acd3-5a9f40672d6c"
+        },
+        "content_preview": "d shelter plus \ncare projects) expiring during the first quarter of calendar year 2026 \n(including any projects that expired from January 1, 2026 through the \ndate of enactment of this Act): Provided, That  if awards have not been made under a fiscal year 2025 notice \nof funding opportunity prior to April 1, 2026, the Secretary shall also \nnon-competitively renew all such projects expiring during the second \nquarter of calendar year 2026: Provided further, That \nif  awards have not been made under a \nfiscal year 2025 notice of funding opportunity prior to July 1, 2026, \nthe Secretary shall also non-competitively renew all such projects \nexpiring\n\n[[Page 140 STAT. 423]]\n\nduring the third and..."
+      },
+      {
+        "chunk_id": "d1522cd4-38a3-4f82-9c2e-88d166efa67e",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.692226231098175,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division_acronym": "THUD",
+          "chunk_index": 172,
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "chunk_id": "d1522cd4-38a3-4f82-9c2e-88d166efa67e",
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES"
+        },
+        "content_preview": "ble by \nthe Consolidated and Further Continuing Appropriations Act, 2013 (Public \nLaw 113-6) for initial project rental assistance contracts associated \nwith the demonstration program under the heading ``Housing for Persons \nwith Disabilities'' in the Consolidated and Further Continuing \nAppropriations Act, 2012 (Public Law 112-55) that were available for \nobligation through fiscal year 2016 are to remain available through \nfiscal year 2031 for the liquidation of valid obligations incurred in \nfiscal years 2013 through 2016.\n\n    Sec. 241. Amounts made available for the Office of Housing under the \nheading ``Program Offices'' in this and prior Acts shall also be \navailable, without additiona..."
+      },
+      {
+        "chunk_id": "9841cfd4-18e8-4504-8843-461e06569ba5",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7160695195198059,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_index": 114,
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "division_acronym": "THUD",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_id": "9841cfd4-18e8-4504-8843-461e06569ba5"
+        },
+        "content_preview": "igated balances of contract authority from fiscal year 1974 and prior \nfiscal years that have been terminated shall be rescinded: Provided \nfurther, That amounts heretofore recaptured, or recaptured during the \ncurrent fiscal year, from section 8 project-based contracts from source \nyears fiscal year 1975 through fiscal year 1987 are hereby rescinded, \nand an amount of additional new budget authority, equivalent to the \namount rescinded is hereby appropriated, to remain available until \nexpended, for the purposes set forth under this heading, in addition to \namounts otherwise available.\n\n                           public housing fund\n\n    For 2026 payments to public housing agencies for the..."
+      },
+      {
+        "chunk_id": "5884d8a8-c8d4-4ed0-97a0-22073c344654",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": null,
+        "chunk_summary": null,
+        "metadata": {
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 101,
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "division_acronym": "THUD",
+          "chunk_id": "5884d8a8-c8d4-4ed0-97a0-22073c344654"
+        },
+        "content_preview": "of Lead \n        Hazard Control and Healthy Homes.\n\ninformation  technology fund\n\n    For Department-wide and program-specific information technology \nsystems and infrastructure, $345,000,000, to remain available until \nSeptember 30, 2028: Provided, That not later than 30 days after the end \nof each quarter, the Secretary shall brief the House and Senate \nCommittees on Appropriations on all information technology modernization \nefforts as required in the explanatory statement described in section 4 \n(in the matter preceding division A of this consolidated Act).\n\n                          working capital fund\n\n                      (including transfer of funds)\n\n    For the working capital fu..."
+      },
+      {
+        "chunk_id": "4a3a0d30-b7b3-442e-8ee2-d6e04108d60d",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7222086191177368,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 102,
+          "chunk_id": "4a3a0d30-b7b3-442e-8ee2-d6e04108d60d",
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+          "division_acronym": "THUD",
+          "source_file": "FY2026_CONSOLIDATED.htm"
+        },
+        "content_preview": "the  Secretary shall notify the \nHouse and Senate Committees on Appropriations of its plans for executing \nsuch transfers at least 15 days in advance of such transfers.\n\n[[Page 140 STAT. 383]]\n\n                        Public and Indian Housing\n\ntenant-based rental  assistance\n\n    For activities and assistance for the provision of tenant-based \nrental assistance authorized under the United States Housing Act of \n1937, as amended (42 U.S.C. 1437 et seq.) (in this heading ``the Act''), \nnot otherwise provided for, $34,438,557,000, to remain available until \nexpended, which shall be available on October 1, 2025 (in addition to \nthe $4,000,000,000 previously appropriated under this heading that..."
+      },
+      {
+        "chunk_id": "424efed5-b92f-4629-a066-23ab730616ee",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": null,
+        "chunk_summary": null,
+        "metadata": {
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+          "chunk_id": "424efed5-b92f-4629-a066-23ab730616ee",
+          "division_acronym": "THUD",
+          "chunk_index": 136,
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5"
+        },
+        "content_preview": "tion to establish their \neligibility under subsection (a) or (b) of section 103 of the McKinney-\nVento Homeless Assistance Act (42 U.S.C. 11302) to receive services: \nProvided further, That unaccompanied youth aged 24 and under or families \nheaded by youth aged 24 and under who are living in unsafe situations \nmay be served by youth-serving providers funded under this heading: \nProvided further, That recipients of funds provided under this heading \nin this Act or any prior Act may establish preferences for elderly \nindividuals or families (except for programs provided to serve homeless \nyouth), or disabled individuals or families as defined by section \n401(10) of the McKinney-Vento Homeless..."
+      },
+      {
+        "chunk_id": "f1b2363f-5009-4e7f-a53a-19d7a641efa5",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7282944917678833,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 137,
+          "division_acronym": "THUD",
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "chunk_id": "f1b2363f-5009-4e7f-a53a-19d7a641efa5"
+        },
+        "content_preview": "ant terms may be \nused for purposes under this heading, notwithstanding the purposes for \nwhich such funds were appropriated: Provided further, That unobligated \nbalances, including recaptures and carryover, remaining from funds \ntransferred to or appropriated under this heading in fiscal year 2019 or \nprior years, except for rental assistance amounts that were recaptured \nand made available until expended, shall be available for the current \npurposes authorized under this heading in addition to the purposes for \nwhich such funds originally were appropriated.\n\n[[Page 140 STAT. 402]]\n\n                            Housing Programs\n\nproject-based rental   assistance\n\n    For activities and assis..."
+      },
+      {
+        "chunk_id": "74d5c84e-76e3-4c50-87d8-609d67a08735",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": null,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "74d5c84e-76e3-4c50-87d8-609d67a08735",
+          "division_acronym": "THUD",
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 140,
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES"
+        },
+        "content_preview": "al contract term for \nsuch assistance shall not exceed 5 years in duration: Provided \nfurther,  That upon request of the \nSecretary, project funds that are held in residual receipts accounts for \nany project subject to a section 202 project rental assistance contract, \nand that upon termination of such contract are in excess of an amount to \nbe determined by the Secretary, shall be remitted to the Department and \ndeposited in this account, to remain available until September 30, 2029: \nProvided further, That amounts deposited in this account pursuant to the \npreceding proviso shall be available, in addition to the amounts \notherwise provided by this heading, for the purposes authorized under..."
+      },
+      {
+        "chunk_id": "853b7fb5-28ff-4aa9-be82-2ff235743a46",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7329711318016052,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "853b7fb5-28ff-4aa9-be82-2ff235743a46",
+          "division_acronym": "THUD",
+          "chunk_index": 141,
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES"
+        },
+        "content_preview": "mendments of 1978 (Public Law 95-\n557; 92 Stat. 2090), including amendments to contracts for such \nassistance and renewal of expiring contracts for such assistance for up \nto a 5-year term, for project rental assistance to State housing finance \nagencies and other appropriate entities as authorized under section \n811(b)(3) of the Cranston-Gonzalez National Affordable Housing Act, for \nsupportive services associated with the housing for persons with \ndisabilities as authorized by section 811(b)(1) of such Act, and for \nadministrative and other expenses associated with assistance funded \nunder this heading, $287,000,000, to remain available until September \n30, 2029: Provided,  That, upon the..."
+      },
+      {
+        "chunk_id": "4c07c02b-66d6-49d3-94e2-61aa85f5712d",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": null,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "4c07c02b-66d6-49d3-94e2-61aa85f5712d",
+          "division_acronym": "THUD",
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 131
+        },
+        "content_preview": "ons 216(10) and 217(b)(4) of such Act (42 U.S.C. \n12746(10), 12747(b)(4)) shall not apply to the amounts made available \nunder this heading: Provided further, That notwithstanding section \n231(b) of such Act (42 U.S.C. 12771(b)), all unobligated balances \nremaining from amounts recaptured pursuant to such section that remain \navailable until expended shall be combined with amounts made available \nunder this heading and allocated in accordance with the formula under \nsection 217(b)(1)(A) of such Act (42 U.S.C. \n12747(b)(1)(A)):  Provided further, \nThat the Department shall notify grantees of their formula allocations \nwithin 60 days after enactment of this Act:  Provided further, That section..."
+      },
+      {
+        "chunk_id": "e0672ad1-4356-43e9-afad-46ca77ac5d8b",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7446328401565552,
+        "chunk_summary": null,
+        "metadata": {
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "chunk_id": "e0672ad1-4356-43e9-afad-46ca77ac5d8b",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+          "chunk_index": 132,
+          "division_acronym": "THUD"
+        },
+        "content_preview": "section 4(a) \n        of the HUD Demonstration Act of 1993 (III Stat 201; 42 U.S.C. \n        9816 note), of which not less than $5,000,000 shall be for rural \n        capacity building activities; and\n            (3) $7,000,000 shall be available for capacity building by \n        national rural housing organizations having experience assessing \n        national rural conditions and providing financing, training, \n        technical assistance, information, and research to local \n        nonprofit organizations, local governments, and Indian tribes \n        serving high need rural communities.\n\n                       homeless assistance grants\n\n    For assistance under title IV of the McKinney..."
+      },
+      {
+        "chunk_id": "5fad2772-9db5-42a0-aaa6-4e599541119b",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7570213079452515,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "5fad2772-9db5-42a0-aaa6-4e599541119b",
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "chunk_index": 109,
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division_acronym": "THUD"
+        },
+        "content_preview": "any tenant protection voucher made \n        available from amounts under this paragraph shall not be \n        reissued by any public housing agency, except the replacement \n        vouchers as defined by the Secretary by notice, when the initial \n        family that received any such voucher no longer receives such \n        voucher, and the authority for any public housing agency to \n        issue any such voucher shall cease to exist: Provided further, \n        That the  Secretary may only provide \n        replacement vouchers for units that were occupied within the \n        previous 24 months that cease to be available as assisted \n        housing, subject only to the availability of funds..."
+      },
+      {
+        "chunk_id": "f70814d7-3213-4d74-969b-06ce52e722c1",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7595270872116089,
+        "chunk_summary": null,
+        "metadata": {
+          "division_acronym": "THUD",
+          "chunk_index": 117,
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_id": "f70814d7-3213-4d74-969b-06ce52e722c1"
+        },
+        "content_preview": "ny heading under this title:\n\n Provided further, That notwithstanding any other provision of law or \nregulation, during fiscal year 2026, the Secretary of Housing and Urban \nDevelopment may not delegate to any Department official other than the \nDeputy Secretary and the Assistant Secretary for Public and Indian \nHousing any authority under paragraph (2) of section 9(j) of the Act \nregarding the extension of the time periods under such section: Provided \nfurther, That  for purposes of such section 9(j), \nthe term ``obligate'' means, with respect to amounts, that the amounts \nare subject to a binding agreement that will result in outlays, \nimmediately or in the future: Provided further, That t..."
+      },
+      {
+        "chunk_id": "53ae8295-3367-41bf-a447-2ea2d1b25bef",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": -4.0,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "53ae8295-3367-41bf-a447-2ea2d1b25bef",
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division_acronym": "THUD",
+          "chunk_index": 113,
+          "source_file": "FY2026_CONSOLIDATED.htm"
+        },
+        "content_preview": "al voucher \n        assistance originating from appropriations made available for \n        the family unification program under this heading in this or any \n        prior Act that the Secretary made available on a competitive \n        basis that determines it no longer has an identified need for \n        such assistance upon turnover shall notify the Secretary, and \n        the Secretary shall recapture such assistance from the agency \n        and reallocate it to any other public housing agency or agencies \n        based on need for voucher assistance in connection with such \n        specified program or eligible youth, as applicable; and\n            (6)  the \n        Secretary shall separa..."
+      },
+      {
+        "chunk_id": "5f8f783b-76c7-4f1f-83e6-f794bc0b0790",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.8508219718933105,
+        "chunk_summary": null,
+        "metadata": {
+          "division_acronym": "THUD",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 128,
+          "chunk_id": "5f8f783b-76c7-4f1f-83e6-f794bc0b0790",
+          "source_file": "FY2026_CONSOLIDATED.htm",
+          "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES"
+        },
+        "content_preview": "act or implement) less restrictive zoning, land use, or \n        permitting laws and regulations, that are reasonably expected to \n        preserve or produce new housing units; and (B) can demonstrate \n        an acute need for housing affordable to households with incomes \n        below 100 percent of the area median \n        income:  Provided further, That grantees shall \n        report to the Secretary on their activities and housing supply \n        outcomes:  Provided further, That the \n        Secretary shall analyze observable housing production, \n        preservation, and\n\n[[Page 140 STAT. 397]]\n\n        cost trends in the participating jurisdictions or geographic \n        areas: Pro..."
+      }
+    ],
+    "mapped_chunk_count": 16,
+    "mapped_chunks": [
+      {
+        "chunk_id": "dd24bc4e-988f-40b9-b288-6b4ef4527339",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.5920132398605347,
+        "chunk_snapshot": "FY2026 Homeless Assistance Grants from HUD",
+        "chunk_summary": "This chunk shows that FY2026 Homeless Assistance Grants allow non-competitive 12-month renewals for projects expiring in early 2026.",
+        "relevance_counts": {
+          "direct": 2,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- The Secretary shall non-competitively renew for one 12-month period all projects (including youth homelessness demonstration projects and shelter plus care projects) expiring during the first quarter of calendar year 2026 under the heading ``Homeless Assistance Grants'' in the Department of Housing and Urban Development Appropriations Act, 2025 (Public Law 119-04) and under section 231 of Public Law 116-94 for the continuum of care program. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly addresses homelessness services funding mechanism for FY2026.",
+            "source_numbers": []
+          },
+          {
+            "fact": "- If awards have not been made under a fiscal year 2025 notice of funding opportunity prior to April 1, 2026, the Secretary shall also non-competitively renew all such projects expiring during the second quarter of calendar year 2026. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly addresses homelessness services funding mechanism for FY2026.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "be8ce007-1475-4560-acd3-5a9f40672d6c",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.6296967267990112,
+        "chunk_snapshot": "FY2026 HUD Shelter Plus Care renewals",
+        "chunk_summary": "This chunk shows that FY2026 funding for homelessness services includes guaranteed non-competitive renewals of expiring shelter plus care projects.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- The Secretary shall non-competitively renew certain shelter plus care projects expiring in calendar year 2026, with renewals in an amount equal to the prior award with upward adjustments for cost-of-living and fair market rent changes. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly addresses homelessness services (shelter plus care) and provides funding mechanism for FY2026 renewals.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "d1522cd4-38a3-4f82-9c2e-88d166efa67e",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.692226231098175,
+        "chunk_snapshot": "FY2026 rent incentives for jobs-plus initiative",
+        "chunk_summary": "This chunk shows FY2026 funding rules for rent incentives in the jobs-plus initiative, but does not specify amounts for affordable housing, rental assistance, or homelessness services.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "For fiscal year 2026, the costs of any rent incentives as authorized pursuant to waivers or alternative requirements of the jobs-plus initiative as described under the heading \"Self-Sufficiency Programs\" shall not be charged against the competitive grant amounts made available under such heading.",
+            "responsiveness_tier": "adjacent",
+            "reason": "Relates to rental assistance and self-sufficiency programs, but does not provide a specific funding amount for affordable housing, rental assistance, or homelessness services.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "9841cfd4-18e8-4504-8843-461e06569ba5",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7160695195198059,
+        "chunk_snapshot": "Public Housing Fund $8,319,393,000 FY2026",
+        "chunk_summary": "This chunk provides the exact FY2026 public housing fund allocation ($8.3 billion) and its sub-allocations for operations, capital, and risk-averse agencies.",
+        "relevance_counts": {
+          "direct": 2,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- For 2026 payments to public housing agencies for the operation and management of public housing, as authorized by section 9(e) of the United States Housing Act of 1937, and to carry out capital and management activities for public housing agencies, as authorized under section 9(d) of the Act, $8,319,393,000 [[num:src_thud_9841cfd4_18e8_4504_8843_461e06569ba5_1]], to remain available until September 30, 2029. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly provides funding for public housing, which is a form of affordable housing, and includes operating and capital activities relevant to the question's scope.",
+            "source_numbers": [
+              {
+                "figure": "$8,319,393,000",
+                "value": 8319393000.0,
+                "label": "Public Housing Fund total"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the sums appropriated under the public housing fund heading: (1) $4,687,393,000 [[num:src_thud_9841cfd4_18e8_4504_8843_461e06569ba5_2]] shall be available for the Secretary to allocate pursuant to the operating fund formula for 2026 payments; (2) $337,000,000 [[num:src_thud_9841cfd4_18e8_4504_8843_461e06569ba5_3]] shall be available for a need-based application process for public housing agencies that experience or are at risk of financial shortfalls; (3) $3,200,000,000 [[num:src_thud_9841cfd4_18e8_4504_8843_461e06569ba5_4]] shall be available for the capital fund formula. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "These suballocations directly fund public housing operations and capital, which are affordable housing activities, and are within the scope of the question.",
+            "source_numbers": [
+              {
+                "figure": "$4,687,393,000",
+                "value": 4687393000.0,
+                "label": "Operating fund formula allocation"
+              },
+              {
+                "figure": "$337,000,000",
+                "value": 337000000.0,
+                "label": "Need-based shortfall allocation"
+              },
+              {
+                "figure": "$3,200,000,000",
+                "value": 3200000000.0,
+                "label": "Capital fund formula allocation"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "5884d8a8-c8d4-4ed0-97a0-22073c344654",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": null,
+        "chunk_snapshot": "HUD tenant-based rental assistance funding for FY2026",
+        "chunk_summary": "This chunk does not contain any FY2026 funding amounts for affordable housing, rental assistance, or homelessness services, making it irrelevant.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- For tenant-based rental assistance, activities and assistance for the provision of tenant-based rental assistance authorized under the United States Housing Act of 1937, as amended (42 U.S.C. 1437 et seq.) (in this heading \"the Act\"), not otherwise specified. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly addresses rental assistance, a named topic in the question.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "4a3a0d30-b7b3-442e-8ee2-d6e04108d60d",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7222086191177368,
+        "chunk_snapshot": "Public and Indian Housing $4 billion tenant-based rental assistance for FY2026",
+        "chunk_summary": "This chunk specifies $34.4 billion for FY2026 tenant-based rental assistance, directly answering the funding available for rental aid.",
+        "relevance_counts": {
+          "direct": 2,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- For tenant-based rental assistance, $34,438,557,000 [[num:src_thud_4a3a0d30_b7b3_442e_8ee2_d6e04108d60d_1]] to remain available until expended, which shall be available on October 1, 2025 (in addition to the $4,000,000,000 [[num:src_thud_4a3a0d30_b7b3_442e_8ee2_d6e04108d60d_2]] previously appropriated under this heading that shall be available on October 1, 2025), and $4,000,000,000 [[num:src_thud_4a3a0d30_b7b3_442e_8ee2_d6e04108d60d_3]], to remain available until expended, which shall be available on October 1, 2026. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly provides funding for tenant-based rental assistance, which is a form of rental assistance relevant to the question.",
+            "source_numbers": [
+              {
+                "figure": "$34,438,557,000",
+                "value": 34438557000.0,
+                "label": "tenant-based rental assistance FY2026 advance appropriation"
+              },
+              {
+                "figure": "$4,000,000,000",
+                "value": 4000000000.0,
+                "label": "additional FY2026 advance appropriation"
+              },
+              {
+                "figure": "$4,000,000,000",
+                "value": 4000000000.0,
+                "label": "FY2027 advance appropriation"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the sums appropriated under this heading, $34,957,000,000 [[num:src_thud_4a3a0d30_b7b3_442e_8ee2_d6e04108d60d_4]] shall be available for renewals of expiring section 8 tenant-based annual contributions contracts (including renewals of enhanced vouchers under any provision of law authorizing such assistance under section 8(t) of the Act) and including renewal of other special purpose incremental vouchers. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly specifies a suballocation for renewals of tenant-based rental assistance contracts, which is a key component of rental assistance funding.",
+            "source_numbers": [
+              {
+                "figure": "$34,957,000,000",
+                "value": 34957000000.0,
+                "label": "renewals of expiring section 8 tenant-based annual contributions contracts"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "424efed5-b92f-4629-a066-23ab730616ee",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": null,
+        "chunk_snapshot": "McKinney-Vento Homeless Assistance funding for FY2026",
+        "chunk_summary": "The chunk details rules for using homeless assistance funds, but does not specify FY2026 funding amounts for affordable housing or rental aid.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- The chunk discusses eligibility and program rules for homeless assistance funding under the McKinney-Vento Homeless Assistance Act, including provisions for unaccompanied youth, families headed by youth, elderly or disabled individuals, and matching funds requirements. No specific dollar figure is provided.",
+            "responsiveness_tier": "direct",
+            "reason": "The chunk directly addresses homelessness services, which is one of the topics in the question. It provides program rules and eligibility but no dollar amount.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "f1b2363f-5009-4e7f-a53a-19d7a641efa5",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7282944917678833,
+        "chunk_snapshot": "$18.143 billion for project-based rental assistance in FY2026",
+        "chunk_summary": "This chunk provides FY2026 project-based rental assistance funding amounts and availability dates, directly answering the question about available rental assistance funds.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- For project-based rental assistance, $18,143,000,000 [[num:src_thud_f1b2363f_5009_4e7f_a53a_19d7a641efa5_1]], to remain available until expended, shall be available on October 1, 2025 (in addition to the $400,000,000 [[num:src_thud_f1b2363f_5009_4e7f_a53a_19d7a641efa5_2]] previously appropriated under this heading that became available October 1, 2025), and $400,000,000 [[num:src_thud_f1b2363f_5009_4e7f_a53a_19d7a641efa5_3]], to remain available until expended, shall be available on October 1, 2026. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly provides funding for project-based rental assistance, a form of rental assistance relevant to affordable housing.",
+            "source_numbers": [
+              {
+                "figure": "$18,143,000,000",
+                "value": 18143000000.0,
+                "label": "project-based rental assistance FY2026"
+              },
+              {
+                "figure": "$400,000,000",
+                "value": 400000000.0,
+                "label": "additional FY2026 availability"
+              },
+              {
+                "figure": "$400,000,000",
+                "value": 400000000.0,
+                "label": "FY2027 availability"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the total amounts provided under this heading, not to exceed $509,000,000 shall be available for performance-based contract administrators for section 8 project-based assistance. [THUD]",
+            "responsiveness_tier": "adjacent",
+            "reason": "This is a set-aside for contract administrators within the project-based rental assistance account, not directly for rental assistance or homelessness services.",
+            "source_numbers": [
+              {
+                "figure": "$509,000,000",
+                "value": 509000000.0,
+                "label": "performance-based contract administrators"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "74d5c84e-76e3-4c50-87d8-609d67a08735",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": null,
+        "chunk_snapshot": "FY2026 capital advances for supportive housing for persons with disabilities",
+        "chunk_summary": "This chunk indicates $4 million is available for preserving elderly housing with rental assistance, a direct affordable housing funding source.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 2,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- Of the total amount made available under this heading, up to $4,000,000 shall be used by the Secretary to support preservation transactions of housing for the elderly originally developed with a capital advance and assisted by a project rental assistance contract under the provisions of section 202(c) of the Housing Act of 1959.",
+            "responsiveness_tier": "adjacent",
+            "reason": "The fact mentions housing for the elderly and rental assistance, which is related to affordable housing and rental assistance, but the question asks about FY2026 funding for a city seeking affordable housing, rental assistance, or homelessness services. This fact is a set-aside for preservation transactions of elderly housing, not directly for a city's general affordable housing or homelessness services.",
+            "source_numbers": [
+              {
+                "figure": "$4,000,000",
+                "value": 4000000.0,
+                "label": "Preservation transactions for elderly housing set-aside"
+              }
+            ]
+          },
+          {
+            "fact": "- For capital advances, including amendments to capital advance contracts, for supportive housing for persons with disabilities, as authorized by section 811 of the Cranston-Gonzalez National Affordable Housing Act (42 U.S.C. 8013), for project rental assistance for supportive housing for persons with disabilities under section 811(d)(2) of such Act, for project assistance contracts pursuant to subsection (h) of section 202 of the Housing Act of 1959, as added by section 205(a) of the Housing and Community Development Amendments of 1978 (Public Law 95-557; 92 Stat. 2090), including amendments to contracts for such assistance and renewal of expiring contracts for such assistance for up to a 5-year term, for project rental assistance to State housing finance agencies and other appropriate entities as authorized under section 811(b)(3) of the Cranston-Gonzalez National Affordable Housing Act, for supportive services associated with the housing for persons with disabilities as authorized by section 811(b)(1).",
+            "responsiveness_tier": "adjacent",
+            "reason": "This fact describes funding for supportive housing for persons with disabilities, which is a type of affordable housing and includes rental assistance. However, the question asks about FY2026 funding for a city seeking affordable housing, rental assistance, or homelessness services. This fact does not specify a dollar amount for FY2026 and is focused on persons with disabilities, not general city-level funding.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "853b7fb5-28ff-4aa9-be82-2ff235743a46",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7329711318016052,
+        "chunk_snapshot": "$287 million for Section 811 project rental assistance.",
+        "chunk_summary": "This chunk specifies $287 million for Section 811 rental assistance and $57.5 million for housing counseling, both available for FY2026.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- For project rental assistance to State housing finance agencies and other appropriate entities as authorized under section 811(b)(3) of the Cranston-Gonzalez National Affordable Housing Act, for supportive services associated with the housing for persons with disabilities as authorized by section 811(b)(1) of such Act, and for administrative and other expenses associated with assistance funded under this heading, $287,000,000 [[num:src_thud_853b7fb5_28ff_4aa9_be82_2ff235743a46_1]], to remain available until September 30, 2029. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly provides funding for affordable housing (project rental assistance) and supportive services for persons with disabilities, which are relevant to affordable housing and homelessness services.",
+            "source_numbers": [
+              {
+                "figure": "$287,000,000",
+                "value": 287000000.0,
+                "label": "Section 811 project rental assistance and supportive services"
+              }
+            ]
+          },
+          {
+            "fact": "- For contracts, grants, and other assistance excluding loans, as authorized under section 106 of the Housing and Urban Development Act of 1968, as amended, $57,500,000, to remain available until September 30, 2027, including up to $4,500,000 for administrative contract services: Provided, That funds shall be used for providing counseling and advice to tenants and homeowners, both current and prospective, with respect to property maintenance, financial management or literacy, and such other matters as may be appropriate to assist them in improving their housing conditions, meeting their financial needs, and fulfilling the responsibilities of tenancy or homeownership; for program administration; and for housing counselor training. [THUD]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Provides housing counseling assistance, which is related to affordable housing but not directly funding rental assistance or homelessness services.",
+            "source_numbers": [
+              {
+                "figure": "$57,500,000",
+                "value": 57500000.0,
+                "label": "Housing counseling assistance"
+              },
+              {
+                "figure": "$4,500,000",
+                "value": 4500000.0,
+                "label": "Administrative contract services (within housing counseling)"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "4c07c02b-66d6-49d3-94e2-61aa85f5712d",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": null,
+        "chunk_snapshot": "$65 million for the self-help homeownership opportunity program",
+        "chunk_summary": "This chunk specifies $65 million for the self-help homeownership program, an affordable housing funding source available through FY2028.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 4,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- For the self-help and assisted homeownership opportunity program, as authorized under section 11 of the Housing Opportunity Program Extension Act of 1996 (42 U.S.C. 12805 note), and for related activities and assistance, $65,000,000, to remain available until September 30, 2028. [THUD]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The program is related to affordable housing but focuses on homeownership, not rental assistance or homelessness services.",
+            "source_numbers": [
+              {
+                "figure": "$65,000,000",
+                "value": 65000000.0,
+                "label": "self-help and assisted homeownership opportunity program total"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the sums appropriated under this heading, $12,000,000 shall be available for the self-help homeownership opportunity program. [THUD]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Suballocation for self-help homeownership, not rental assistance or homelessness.",
+            "source_numbers": [
+              {
+                "figure": "$12,000,000",
+                "value": 12000000.0,
+                "label": "self-help homeownership opportunity program suballocation"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the sums appropriated under this heading, $46,000,000 shall be available for the second, third, and fourth capacity building entities specified in section 4(a) of the HUD Demonstration Act of 1993, of which not less than $5,000,000 shall be for rural capacity building activities. [THUD]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Capacity building for housing organizations, not directly rental assistance or homelessness services.",
+            "source_numbers": [
+              {
+                "figure": "$46,000,000",
+                "value": 46000000.0,
+                "label": "capacity building entities suballocation"
+              },
+              {
+                "figure": "$5,000,000",
+                "value": 5000000.0,
+                "label": "rural capacity building activities minimum"
+              }
+            ]
+          },
+          {
+            "fact": "- $7,000,000 shall be available for capacity building by national rural housing organizations having experience assessing national rural conditions and providing financing, training, technical assistance, information, and research to local nonprofit. [THUD]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Rural housing capacity building, not directly rental assistance or homelessness.",
+            "source_numbers": [
+              {
+                "figure": "$7,000,000",
+                "value": 7000000.0,
+                "label": "national rural housing organizations capacity building"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "e0672ad1-4356-43e9-afad-46ca77ac5d8b",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7446328401565552,
+        "chunk_snapshot": "$4.417 billion for HUD homeless assistance grants",
+        "chunk_summary": "This chunk provides $4.417 billion for homeless assistance grants under the McKinney-Vento Act, directly answering available FY2026 funding for homelessness services.",
+        "relevance_counts": {
+          "direct": 3,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $4,417,000,000 [[num:src_thud_e0672ad1_4356_43e9_afad_46ca77ac5d8b_1]] is appropriated for homeless assistance grants under title IV of the McKinney-Vento Homeless Assistance Act, to remain available until September 30, 2028. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly provides funding for homelessness services, which is one of the requested topics.",
+            "source_numbers": [
+              {
+                "figure": "$4,417,000,000",
+                "value": 4417000000.0,
+                "label": "homeless assistance grants total"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the homeless assistance grants, $290,000,000 [[num:src_thud_e0672ad1_4356_43e9_afad_46ca77ac5d8b_2]] shall be available for the emergency solutions grants program. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Emergency solutions grants are a form of homelessness assistance, directly relevant.",
+            "source_numbers": [
+              {
+                "figure": "$290,000,000",
+                "value": 290000000.0,
+                "label": "emergency solutions grants"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the homeless assistance grants, $4,010,000,000 [[num:src_thud_e0672ad1_4356_43e9_afad_46ca77ac5d8b_3]] shall be available for the continuum of care program and the rural housing stability assistance programs. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Continuum of care and rural housing stability assistance are directly related to homelessness services and affordable housing.",
+            "source_numbers": [
+              {
+                "figure": "$4,010,000,000",
+                "value": 4010000000.0,
+                "label": "continuum of care and rural housing stability assistance"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "5fad2772-9db5-42a0-aaa6-4e599541119b",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7570213079452515,
+        "chunk_snapshot": "$2,835,935,000 for Section 8 tenant-based rental assistance administration.",
+        "chunk_summary": "This chunk lists FY2026 funding for Section 8 rental assistance and emergency housing vouchers, directly answering what money is available for housing aid.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 2,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $2,835,935,000 shall be available for administrative and other expenses of public housing agencies in administering the section 8 tenant-based rental assistance program, of which up to $30,000,000 shall be available to the Secretary to allocate to public housing agencies that need additional funds to administer their section 8 programs, including fees associated with section 8 tenant protection rental assistance, the administration of disaster related vouchers, HUD-VASH vouchers, and other special purpose incremental vouchers.",
+            "responsiveness_tier": "adjacent",
+            "reason": "The fact provides funding for administrative expenses of the section 8 program, which supports rental assistance, but does not directly fund affordable housing, rental assistance, or homelessness services for a city; it is an administrative allocation.",
+            "source_numbers": [
+              {
+                "figure": "$2,835,935,000",
+                "value": 2835935000.0,
+                "label": "Administrative and other expenses for section 8 tenant-based rental assistance"
+              },
+              {
+                "figure": "$30,000,000",
+                "value": 30000000.0,
+                "label": "Additional funds for PHAs to administer section 8 programs"
+              }
+            ]
+          },
+          {
+            "fact": "- No less than $2,805,935,000 of the amount provided in this paragraph shall be allocated to public housing agencies for the calendar year 2026 funding cycle based on section 8(q) of the Act.",
+            "responsiveness_tier": "adjacent",
+            "reason": "This is a minimum allocation for section 8 administrative expenses, not direct rental assistance or homelessness services.",
+            "source_numbers": [
+              {
+                "figure": "$2,805,935,000",
+                "value": 2805935000.0,
+                "label": "Minimum allocation for calendar year 2026 funding cycle"
+              }
+            ]
+          },
+          {
+            "fact": "- Amounts made available under this paragraph may be available to provide calendar year 2026 assistance to public housing agencies that would otherwise be required to terminate emergency housing vouchers (Public Law 117-2; 135 Stat. 58) for families as a result of insufficient funding.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly addresses homelessness services by allowing funds to prevent termination of emergency housing vouchers, which serve homeless or at-risk families.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "f70814d7-3213-4d74-969b-06ce52e722c1",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.7595270872116089,
+        "chunk_snapshot": "FY2026 Choice Neighborhoods Initiative $25,000,000",
+        "chunk_summary": "This chunk shows $25 million in FY2026 Choice Neighborhoods grants for affordable housing and neighborhood transformation, directly relevant to the funding question.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 2,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- For competitive grants under the choice neighborhoods initiative (subject to section 24 of the United States Housing Act of 1937 (42 U.S.C. 1437v) (the ``Act'') unless otherwise specified under this heading), for transformation, rehabilitation, and replacement housing needs of both public and HUD-assisted housing and to transform neighborhoods of poverty into functioning, sustainable, mixed-income neighborhoods with appropriate services, schools, public assets, transportation, and access to jobs, $25,000,000 [[num:src_thud_f70814d7_3213_4d74_969b_06ce52e722c1_1]], to remain [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly provides funding for affordable housing and neighborhood transformation, which is relevant to the city's request for affordable housing funding.",
+            "source_numbers": [
+              {
+                "figure": "$25,000,000",
+                "value": 25000000.0,
+                "label": "Choice Neighborhoods Initiative"
+              }
+            ]
+          },
+          {
+            "fact": "- For the Department's inspection and assessment programs, including travel, training, and program support contracts, $50,000,000 to remain available until September 30, 2028 [THUD]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Related to housing inspections and risk assessments, which support affordable housing but are not direct funding for affordable housing, rental assistance, or homelessness services.",
+            "source_numbers": [
+              {
+                "figure": "$50,000,000",
+                "value": 50000000.0,
+                "label": "Assisted Housing Inspections and Risk Assessments"
+              }
+            ]
+          },
+          {
+            "fact": "- The Secretary may authorize a public housing agency with at least one property with a low physical inspection score to use operating reserve funds or any amounts allocated to such agency pursuant to the operating fund formula from amounts made available in this and prior Acts for any eligible activities under section 9(d)(1) of the United States Housing Act of 1937 [THUD]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Provides flexibility for public housing agencies to use funds for eligible activities, which may include affordable housing, but no specific dollar amount is provided.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "53ae8295-3367-41bf-a447-2ea2d1b25bef",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": -4.0,
+        "chunk_snapshot": "FY2026 HUD funding for affordable housing and rental assistance",
+        "chunk_summary": "This chunk shows that unobligated FY2026 balances and recaptured voucher funds can be used for rental assistance, informing cities of available funding.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 3,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- Unobligated balances, including recaptures and carryover, remaining from funds appropriated under the heading \"housing certificate fund\", \"Annual Contributions for Assisted Housing\", and \"Project-Based Rental Assistance\", for fiscal year 2026 and prior years may be used for renewal of or amendments to section 8 project-based contracts and for performance-based contract administrators. [THUD]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly provides funding flexibility for rental assistance (section 8 project-based contracts) in FY2026, which is relevant to affordable housing and rental assistance.",
+            "source_numbers": []
+          },
+          {
+            "fact": "- Amounts heretofore recaptured, or recaptured during the current fiscal year, from section 8 project-based contracts from source years fiscal year 1975 through fiscal year 1987 are hereby rescinded, and an amount of additional new budget authority, equivalent to the amount rescinded is hereby appropriated, to remain available until expended. [THUD]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Relates to recaptures and rescissions for section 8 project-based contracts, which is relevant to rental assistance but does not provide a specific FY2026 funding amount.",
+            "source_numbers": []
+          },
+          {
+            "fact": "- The Secretary shall separately track all special purpose vouchers funded under this heading and continue to provide timely updates on budget, utilization, spending and leasing trends for all vouchers by purpose on the voucher data dashboard. [THUD]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Mentions special purpose vouchers (including those for non-elderly persons with disabilities) which are relevant to rental assistance, but does not provide a funding amount.",
+            "source_numbers": []
+          },
+          {
+            "fact": "- Upon turnover, special purpose vouchers issued pursuant to section 811 of the Cranston-Gonzalez National Affordable Housing Act (42 U.S.C. 8013) funded under this or any other heading in this or prior Acts, shall be provided to non-elderly persons with disabilities. [THUD]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Relates to special purpose vouchers for non-elderly persons with disabilities, relevant to affordable housing but no funding amount.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "5f8f783b-76c7-4f1f-83e6-f794bc0b0790",
+        "division": "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        "division_acronym": "THUD",
+        "score": 0.8508219718933105,
+        "chunk_snapshot": "$30,000,000 for SUPPORT Act housing activities.",
+        "chunk_summary": "This chunk shows $30,000,000 available for activities under the SUPPORT Act, providing direct evidence of specific funding for housing-related services.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $30,000,000 shall be available for activities authorized under section 8071 of the SUPPORT for Patients and Communities Act (Public Law 115-271).",
+            "responsiveness_tier": "adjacent",
+            "reason": "The fact provides funding for activities under a specific act, but it is not clearly tied to affordable housing, rental assistance, or homelessness services. It may be related to substance use disorder support, which is adjacent but not directly within the requested scope.",
+            "source_numbers": [
+              {
+                "figure": "$30,000,000",
+                "value": 30000000.0,
+                "label": "SUPPORT Act activities"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "judge": {
+      "fact_checks": [
+        {
+          "fact": "THUD provides separate FY2026 funding streams for rental assistance and homelessness services",
+          "found": true,
+          "evidence": "HUD has separate FY2026 funding lanes for public housing, tenant-based rental assistance, project-based rental assistance, homeless assistance grants, ..."
+        },
+        {
+          "fact": "Tenant-based rental assistance is appropriated $34,438,557,000",
+          "found": true,
+          "evidence": "$34,438,557,000 is available for FY2026"
+        },
+        {
+          "fact": "Tenant-based rental assistance includes $4,000,000,000 previously appropriated and available October 1, 2025",
+          "found": true,
+          "evidence": "plus $4,000,000,000 previously appropriated for the same heading"
+        },
+        {
+          "fact": "Tenant-based rental assistance includes $4,000,000,000 available October 1, 2026",
+          "found": true,
+          "evidence": "$4,000,000,000 available on October 1, 2026"
+        },
+        {
+          "fact": "Tenant-based rental assistance includes $34,957,000,000 for renewals of expiring Section 8 tenant-based annual contributions contracts",
+          "found": true,
+          "evidence": "of the sums appropriated, $34,957,000,000 is for renewals of expiring section 8 tenant-based annual contributions contracts"
+        },
+        {
+          "fact": "Project-based rental assistance is provided $18,143,000,000",
+          "found": true,
+          "evidence": "Project-based rental assistance: $18,143,000,000 is available for FY2026"
+        },
+        {
+          "fact": "Homeless Assistance Grants receive $4,417,000,000",
+          "found": true,
+          "evidence": "Homeless assistance grants: $4,417,000,000 is appropriated"
+        },
+        {
+          "fact": "Homeless Assistance Grants include $290,000,000 for Emergency Solutions Grants",
+          "found": true,
+          "evidence": "including $290,000,000 for emergency solutions grants"
+        },
+        {
+          "fact": "Homeless Assistance Grants include $4,010,000,000 for Continuum of Care and rural housing stability assistance",
+          "found": true,
+          "evidence": "$4,010,000,000 for the continuum of care program and rural housing stability assistance"
+        },
+        {
+          "fact": "Homeless Assistance Grants include $10,000,000 for national homeless data analysis",
+          "found": false,
+          "evidence": "not found"
+        },
+        {
+          "fact": "Homelessness services include $107,000,000 for youth homelessness demonstration projects",
+          "found": false,
+          "evidence": "not found"
+        },
+        {
+          "fact": "Youth homelessness system improvement grants may receive up to $25,000,000",
+          "found": false,
+          "evidence": "not found"
+        },
+        {
+          "fact": "Supportive housing for persons with disabilities includes $287,000,000 for Section 811 project rental assistance and associated supportive services",
+          "found": true,
+          "evidence": "Section 811 supportive housing: $287,000,000 is available for project rental assistance to state housing finance agencies and supportive services for persons with disabilities."
+        },
+        {
+          "fact": "Public Housing Fund at $8,319,393,000 is broader affordable-housing support, not the same as rental assistance or homelessness funding",
+          "found": true,
+          "evidence": "Public Housing Fund: $8,319,393,000 for 2026 public housing operations and capital/management activities"
+        }
+      ],
+      "error_checks": [
+        {
+          "error": "Should not present a single clean city housing total",
+          "triggered": false,
+          "evidence": "no clean division-wide total is available"
+        },
+        {
+          "error": "Should not add renewal amounts, advance appropriations, and parent amounts without explaining timing and hierarchy",
+          "triggered": false,
+          "evidence": "local caveat explains renewal directives are rules for reusing existing funding, not new budget authority"
+        },
+        {
+          "error": "Should not add the $25,000,000 youth homelessness improvement amount on top of the $107,000,000 parent amount",
+          "triggered": false,
+          "evidence": "youth homelessness not mentioned, so no addition error"
+        },
+        {
+          "error": "Should not omit homelessness services when the question asks affordable housing, rental assistance, or homelessness services",
+          "triggered": false,
+          "evidence": "homeless assistance grants section included"
+        },
+        {
+          "error": "Should not omit the main Homeless Assistance Grants parent account when answering homelessness services",
+          "triggered": false,
+          "evidence": "parent account $4,417,000,000 included with suballocations"
+        },
+        {
+          "error": "Should not route outside THUD unless there is clearly responsive evidence elsewhere",
+          "triggered": false,
+          "evidence": "entire answer stays within THUD"
+        }
+      ],
+      "structural_checks": {
+        "passed": true,
+        "issues": []
+      },
+      "overall_score": 7,
+      "reasoning": "The answer clearly organizes separate HUD funding lanes and avoids a misleading total. It includes most key rental assistance and homeless grant numbers, but omits three required homelessness facts: $10M for data analysis, $107M youth demo projects, and $25M youth improvement grants. No prohibited errors and well-structured grouping.",
+      "question_id": "broad_2"
+    }
+  }
+]

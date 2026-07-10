@@ -1,0 +1,1252 @@
+[
+  {
+    "question_id": "broad_5",
+    "question": "What FY2026 funding is available for brownfields cleanup, Superfund cleanup, or environmental remediation?",
+    "answer_mode": "broad_topic_total",
+    "expected_answer_mode": "broad_topic_total",
+    "actual_answer_mode": "broad_topic_total",
+    "classify_match": true,
+    "expected_divisions": [
+      "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES"
+    ],
+    "actual_divisions": [
+      "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES"
+    ],
+    "route_match": true,
+    "answer_mode_reason": "Question asks for FY2026 funding for broad environmental cleanup topics (brownfields, Superfund, remediation) across multiple programs, likely involving different financial mechanisms.",
+    "division_answers": [
+      {
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "answer": "### [INT] DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES\nBottom line: FY2026 brownfields cleanup, Superfund cleanup, and related remediation funding is spread across several EPA and NIEHS lines; a single clean total is not available from the direct facts.\nKey buckets:\n- Hazardous Substance Superfund: $282,749,000 [[num:src_int_d632d786_92bc_4a55_9797_b34bbf18c00e_1]] for necessary expenses to carry out CERCLA, including cleanup activities.\n- CERCLA section 104(k) brownfields grants: $98,000,000 [[num:src_int_68c231bc_233c_49a7_9433_ff67261f494c_1]] to carry out section 104(k) of CERCLA, including grants, interagency agreements, and associated program support costs; at least 10 percent is for assistance in persistent poverty counties.\n- CERCLA section 128 grants: $46,250,000 [[num:src_int_5cbf3c87_b52e_4290_b96e_19388ea094b7_1]] for carrying out section 128 of CERCLA (Superfund).\n- Leaking Underground Storage Tank Trust Fund Program: $88,903,000 [[num:src_int_676ecc67_2618_41b8_9ebb_1b1dcf5cd4b1_1]] total, including $64,583,000 [[num:src_int_676ecc67_2618_41b8_9ebb_1b1dcf5cd4b1_2]] for leaking underground storage tank cleanup activities under section 9003(h).\n- Environmental Programs and Management: $3,114,671,000 [[num:src_int_50ecf038_8cf4_4344_8029_44323ef53133_1]], including administrative costs of the brownfields program under the Small Business Liability Relief and Brownfields Revitalization Act of 2002.\n- NIEHS Superfund-related activities: $77,100,000 [[num:src_int_afc6affa_54d6_473f_bd96_34bc61a5fe67_1]] for activities under CERCLA section 311(a) and SARA section 126(g).\n- Remediation of above-ground leaking fuel tanks: $2,000,000 [[num:src_int_43a8dd3d_d24d_47a3_afa5_b1919462588e_1]] for grants for remediation of above-ground leaking fuel tanks pursuant to Public Law 106-554.\nLocal caveat: the $88,903,000 [[num:src_int_676ecc67_2618_41b8_9ebb_1b1dcf5cd4b1_1]] LUST program total includes the $64,583,000 [[num:src_int_676ecc67_2618_41b8_9ebb_1b1dcf5cd4b1_2]] cleanup suballocation, so they should not be added together.",
+        "chunks_retrieved": 16
+      }
+    ],
+    "final_answer": "### [INT] DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES\nBottom line: FY2026 brownfields cleanup, Superfund cleanup, and related remediation funding is spread across several EPA and NIEHS lines; a single clean total is not available from the direct facts.\nKey buckets:\n- Hazardous Substance Superfund: $282,749,000 [[num:src_int_d632d786_92bc_4a55_9797_b34bbf18c00e_1]] for necessary expenses to carry out CERCLA, including cleanup activities.\n- CERCLA section 104(k) brownfields grants: $98,000,000 [[num:src_int_68c231bc_233c_49a7_9433_ff67261f494c_1]] to carry out section 104(k) of CERCLA, including grants, interagency agreements, and associated program support costs; at least 10 percent is for assistance in persistent poverty counties.\n- CERCLA section 128 grants: $46,250,000 [[num:src_int_5cbf3c87_b52e_4290_b96e_19388ea094b7_1]] for carrying out section 128 of CERCLA (Superfund).\n- Leaking Underground Storage Tank Trust Fund Program: $88,903,000 [[num:src_int_676ecc67_2618_41b8_9ebb_1b1dcf5cd4b1_1]] total, including $64,583,000 [[num:src_int_676ecc67_2618_41b8_9ebb_1b1dcf5cd4b1_2]] for leaking underground storage tank cleanup activities under section 9003(h).\n- Environmental Programs and Management: $3,114,671,000 [[num:src_int_50ecf038_8cf4_4344_8029_44323ef53133_1]], including administrative costs of the brownfields program under the Small Business Liability Relief and Brownfields Revitalization Act of 2002.\n- NIEHS Superfund-related activities: $77,100,000 [[num:src_int_afc6affa_54d6_473f_bd96_34bc61a5fe67_1]] for activities under CERCLA section 311(a) and SARA section 126(g).\n- Remediation of above-ground leaking fuel tanks: $2,000,000 [[num:src_int_43a8dd3d_d24d_47a3_afa5_b1919462588e_1]] for grants for remediation of above-ground leaking fuel tanks pursuant to Public Law 106-554.\nLocal caveat: the $88,903,000 [[num:src_int_676ecc67_2618_41b8_9ebb_1b1dcf5cd4b1_1]] LUST program total includes the $64,583,000 [[num:src_int_676ecc67_2618_41b8_9ebb_1b1dcf5cd4b1_2]] cleanup suballocation, so they should not be added together.",
+    "retrieved_chunk_count": 16,
+    "retrieved_chunks": [
+      {
+        "chunk_id": "68c231bc-233c-49a7-9433-ff67261f494c",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": null,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "chunk_index": 64,
+          "chunk_id": "68c231bc-233c-49a7-9433-ff67261f494c",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "division_acronym": "INT"
+        },
+        "content_preview": "wastewater facilities in the area of the United States-Mexico \n        Border, after consultation with the appropriate border \n        commission:  Provided, That no funds  provided \n        by this appropriations Act to address the water, wastewater and \n        other critical infrastructure needs of the colonias in the \n        United States along the United States-Mexico border shall be \n        made available to a county or municipal government unless that \n        government has established an enforceable local ordinance, or \n        other zoning rule, which prevents in that jurisdiction the \n        development or construction of any additional colonia areas, or \n        the developmen..."
+      },
+      {
+        "chunk_id": "41d86abe-56ca-4f54-9ca5-8cf86e0ec3c9",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.7327465415000916,
+        "chunk_summary": null,
+        "metadata": {
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_id": "41d86abe-56ca-4f54-9ca5-8cf86e0ec3c9",
+          "division_acronym": "INT",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 65,
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES"
+        },
+        "content_preview": "Environmental Response, Compensation, and \n        Liability Act of 1980 (CERCLA), including grants, interagency \n        agreements, and associated program support costs:  Provided, \n        That   at least 10 percent shall be \n        allocated for assistance in persistent poverty counties:  \n        Provided further,   That for \n        purposes of this section, the term ``persistent poverty \n        counties'' means any county that has had 20 percent or more of \n        its population living in poverty over the past 30 years, as \n        measured by the 1993 Small Area Income and Poverty Estimates, \n        the 2000 decennial census, and the most recent Small Area Income \n        and Pov..."
+      },
+      {
+        "chunk_id": "afc6affa-54d6-473f-bd96-34bc61a5fe67",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": null,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_index": 95,
+          "division_acronym": "INT",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_id": "afc6affa-54d6-473f-bd96-34bc61a5fe67"
+        },
+        "content_preview": "relating to \nthe eligibility for the health care services of the Indian Health \nService until the Indian Health Service has submitted a budget request \nreflecting the increased costs associated with the proposed final rule, \nand such request has been included in an appropriations Act and enacted \ninto law:  Provided  further, That \nwith respect to functions transferred by the Indian Health Service to \ntribes or tribal organizations, the Indian Health Service is authorized \nto provide goods and services to those entities on a reimbursable basis, \nincluding payments in advance with subsequent adjustment, and the \nreimbursements received therefrom, along with the funds received from \nthose enti..."
+      },
+      {
+        "chunk_id": "8aeb2531-7161-4e19-84b4-ceb442f34014",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.7392374277114868,
+        "chunk_summary": null,
+        "metadata": {
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 96,
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "chunk_id": "8aeb2531-7161-4e19-84b4-ceb442f34014",
+          "division_acronym": "INT"
+        },
+        "content_preview": "of the Comprehensive Environmental Response, Compensation, and Liability \nAct of 1980 (42 U.S.C. 9660(a)) and section 126(g) of the Superfund \nAmendments and Reauthorization Act of 1986, $77,100,000.\n\n            Agency for Toxic Substances and Disease Registry\n\n            toxic substances and environmental public health\n\n    For necessary expenses for the Agency for Toxic Substances and \nDisease Registry (ATSDR) in carrying out activities set forth in \nsections 104(i) and 111(c)(4) of the Comprehensive Environmental \nResponse, Compensation, and Liability Act of 1980 (CERCLA) and\n\n[[Page 140 STAT. 151]]\n\nsection 3019 of the Solid Waste Disposal Act, $79,800,000:  Provided, \nThat notwithstan..."
+      },
+      {
+        "chunk_id": "676ecc67-2618-41b8-9ebb-1b1dcf5cd4b1",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.7393714785575867,
+        "chunk_summary": null,
+        "metadata": {
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_id": "676ecc67-2618-41b8-9ebb-1b1dcf5cd4b1",
+          "chunk_index": 57,
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "division_acronym": "INT",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5"
+        },
+        "content_preview": "ember 30, 2027, and $17,607,000 shall be paid to the ``Science and \nTechnology'' appropriation to remain available until September 30, 2027: \n Provided further,  That \nsection 122(b)(3) of CERCLA (42 U.S.C. 9622(b)(3)) shall be applied in \nthis fiscal year by inserting before the period: ``, including for the \nhire, maintenance, and operation of aircraft'':  Provided \nfurther,   That the matter \npreceding the first proviso in section 443(b) of title IV of division G \nof the Consolidated Appropriations Act, 2023 (Public Law 117-328) shall \nbe applied in this fiscal year by inserting before the semicolon ``, \nincluding for the hire, maintenance, and operation of aircraft'':  \nProvided further,..."
+      },
+      {
+        "chunk_id": "d632d786-92bc-4a55-9797-b34bbf18c00e",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.7913569211959839,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_index": 56,
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "division_acronym": "INT",
+          "chunk_id": "d632d786-92bc-4a55-9797-b34bbf18c00e"
+        },
+        "content_preview": "for this fiscal year, excluding the amount of any \nfees appropriated, not less than the amount of appropriations for that \nprogram project for fiscal year 2014.\n\n[[Page 140 STAT. 128]]\n\n                       Office of Inspector General\n\n    For necessary expenses of the Office of Inspector General in \ncarrying out the provisions of the Inspector General Act of 1978, \n$43,250,000, to remain available until September 30, 2027:  Provided, \nThat the Office of Inspector General shall be subject to the terms, \nconditions, and requirements specified under this heading in Senate \nReport 118-83.\n\n                        Buildings and Facilities\n\n    For construction, repair, improvement, extension,..."
+      },
+      {
+        "chunk_id": "cd04797a-3f89-46e5-af5a-5c0fcec4467d",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.7931941151618958,
+        "chunk_summary": null,
+        "metadata": {
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_id": "cd04797a-3f89-46e5-af5a-5c0fcec4467d",
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "chunk_index": 55,
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division_acronym": "INT"
+        },
+        "content_preview": "ve agreements:  Provided further, \n        That of the amounts made available in this paragraph, in \n        addition to amounts otherwise available for such purposes, the \n        Environmental Protection Agency may reserve up to $2,000,000 for \n        salaries, expenses, and administration of the program and for \n        grants related to such program that address contamination on \n        lands conveyed under or pursuant to the Alaska Native Claims \n        Settlement Act (43 U.S.C. 1601 et seq.) that were or are \n        contaminated at the time of conveyance and are on the EPA \n        inventory of such lands.\n\n    In addition, $9,000,000, to remain available until expended, for \nneces..."
+      },
+      {
+        "chunk_id": "4c12fe8b-487f-42fd-8a89-0cf99cdefc4a",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.833472728729248,
+        "chunk_summary": null,
+        "metadata": {
+          "division_acronym": "INT",
+          "chunk_index": 71,
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_id": "4c12fe8b-487f-42fd-8a89-0cf99cdefc4a",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5"
+        },
+        "content_preview": "ith section 33 of the Federal Insecticide, \nFungicide, and Rodenticide Act (7 U.S.C. 136w-8), to remain available \nuntil expended.\n\n      Notwithstanding section 33(d)(2) of the Federal \nInsecticide, Fungicide, and Rodenticide Act (FIFRA) (7 U.S.C. 136w-\n8(d)(2)), the Administrator of the Environmental Protection Agency may \nassess fees under section 33 of FIFRA (7 U.S.C. 136w-8) for fiscal year \n2026.\n\n      The Administrator of the Environmental Protection \nAgency is authorized to collect and obligate fees in accordance with \nsection 3024 of the Solid Waste Disposal Act (42 U.S.C. 6939g) for \nfiscal year 2026, to remain available until expended.\n\n      The Administrator is authorized to \nt..."
+      },
+      {
+        "chunk_id": "43a8dd3d-d24d-47a3-afa5-b1919462588e",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.8382668495178223,
+        "chunk_summary": null,
+        "metadata": {
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "chunk_index": 67,
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_id": "43a8dd3d-d24d-47a3-afa5-b1919462588e",
+          "division_acronym": "INT",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5"
+        },
+        "content_preview": "00 shall be for State and Tribal Assistance \n        Grants to be allocated in the amounts specified for those \n        projects and for the purposes delineated in the table titled \n        ``Interior and Environment Incorporation of Community Project \n        Funding Items/Congressionally Directed Spending Items'' included \n        for this division in the explanatory statement described in \n        section 4 (in the matter preceding division A of this \n        consolidated Act) for remediation, construction, and related \n        environmental management activities in accordance with the\n\n[[Page 140 STAT. 134]]\n\n        terms and conditions specified for such grants in the \n        explanat..."
+      },
+      {
+        "chunk_id": "5cbf3c87-b52e-4290-b96e-19388ea094b7",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.839242696762085,
+        "chunk_summary": null,
+        "metadata": {
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_index": 68,
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_id": "5cbf3c87-b52e-4290-b96e-19388ea094b7",
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "division_acronym": "INT"
+        },
+        "content_preview": "00 shall be for grants under section 220 of the \n        Federal Water Pollution Control Act (33 U.S.C. 1300); and\n            (23) $1,109,833,000 shall be for grants, including \n        associated program support costs, to States, federally \n        recognized tribes, interstate agencies, tribal consortia, and \n        air pollution control agencies for multi-media or single media \n        pollution prevention, control and abatement, and related \n        activities, including activities pursuant to the provisions set \n        forth under this heading in Public Law 104-134, and for making \n        grants under section 103 of the Clean Air Act for particulate \n        matter monitoring and da..."
+      },
+      {
+        "chunk_id": "50ecf038-8cf4-4344-8029-44323ef53133",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.8593573570251465,
+        "chunk_summary": null,
+        "metadata": {
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 53,
+          "division_acronym": "INT",
+          "chunk_id": "50ecf038-8cf4-4344-8029-44323ef53133",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm"
+        },
+        "content_preview": "00 shall be for Research: \nNational Priorities as specified in the explanatory statement described \nin section 4 (in the matter preceding division A of this consolidated \nAct), of which $6,278,000 shall be for projects specified for Science \nand Technology in the table titled ``Interior and Environment \nIncorporation of Community Project Funding Items/Congressionally \nDirected Spending Items'' included for this division in the explanatory \nstatement described in section 4 (in the matter preceding division A of \nthis consolidated Act).\n\n                  Environmental Programs and Management\n\n    For environmental programs and management, including necessary \nexpenses not otherwise provided f..."
+      },
+      {
+        "chunk_id": "c33296d3-2921-4184-b50f-5116bccc7ca8",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.8792075514793396,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_id": "c33296d3-2921-4184-b50f-5116bccc7ca8",
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "division_acronym": "INT",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_index": 66,
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5"
+        },
+        "content_preview": "uch Act;\n            (8) $28,000,000 shall be for grants under section 1464(d) of \n        the Safe Drinking Water Act (42 U.S.C. 300j-24(d));\n            (9) $22,000,000 shall be for grants under section 1459B of \n        the Safe Drinking Water Act (42 U.S.C. 300j-19b);\n            (10) $6,500,000 shall be for grants under section 1459A(l) \n        of the Safe Drinking Water Act (42 U.S.C. 300j-19a(l));\n            (11) $25,500,000 shall be for grants under section 104(b)(8) \n        of the Federal Water Pollution Control Act (33 U.S.C. \n        1254(b)(8));\n            (12) $41,000,000 shall be for grants under section 221 of \n        the Federal Water Pollution Control Act (33 U.S.C. 130..."
+      },
+      {
+        "chunk_id": "45b0d839-79e6-4965-a15a-5c2fb9b6869c",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": -3.0,
+        "chunk_summary": null,
+        "metadata": {
+          "chunk_index": 17,
+          "division_acronym": "INT",
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_id": "45b0d839-79e6-4965-a15a-5c2fb9b6869c",
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm"
+        },
+        "content_preview": "hereto, as authorized by law; \nfor environmental studies, as authorized by law; for implementing other \nlaws and to the extent provided by Presidential or Secretarial \ndelegation; and for matching grants or cooperative agreements, \n$191,128,000, of which $133,128,000 is to remain available until \nSeptember 30, 2027, and of which $58,000,000 is to remain available \nuntil expended:  Provided,   That this total \nappropriation shall be reduced by amounts collected by the Secretary of \nthe Interior and credited to this appropriation from additions to \nreceipts resulting from increases to lease rental rates in effect on \nAugust 5, 1993, and from cost recovery fees from activities conducted by \nthe..."
+      },
+      {
+        "chunk_id": "42d8d9d1-e750-43a1-8e67-6056461cc141",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.8920943737030029,
+        "chunk_summary": null,
+        "metadata": {
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "chunk_id": "42d8d9d1-e750-43a1-8e67-6056461cc141",
+          "division_acronym": "INT",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "chunk_index": 59
+        },
+        "content_preview": "rcent of the cost of the project unless the grantee is \n        approved for a waiver by the Agency:  Provided further, That \n        $13,300,000 of the funds appropriated under this heading for \n        capitalization grants for the Clean Water State Revolving Funds \n        and for capitalization grants for the Drinking Water State \n        Revolving Funds, in addition to amounts otherwise available for \n        such purposes, may be used by the Administrator for salaries, \n        expenses, and administration for Community Project Funding \n        Items/Congressionally Directed Spending Items:  Provided \n        further, That for fiscal year 2026, to the extent there are \n        sufficie..."
+      },
+      {
+        "chunk_id": "9e958782-064b-46f9-b747-d1a35e6867bb",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": -2.0,
+        "chunk_summary": null,
+        "metadata": {
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "chunk_index": 10,
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division_acronym": "INT",
+          "chunk_id": "9e958782-064b-46f9-b747-d1a35e6867bb",
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES"
+        },
+        "content_preview": "l \nremain available until September 30, 2027, and not to exceed $15,000 may \nbe for official reception and representative expenses:  Provided, That \nfunds appropriated under this heading in this Act are available for the \npurposes of section 5 of Public Law 95-348:  Provided further, That \nnotwithstanding section 9 of the 400 Years of African-American History \nCommission Act (36 U.S.C. note prec. 101; Public Law 115-102), \n$3,300,000 of the funds provided under this heading shall be made \navailable for the purposes specified by that Act:  Provided further, \nThat  sections 7(b) and 8 of that Act \nshall be amended by striking ``July 1, 2025'' and inserting ``July 1, \n2027''.\n\n    In addition,..."
+      },
+      {
+        "chunk_id": "822d008d-f81d-4bda-9449-bb793b3cc99a",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": -2.0,
+        "chunk_summary": null,
+        "metadata": {
+          "source_file": "FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+          "division_acronym": "INT",
+          "vector_store_id": "609b2b98-104e-4286-b410-a34337ba0ed5",
+          "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+          "chunk_index": 16,
+          "chunk_id": "822d008d-f81d-4bda-9449-bb793b3cc99a"
+        },
+        "content_preview": "ed for activities of the United \nStates Geological Survey such sums as are necessary shall be available \nfor contracting for the furnishing of topographic maps and for the \nmaking of geophysical or other specialized surveys when it is \nadministratively determined that such procedures are in the public \ninterest; construction and maintenance of necessary buildings and \nappurtenant facilities; acquisition of lands for gauging stations, \nobservation wells, and seismic equipment; expenses of the United States \nNational Committee for Geological Sciences; and payment of compensation \nand expenses of persons employed by the Survey duly appointed to \nrepresent the United States in the negotiation an..."
+      }
+    ],
+    "mapped_chunk_count": 16,
+    "mapped_chunks": [
+      {
+        "chunk_id": "68c231bc-233c-49a7-9433-ff67261f494c",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": null,
+        "chunk_snapshot": "$98,000,000 for Superfund cleanup under CERCLA",
+        "chunk_summary": "This chunk provides $98 million for Superfund cleanup under CERCLA section 104(k), directly answering the FY2026 funding available for environmental remediation.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $98,000,000 [[num:src_int_68c231bc_233c_49a7_9433_ff67261f494c_1]] shall be to carry out section 104(k) of the Comprehensive Environmental Response, Compensation, and Liability Act of 1980 (CERCLA), including grants, interagency agreements, and associated program support costs: Provided, That at least 10 percent shall be allocated for assistance in persistent poverty counties.",
+            "responsiveness_tier": "direct",
+            "reason": "Directly provides funding for Superfund cleanup under CERCLA section 104(k).",
+            "source_numbers": [
+              {
+                "figure": "$98,000,000",
+                "value": 98000000.0,
+                "label": "CERCLA section 104(k) grants"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "41d86abe-56ca-4f54-9ca5-8cf86e0ec3c9",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.7327465415000916,
+        "chunk_snapshot": "FY2026 CERCLA funding",
+        "chunk_summary": "This chunk lists FY2026 appropriations for other environmental programs but lacks the requested brownfields, Superfund, or remediation funding, showing the answer is absent.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 7,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $90,000,000 shall be for grants under title VII, subtitle G of the Energy Policy Act of 2005;",
+            "responsiveness_tier": "adjacent",
+            "reason": "The grant program under title VII, subtitle G of the Energy Policy Act of 2005 may relate to environmental remediation, but the specific topic (brownfields cleanup, Superfund cleanup, or environmental remediation) is not explicitly stated.",
+            "source_numbers": [
+              {
+                "figure": "$90,000,000",
+                "value": 90000000.0,
+                "label": "Grants under title VII, subtitle G of the Energy Policy Act of 2005"
+              }
+            ]
+          },
+          {
+            "fact": "- $67,800,000 shall be for targeted airshed grants;",
+            "responsiveness_tier": "adjacent",
+            "reason": "Targeted airshed grants may relate to environmental remediation (air quality), but not directly to brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$67,800,000",
+                "value": 67800000.0,
+                "label": "Targeted airshed grants"
+              }
+            ]
+          },
+          {
+            "fact": "- $28,500,000 shall be for grants under subsections (a) through (j) of section 1459A of the Safe Drinking Water Act;",
+            "responsiveness_tier": "adjacent",
+            "reason": "Safe Drinking Water Act grants may relate to environmental remediation (water contamination), but not directly to brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$28,500,000",
+                "value": 28500000.0,
+                "label": "Grants under SDWA section 1459A(a)-(j)"
+              }
+            ]
+          },
+          {
+            "fact": "- $28,000,000 shall be for grants under section 1464(d) of the Safe Drinking Water Act;",
+            "responsiveness_tier": "adjacent",
+            "reason": "Safe Drinking Water Act grants may relate to environmental remediation, but not directly to brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$28,000,000",
+                "value": 28000000.0,
+                "label": "Grants under SDWA section 1464(d)"
+              }
+            ]
+          },
+          {
+            "fact": "- $22,000,000 shall be for grants under section 1459B of the Safe Drinking Water Act;",
+            "responsiveness_tier": "adjacent",
+            "reason": "Safe Drinking Water Act grants may relate to environmental remediation, but not directly to brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$22,000,000",
+                "value": 22000000.0,
+                "label": "Grants under SDWA section 1459B"
+              }
+            ]
+          },
+          {
+            "fact": "- $6,500,000 shall be for grants under section 1459A(l) of the Safe Drinking Water Act;",
+            "responsiveness_tier": "adjacent",
+            "reason": "Safe Drinking Water Act grants may relate to environmental remediation, but not directly to brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$6,500,000",
+                "value": 6500000.0,
+                "label": "Grants under SDWA section 1459A(l)"
+              }
+            ]
+          },
+          {
+            "fact": "- $25,500,000 shall be for grants under section 104(b)(8) of the Fe... (incomplete)",
+            "responsiveness_tier": "adjacent",
+            "reason": "Section 104(b)(8) of CERCLA may relate to Superfund cleanup, but the fact is incomplete and the exact purpose is unclear.",
+            "source_numbers": [
+              {
+                "figure": "$25,500,000",
+                "value": 25500000.0,
+                "label": "Grants under CERCLA section 104(b)(8)"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "afc6affa-54d6-473f-bd96-34bc61a5fe67",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": null,
+        "chunk_snapshot": "$77,100,000 for National Institute of Environmental Health Sciences Superfund cleanup.",
+        "chunk_summary": "This chunk shows $77.1 million for NIEHS Superfund activities in FY2026, relevant because it addresses Superfund cleanup funding.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- The National Institute of Environmental Health Sciences is appropriated $77,100,000 [[num:src_int_afc6affa_54d6_473f_bd96_34bc61a5fe67_1]] for necessary expenses in carrying out activities set forth in section 311(a) of CERCLA and section 126(g) of SARA. [[num:1]]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly funds Superfund cleanup-related research activities under CERCLA and SARA.",
+            "source_numbers": [
+              {
+                "figure": "$77,100,000",
+                "value": 77100000.0,
+                "label": "NIEHS Superfund-related activities"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "8aeb2531-7161-4e19-84b4-ceb442f34014",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.7392374277114868,
+        "chunk_snapshot": "$77,100,000 for Superfund cleanup under CERCLA",
+        "chunk_summary": "This chunk specifies $77,100,000 for FY2026 Superfund cleanup under CERCLA, which directly answers the funding available for remediation.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 2,
+          "not_responsive": 2
+        },
+        "relevance_facts": [
+          {
+            "fact": "- The Agency for Toxic Substances and Disease Registry (ATSDR) receives $79,800,000 for necessary expenses in carrying out activities under CERCLA sections 104(i) and 111(c)(4) and Solid Waste Disposal Act section 3019, which includes environmental remediation and public health activities related to hazardous substances. [[num:1]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "ATSDR funding supports health assessments and studies related to hazardous substance releases, which is adjacent to Superfund cleanup and environmental remediation, but not directly for cleanup itself.",
+            "source_numbers": [
+              {
+                "figure": "$79,800,000",
+                "value": 79800000.0,
+                "label": "ATSDR toxic substances and environmental public health"
+              }
+            ]
+          },
+          {
+            "fact": "- The chunk mentions $77,100,000 in the context of CERCLA sections 104(i) and 126(g) of the Superfund Amendments and Reauthorization Act of 1986, but the surrounding text is incomplete; it appears to be a separate amount possibly for Superfund-related activities. [[num:2]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The $77,100,000 is referenced in the context of CERCLA and Superfund, but the incomplete sentence makes it unclear whether it is for cleanup or other activities; it is adjacent to the topic.",
+            "source_numbers": [
+              {
+                "figure": "$77,100,000",
+                "value": 77100000.0,
+                "label": "CERCLA/Superfund related (incomplete context)"
+              }
+            ]
+          },
+          {
+            "fact": "- The Council on Environmental Quality and Office of Environmental Quality receives $4,629,000 for necessary expenses under NEPA and related acts, which is not directly for brownfields or Superfund cleanup. [[num:3]]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "This funding is for environmental policy and NEPA implementation, not for brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$4,629,000",
+                "value": 4629000.0,
+                "label": "Council on Environmental Quality"
+              }
+            ]
+          },
+          {
+            "fact": "- The Chemical Safety and Hazard Investigation Board salaries and expense line is mentioned but no dollar figure is provided in the chunk.",
+            "responsiveness_tier": "not_responsive",
+            "reason": "No dollar figure is given, and the board's mission is chemical safety investigation, not cleanup.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "676ecc67-2618-41b8-9ebb-1b1dcf5cd4b1",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.7393714785575867,
+        "chunk_snapshot": "$88,903,000 for Leaking Underground Storage Tank cleanup.",
+        "chunk_summary": "This chunk contains funding amounts for leaking underground storage tank cleanup ($88.9M) and oil spill programs ($20.6M), which are forms of environmental remediation.",
+        "relevance_counts": {
+          "direct": 2,
+          "adjacent": 3,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- Leaking Underground Storage Tank Trust Fund Program: $88,903,000 [[num:src_int_676ecc67_2618_41b8_9ebb_1b1dcf5cd4b1_1]] for necessary expenses to carry out leaking underground storage tank cleanup activities authorized by subtitle I of the Solid Waste Disposal Act, to remain available until expended. [[Page 140 STAT. 129]]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly funds cleanup of leaking underground storage tanks, which is a type of environmental remediation.",
+            "source_numbers": [
+              {
+                "figure": "$88,903,000",
+                "value": 88903000.0,
+                "label": "Leaking Underground Storage Tank Trust Fund Program total"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the $88,903,000 [[num:src_int_676ecc67_2618_41b8_9ebb_1b1dcf5cd4b1_1]], $64,583,000 [[num:src_int_676ecc67_2618_41b8_9ebb_1b1dcf5cd4b1_2]] shall be for carrying out leaking underground storage tank cleanup activities authorized by section 9003(h) of the Solid Waste Disposal Act. [[Page 140 STAT. 129]]",
+            "responsiveness_tier": "direct",
+            "reason": "Suballocation for cleanup activities under the same program.",
+            "source_numbers": [
+              {
+                "figure": "$64,583,000",
+                "value": 64583000.0,
+                "label": "Leaking Underground Storage Tank cleanup suballocation"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the $88,903,000, $24,320,000 shall be for carrying out the other provisions of the Solid Waste Disposal Act specified in section 9508(c) of the Internal Revenue Code. [[Page 140 STAT. 129]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Related to underground storage tanks but not specifically cleanup; other provisions.",
+            "source_numbers": [
+              {
+                "figure": "$24,320,000",
+                "value": 24320000.0,
+                "label": "Other provisions suballocation"
+              }
+            ]
+          },
+          {
+            "fact": "- Inland Oil Spill Programs: $20,561,000 for expenses necessary to carry out EPA's responsibilities under the Oil Pollution Act of 1990, to be derived from the Oil Spill Liability trust fund, to remain available until expended. [[Page 140 STAT. 129]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Funds oil spill cleanup, which is environmental remediation but not brownfields or Superfund.",
+            "source_numbers": [
+              {
+                "figure": "$20,561,000",
+                "value": 20561000.0,
+                "label": "Inland Oil Spill Programs"
+              }
+            ]
+          },
+          {
+            "fact": "- State and Tribal Assistance Grants: $4,409,609,000 for environmental programs and infrastructure assistance, including capitalization grants for State revolving funds and performance partnership grants, to remain available until expended. [[Page 140 STAT. 129]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Broad environmental assistance that may include remediation but not specifically brownfields, Superfund, or cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$4,409,609,000",
+                "value": 4409609000.0,
+                "label": "State and Tribal Assistance Grants total"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "d632d786-92bc-4a55-9797-b34bbf18c00e",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.7913569211959839,
+        "chunk_snapshot": "$282,749,000 for EPA Hazardous Substance Superfund",
+        "chunk_summary": "This chunk shows $282,749,000 in FY2026 appropriations for the Hazardous Substance Superfund, directly answering the question about Superfund cleanup funding.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 0,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- The Hazardous Substance Superfund receives $282,749,000 [[num:src_int_d632d786_92bc_4a55_9797_b34bbf18c00e_1]] for necessary expenses to carry out CERCLA, including cleanup activities, to remain available until expended. [[num:1]]",
+            "responsiveness_tier": "direct",
+            "reason": "Directly funds Superfund cleanup, which includes environmental remediation.",
+            "source_numbers": [
+              {
+                "figure": "$282,749,000",
+                "value": 282749000.0,
+                "label": "Hazardous Substance Superfund"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "cd04797a-3f89-46e5-af5a-5c0fcec4467d",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.7931941151618958,
+        "chunk_snapshot": "EPA $9,000,000 for TSCA activities in FY2026.",
+        "chunk_summary": "This chunk shows $2 million for EPA to administer Alaska Native lands contamination cleanup and $9 million for TSCA activities, both forms of environmental remediation.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 2,
+          "not_responsive": 3
+        },
+        "relevance_facts": [
+          {
+            "fact": "- The Environmental Protection Agency may reserve up to $2,000,000 for salaries, expenses, and administration of the program and for grants related to such program that address contamination on lands conveyed under or pursuant to the Alaska Native Claims Settlement Act that were or are contaminated at the time of conveyance and are on the EPA inventory of such lands. [[num:...]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The fact addresses contamination on specific lands (Alaska Native Claims Settlement Act lands) which is a form of environmental remediation, but it is a narrow set-aside within a broader account and not directly about brownfields cleanup, Superfund cleanup, or general environmental remediation.",
+            "source_numbers": [
+              {
+                "figure": "$2,000,000",
+                "value": 2000000.0,
+                "label": "EPA reservation for Alaska Native Claims Settlement Act lands contamination"
+              }
+            ]
+          },
+          {
+            "fact": "- $9,000,000, to remain available until expended, for necessary expenses of activities described in section 26(b)(1) of the Toxic Substances Control Act (15 U.S.C. 2625(b)(1)). [[num:...]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The fact funds activities under TSCA, which relates to chemical risk and review, not specifically brownfields cleanup, Superfund cleanup, or environmental remediation as commonly understood.",
+            "source_numbers": [
+              {
+                "figure": "$9,000,000",
+                "value": 9000000.0,
+                "label": "TSCA activities funding"
+              }
+            ]
+          },
+          {
+            "fact": "- The sum herein appropriated in this paragraph from the general fund for fiscal year 2026 shall be reduced by the amount of discretionary offsetting receipts received during fiscal year 2026, so as to result in a final fiscal year 2026 appropriation from the general fund estimated at not more than $0. [[num:...]]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "This fact describes a budget-neutral mechanism for the TSCA Service Fee Fund, not directly related to brownfields, Superfund, or environmental remediation.",
+            "source_numbers": [
+              {
+                "figure": "$0",
+                "value": 0.0,
+                "label": "Final general fund appropriation estimate"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the funds included in the first paragraph under this heading, the Chemical Risk Review and Reduction program project shall be allocated for this fiscal year, excluding the amount of any fees appropriated, not less than the amount of appropriations for that program project for fiscal year 2014. [[num:...]]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "This fact concerns a floor on funding for the Chemical Risk Review and Reduction program, which is not directly about brownfields, Superfund, or environmental remediation.",
+            "source_numbers": []
+          },
+          {
+            "fact": "- For necessary expenses of the Office of Inspector General in carrying out the provisions of the Inspector General Act of 1978, $43,250,000, to remain available until September 30, 2027. [[num:...]]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "This fact funds the Office of Inspector General, which is an oversight body and not directly related to brownfields cleanup, Superfund cleanup, or environmental remediation.",
+            "source_numbers": [
+              {
+                "figure": "$43,250,000",
+                "value": 43250000.0,
+                "label": "Office of Inspector General funding"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "4c12fe8b-487f-42fd-8a89-0cf99cdefc4a",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.833472728729248,
+        "chunk_snapshot": "Hazardous Substance Superfund account available for FY2026",
+        "chunk_summary": "This chunk confirms that the Hazardous Substance Superfund account is available for FY2026 facility projects, indicating funding exists for Superfund cleanup.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 5,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- The Administrator of the Environmental Protection Agency may assess fees under section 33 of FIFRA for fiscal year 2026. [[num:1]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "FIFRA fees are not directly related to brownfields cleanup, Superfund cleanup, or environmental remediation; they are pesticide-related.",
+            "source_numbers": []
+          },
+          {
+            "fact": "- The Administrator is authorized to collect and obligate fees in accordance with section 3024 of the Solid Waste Disposal Act for fiscal year 2026, to remain available until expended. [[num:2]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Solid Waste Disposal Act fees may relate to environmental remediation but are not specifically for brownfields or Superfund.",
+            "source_numbers": []
+          },
+          {
+            "fact": "- The Administrator is authorized to transfer up to $369,000,000 of the funds appropriated for the Great Lakes Restoration Initiative under the heading 'Environmental Programs and Management' to carry out activities supporting the Great Lakes Restoration Initiative and Great Lakes Water Quality Agreement. [[num:3]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Great Lakes Restoration Initiative is related to environmental remediation but not specifically brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$369,000,000",
+                "value": 369000000.0,
+                "label": "Great Lakes Restoration Initiative transfer authority"
+              }
+            ]
+          },
+          {
+            "fact": "- The Science and Technology, Environmental Programs and Management, Office of Inspector General, Hazardous Substance Superfund, and Leaking Underground Storage Tank Trust Fund Program Accounts are available for construction, alteration, repair, rehabilitation, and renovation of facilities, provided that the cost does not exceed $300,000 [[num:src_int_4c12fe8b_487f_42fd_8a89_0cf99cdefc4a_1]] per project. [[num:4]]",
+            "responsiveness_tier": "direct",
+            "reason": "Hazardous Substance Superfund account is directly relevant to Superfund cleanup; the $300,000 per project limitation applies.",
+            "source_numbers": [
+              {
+                "figure": "$300,000",
+                "value": 300000.0,
+                "label": "Per project cost limitation for facility construction/renovation"
+              }
+            ]
+          },
+          {
+            "fact": "- For fiscal year 2026, the Administrator is authorized to use amounts appropriated under section 319 of the Federal Water Pollution Control Act to make grants to Indian tribes pursuant to sections 319(h) and 518(e) of that Act. [[num:5]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Section 319 grants relate to nonpoint source pollution control, which may include environmental remediation but not specifically brownfields or Superfund.",
+            "source_numbers": []
+          },
+          {
+            "fact": "- The Administrator is authorized to use amounts appropriated under the heading 'Environmental Programs and Management' for fiscal year 2026 to provide grants to implement the Southeast New England Watershed Restoration Program. [[num:6]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Watershed restoration is related to environmental remediation but not specifically brownfields or Superfund.",
+            "source_numbers": []
+          }
+        ]
+      },
+      {
+        "chunk_id": "43a8dd3d-d24d-47a3-afa5-b1919462588e",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.8382668495178223,
+        "chunk_snapshot": "$2,000,000 for remediation of above ground leaking fuel tanks",
+        "chunk_summary": "This chunk identifies $2,000,000 for remediation of above ground leaking fuel tanks, directly providing FY2026 funding for environmental remediation.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 1,
+          "not_responsive": 5
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $2,000,000 [[num:src_int_43a8dd3d_d24d_47a3_afa5_b1919462588e_1]] shall be for grants for remediation of above ground leaking fuel tanks pursuant to Public Law 106-554;",
+            "responsiveness_tier": "direct",
+            "reason": "Directly funds remediation of leaking fuel tanks, which is a type of environmental remediation.",
+            "source_numbers": [
+              {
+                "figure": "$2,000,000",
+                "value": 2000000.0,
+                "label": "Grants for remediation of above ground leaking fuel tanks"
+              }
+            ]
+          },
+          {
+            "fact": "- $1,109,833,000 shall be for grants, including associated program support costs, to States, federally recognized tribes, interstate agencies, tribal consortia, and air pollution control agencies for multi-media or single media pollution prevention, control and abatement, and related activities, including activities pursuant to...",
+            "responsiveness_tier": "adjacent",
+            "reason": "Funds pollution prevention and abatement, which is related to environmental remediation but not specifically brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$1,109,833,000",
+                "value": 1109833000.0,
+                "label": "Grants for pollution prevention, control and abatement"
+              }
+            ]
+          },
+          {
+            "fact": "- $2,250,000 shall be for grants under section 1459F of the Safe Drinking Water Act (42 U.S.C. 300j-19g);",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Grants under Safe Drinking Water Act are not directly related to brownfields cleanup, Superfund cleanup, or environmental remediation.",
+            "source_numbers": [
+              {
+                "figure": "$2,250,000",
+                "value": 2250000.0,
+                "label": "Grants under Safe Drinking Water Act"
+              }
+            ]
+          },
+          {
+            "fact": "- $4,000,000 shall be for carrying out section 2001 of the America's Water Infrastructure Act of 2018 (Public Law 115-270, 42 U.S.C. 300j-3c note);",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Water infrastructure grants are not directly related to brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$4,000,000",
+                "value": 4000000.0,
+                "label": "Grants under America's Water Infrastructure Act"
+              }
+            ]
+          },
+          {
+            "fact": "- $2,000,000 shall be for grants under section 50217(b) of the Infrastructure Investment and Jobs Act (33 U.S.C. 1302f(b); Public Law 117-58);",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Grants under IIJA section 50217(b) are not specified as brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$2,000,000",
+                "value": 2000000.0,
+                "label": "Grants under IIJA section 50217(b)"
+              }
+            ]
+          },
+          {
+            "fact": "- $3,500,000 shall be for grants under section 124 of the Federal Water Pollution Control Act (33 U.S.C. 1276);",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Water pollution control grants are not directly related to brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$3,500,000",
+                "value": 3500000.0,
+                "label": "Grants under Federal Water Pollution Control Act section 124"
+              }
+            ]
+          },
+          {
+            "fact": "- $2,000,000 shall be for grants under section 220 of the Federal Water Pollution Control Act (33 U.S.C. 1300);",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Water pollution control grants are not directly related to brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$2,000,000",
+                "value": 2000000.0,
+                "label": "Grants under Federal Water Pollution Control Act section 220"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "5cbf3c87-b52e-4290-b96e-19388ea094b7",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.839242696762085,
+        "chunk_snapshot": "$46,250,000 for Superfund cleanup under CERCLA section 128.",
+        "chunk_summary": "This chunk specifies $46.25 million for CERCLA section 128 activities, directly providing FY2026 Superfund cleanup funding.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 1,
+          "not_responsive": 1
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $46,250,000 [[num:src_int_5cbf3c87_b52e_4290_b96e_19388ea094b7_1]] shall be for carrying out section 128 of CERCLA (Superfund).",
+            "responsiveness_tier": "direct",
+            "reason": "Directly funds Superfund cleanup activities under CERCLA.",
+            "source_numbers": [
+              {
+                "figure": "$46,250,000",
+                "value": 46250000.0,
+                "label": "CERCLA section 128 grants"
+              }
+            ]
+          },
+          {
+            "fact": "- $1,109,833,000 shall be for grants for pollution prevention, control and abatement, including activities under Public Law 104-134 and various Clean Air Act and Water and Waste Act provisions, of which $46,250,000 is for CERCLA section 128.",
+            "responsiveness_tier": "adjacent",
+            "reason": "Broad pollution control grants that may include environmental remediation but not specifically brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$1,109,833,000",
+                "value": 1109833000.0,
+                "label": "Pollution prevention grants total"
+              }
+            ]
+          },
+          {
+            "fact": "- $64,634,000 for the cost of direct loans and guaranteed loans under the Water Infrastructure Finance and Innovation Act of 2014.",
+            "responsiveness_tier": "not_responsive",
+            "reason": "Water infrastructure loans, not related to brownfields, Superfund, or environmental remediation.",
+            "source_numbers": [
+              {
+                "figure": "$64,634,000",
+                "value": 64634000.0,
+                "label": "WIFIA loan subsidy costs"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "50ecf038-8cf4-4344-8029-44323ef53133",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.8593573570251465,
+        "chunk_snapshot": "$3,114,671,000 for Environmental Programs and Management.",
+        "chunk_summary": "This chunk provides the FY2026 appropriation of $3,114,671,000 for Environmental Programs and Management, which includes administrative costs for the brownfields program.",
+        "relevance_counts": {
+          "direct": 1,
+          "adjacent": 2,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- Environmental Programs and Management receives $3,114,671,000 [[num:src_int_50ecf038_8cf4_4344_8029_44323ef53133_1]], to remain available until September 30, 2027, which includes administrative costs of the brownfields program under the Small Business Liability Relief and Brownfields Revitalization Act of 2002. [Environmental Programs and Management]",
+            "responsiveness_tier": "direct",
+            "reason": "The account explicitly includes administrative costs for the brownfields program, which is a named topic (brownfields cleanup).",
+            "source_numbers": [
+              {
+                "figure": "$3,114,671,000",
+                "value": 3114671000.0,
+                "label": "Environmental Programs and Management total"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the funds under Environmental Programs and Management, $30,000,000 shall be for grants, including for projects and implementation and training. [Environmental Programs and Management]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Grants could support brownfields or Superfund cleanup, but the text does not specify the purpose; it is a general grant set-aside.",
+            "source_numbers": [
+              {
+                "figure": "$30,000,000",
+                "value": 30000000.0,
+                "label": "Grants for projects and implementation and training"
+              }
+            ]
+          },
+          {
+            "fact": "- Of the funds under Environmental Programs and Management, $30,700,000 shall be for Environmental Protection: National Priorities as specified in the explanatory statement. [Environmental Programs and Management]",
+            "responsiveness_tier": "adjacent",
+            "reason": "National Priorities may include Superfund sites, but the text does not explicitly mention Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$30,700,000",
+                "value": 30700000.0,
+                "label": "Environmental Protection: National Priorities"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "c33296d3-2921-4184-b50f-5116bccc7ca8",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.8792075514793396,
+        "chunk_snapshot": "$20,364,000 for State and Tribal Assistance Grants for remediation",
+        "chunk_summary": "This chunk lists FY2026 funding amounts for various environmental grants, including $20.364 million for remediation projects, but does not specify brownfields or Superfund.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $20,364,000 shall be for State and Tribal Assistance Grants to be allocated for remediation projects as delineated in the table titled \"Interior and Environment Incorporation of Community Project Funding Items/Congressionally Directed Spending Items\".",
+            "responsiveness_tier": "adjacent",
+            "reason": "The fact mentions 'remediation' which is related to environmental remediation, but the specific projects are not explicitly identified as brownfields or Superfund cleanup. The amount is for State and Tribal Assistance Grants for remediation, which could include brownfields or Superfund, but the chunk does not specify.",
+            "source_numbers": [
+              {
+                "figure": "$20,364,000",
+                "value": 20364000.0,
+                "label": "State and Tribal Assistance Grants for remediation"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "45b0d839-79e6-4965-a15a-5c2fb9b6869c",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": -3.0,
+        "chunk_snapshot": "FY2026 environmental studies funding, $191,128,000",
+        "chunk_summary": "This chunk provides FY2026 funding for offshore safety and environmental enforcement, not brownfields or Superfund cleanup.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 3,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- For environmental studies, as authorized by law; for implementing other laws and to the extent provided by Presidential or Secretarial delegation; and for matching grants or cooperative agreements, $191,128,000, of which $133,128,000 is to remain available until September 30, 2027, and of which $58,000,000 is to remain available until expended. [[Page 140 STAT. 104]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The fact mentions 'environmental studies' and 'matching grants or cooperative agreements' which could include environmental remediation, but the account is under the Bureau of Ocean Energy Management and focuses on offshore energy activities, not specifically brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$191,128,000",
+                "value": 191128000.0,
+                "label": "Bureau of Ocean Energy Management - environmental studies and other activities"
+              },
+              {
+                "figure": "$133,128,000",
+                "value": 133128000.0,
+                "label": "Bureau of Ocean Energy Management - amount to remain available until Sept 30, 2027"
+              },
+              {
+                "figure": "$58,000,000",
+                "value": 58000000.0,
+                "label": "Bureau of Ocean Energy Management - amount to remain available until expended"
+              }
+            ]
+          },
+          {
+            "fact": "- Not to exceed $3,000 shall be available for reasonable expenses related to promoting volunteer beach and marine cleanup activities. [[Page 140 STAT. 104]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Beach and marine cleanup activities are a form of environmental remediation, but the amount is very small and not specifically for brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$3,000",
+                "value": 3000.0,
+                "label": "Bureau of Ocean Energy Management - volunteer beach and marine cleanup activities"
+              }
+            ]
+          },
+          {
+            "fact": "- For expenses necessary for the regulation of operations related to leases, easements, rights-of-way, and agreements for use for oil and gas, other minerals, energy, and marine-related purposes on the Outer Continental Shelf; for enforcing and implementing laws and regulations; and for matching grants or cooperative agreements, $160,751,000, of which $128,871,000 is to remain available until September 30, 2027, and of which $31,880,000 is to remain available until expended, including $2,880,000 for offshore decommissioning activities. [[Page 140 STAT. 104]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Offshore decommissioning activities are a form of environmental remediation, but the account is for offshore safety and environmental enforcement, not specifically brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$160,751,000",
+                "value": 160751000.0,
+                "label": "Bureau of Safety and Environmental Enforcement - offshore safety and environmental enforcement"
+              },
+              {
+                "figure": "$128,871,000",
+                "value": 128871000.0,
+                "label": "Bureau of Safety and Environmental Enforcement - amount to remain available until Sept 30, 2027"
+              },
+              {
+                "figure": "$31,880,000",
+                "value": 31880000.0,
+                "label": "Bureau of Safety and Environmental Enforcement - amount to remain available until expended"
+              },
+              {
+                "figure": "$2,880,000",
+                "value": 2880000.0,
+                "label": "Bureau of Safety and Environmental Enforcement - offshore decommissioning activities"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "42d8d9d1-e750-43a1-8e67-6056461cc141",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": 0.8920943737030029,
+        "chunk_snapshot": "$13,300,000 for Clean Water State Revolving Funds capitalization grants.",
+        "chunk_summary": "This chunk details FY2026 funding for water revolving funds, not for brownfields, Superfund, or environmental remediation.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 3,
+          "not_responsive": 1
+        },
+        "relevance_facts": [
+          {
+            "fact": "- $13,300,000 of the funds appropriated under this heading for capitalization grants for the Clean Water State Revolving Funds and for capitalization grants for the Drinking Water State Revolving Funds may be used by the Administrator for salaries, expenses, and administration for Community Project Funding Items/Congressionally Directed Spending Items. [[Page 140 STAT. 130]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The fact mentions funds for Clean Water and Drinking Water State Revolving Funds, which are related to environmental remediation, but the specific use is for administration of Community Project Funding, not directly for brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$13,300,000",
+                "value": 13300000.0,
+                "label": "Administration for Community Project Funding Items"
+              }
+            ]
+          },
+          {
+            "fact": "- For fiscal year 2026, not less than 10 percent of the funds made available under this title to each State for Clean Water State Revolving Fund capitalization grants shall be used by the State for projects to address green infrastructure, water or energy efficiency improvements, or other environmentally innovative activities. [[Page 140 STAT. 130]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The fact relates to environmental projects (green infrastructure, water/energy efficiency) but does not specifically address brownfields cleanup, Superfund cleanup, or environmental remediation as defined in the question.",
+            "source_numbers": []
+          },
+          {
+            "fact": "- For fiscal year 2026, funds made available under this title to each State for Drinking Water State Revolving Fund capitalization grants may, at the discretion of each State, be used for projects to address green infrastructure, water or energy efficiency improvements, or other environmentally innovative activities. [[Page 140 STAT. 130]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "Similar to above, related to environmental projects but not specifically brownfields or Superfund.",
+            "source_numbers": []
+          },
+          {
+            "fact": "- The Administrator is authorized to use up to $1,500,000 of funds made available for the Clean Water State Revolving Funds under this heading under title VI of the Federal Water Pollution Control Act to conduct the Clean Watersheds Needs Survey. [[Page 140 STAT. 130]]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "This fact is about a survey for clean watersheds, not directly related to brownfields cleanup, Superfund cleanup, or environmental remediation.",
+            "source_numbers": [
+              {
+                "figure": "$1,500,000",
+                "value": 1500000.0,
+                "label": "Clean Watersheds Needs Survey"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "9e958782-064b-46f9-b747-d1a35e6867bb",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": -2.0,
+        "chunk_snapshot": "$91,596,000 for environmental compliance and review",
+        "chunk_summary": "This chunk describes funding for parks and historic preservation, not brownfields or Superfund cleanup, so it does not answer the question.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 1,
+          "not_responsive": 1
+        },
+        "relevance_facts": [
+          {
+            "fact": "- For expenses necessary to carry out recreation programs, natural programs, cultural programs, heritage partnership programs, environmental compliance and review, international park affairs, and grant administration, not otherwise provided for, $91,596,000, to remain available until September 30, 2027, of which $250,000 shall be for projects specified for Statutory and Contractual Aid in the table titled \"Interior and Environment Incorporation of Community Project Funding Items/Congressionally Directed Spending Items\" included for this division in the explanatory statement described in section 4. [[Page 140 STAT. 100]]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The fact includes 'environmental compliance and review' which is related to environmental remediation, but the amount is for a broad recreation and preservation account, not specifically for brownfields or Superfund cleanup.",
+            "source_numbers": [
+              {
+                "figure": "$91,596,000",
+                "value": 91596000.0,
+                "label": "National Recreation and Preservation account total"
+              },
+              {
+                "figure": "$250,000",
+                "value": 250000.0,
+                "label": "Statutory and Contractual Aid set-aside"
+              }
+            ]
+          },
+          {
+            "fact": "- For expenses necessary in carrying out the National Historic Preservation Act, $205,059,000, to be derived from the Historic Preservation Fund and to remain available until September 30, 2027, of which $25,500,000 shall be for Save America's Treasures grants for preservation of nationally significant sites, structures and artifacts. [[Page 140 STAT. 100]]",
+            "responsiveness_tier": "not_responsive",
+            "reason": "This fact pertains to historic preservation, not brownfields cleanup, Superfund cleanup, or environmental remediation.",
+            "source_numbers": [
+              {
+                "figure": "$205,059,000",
+                "value": 205059000.0,
+                "label": "Historic Preservation Fund total"
+              },
+              {
+                "figure": "$25,500,000",
+                "value": 25500000.0,
+                "label": "Save America's Treasures grants"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chunk_id": "822d008d-f81d-4bda-9449-bb793b3cc99a",
+        "division": "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+        "division_acronym": "INT",
+        "score": -2.0,
+        "chunk_snapshot": "No FY2026 funding for brownfields or Superfund cleanup.",
+        "chunk_summary": "This chunk provides no funding figures for brownfields, Superfund, or environmental remediation, so it is not relevant to the question.",
+        "relevance_counts": {
+          "direct": 0,
+          "adjacent": 1,
+          "not_responsive": 0
+        },
+        "relevance_facts": [
+          {
+            "fact": "- The Bureau of Ocean Energy Management receives $191,128,000 for expenses necessary for granting and administering leases, easements, rights-of-way, and agreements for use for oil and gas, other minerals, energy, and marine-related purposes on the Outer Continental Shelf and approving operations related thereto, as authorized by law; for environmental studies, as authorized by law; for implementing other laws and to the extent provided by Presidential or Secretarial delegation; and for matching grants or cooperative agreements, of which $133,128,000 is to remain available until September 30, 2027, and of which $58,000,000 is to remain available until expended. [ACR]",
+            "responsiveness_tier": "adjacent",
+            "reason": "The fact provides funding for environmental studies and Outer Continental Shelf activities, which may include environmental remediation, but does not specifically mention brownfields cleanup, Superfund cleanup, or environmental remediation as a primary purpose.",
+            "source_numbers": [
+              {
+                "figure": "$191,128,000",
+                "value": 191128000.0,
+                "label": "Bureau of Ocean Energy Management total appropriation"
+              },
+              {
+                "figure": "$133,128,000",
+                "value": 133128000.0,
+                "label": "Bureau of Ocean Energy Management amount available until September 30, 2027"
+              },
+              {
+                "figure": "$58,000,000",
+                "value": 58000000.0,
+                "label": "Bureau of Ocean Energy Management amount available until expended"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "judge": {
+      "fact_checks": [
+        {
+          "fact": "No clean division-wide total is supported because amounts mix separate accounts, grants, and broader management funding",
+          "found": true,
+          "evidence": "a single clean total is not available from the direct facts"
+        },
+        {
+          "fact": "Hazardous Substance Superfund is $282,749,000 for necessary expenses to carry out CERCLA, including cleanup activities",
+          "found": true,
+          "evidence": "$282,749,000 for necessary expenses to carry out CERCLA, including cleanup activities"
+        },
+        {
+          "fact": "CERCLA section 104(k) brownfields grants are $98,000,000",
+          "found": true,
+          "evidence": "$98,000,000 to carry out section 104(k) of CERCLA, including grants, interagency agreements, and associated program support costs"
+        },
+        {
+          "fact": "CERCLA section 128 grants are $46,250,000",
+          "found": true,
+          "evidence": "$46,250,000 for carrying out section 128 of CERCLA (Superfund)"
+        },
+        {
+          "fact": "Superfund-related activities under CERCLA sections 311(a) and 126(g) are $77,100,000",
+          "found": true,
+          "evidence": "$77,100,000 for activities under CERCLA section 311(a) and SARA section 126(g)"
+        },
+        {
+          "fact": "Environmental Programs and Management is $3,114,671,000 and includes administrative costs of the brownfields program, but it is broader than cleanup funding",
+          "found": true,
+          "evidence": "$3,114,671,000, including administrative costs of the brownfields program under the Small Business Liability Relief and Brownfields Revitalization Act of 2002"
+        },
+        {
+          "fact": "Leaking Underground Storage Tank Trust Fund Program receives $88,903,000, including $64,583,000 for cleanup activities",
+          "found": true,
+          "evidence": "$88,903,000 total, including $64,583,000 for leaking underground storage tank cleanup activities"
+        },
+        {
+          "fact": "EPA may collect and obligate brownfields-related fees under CERCLA section 3024, but no dollar amount is provided",
+          "found": false,
+          "evidence": "not found"
+        }
+      ],
+      "error_checks": [
+        {
+          "error": "Should not present one clean additive brownfields/Superfund/remediation total",
+          "triggered": false,
+          "evidence": "not triggered"
+        },
+        {
+          "error": "Should not imply the full Environmental Programs and Management account is cleanup funding",
+          "triggered": false,
+          "evidence": "not triggered"
+        },
+        {
+          "error": "Should not treat fee authority with no stated dollar amount as a quantified funding line",
+          "triggered": false,
+          "evidence": "not triggered"
+        },
+        {
+          "error": "Should not omit Hazardous Substance Superfund or brownfields grants",
+          "triggered": false,
+          "evidence": "not triggered"
+        },
+        {
+          "error": "Should not route outside Interior/Environment",
+          "triggered": false,
+          "evidence": "not triggered"
+        }
+      ],
+      "structural_checks": {
+        "passed": true,
+        "issues": []
+      },
+      "overall_score": 7,
+      "reasoning": "The answer correctly separates funding streams and avoids a misleading total, but omits the note about EPA's fee authority under CERCLA section 3024. All other required facts are present and no prohibited errors are triggered. Structure follows rules.",
+      "question_id": "broad_5"
+    }
+  }
+]

@@ -1,0 +1,292 @@
+[
+  {
+    "question_id": "broad_2",
+    "question": "What FY2026 funding is available for a city seeking affordable housing, rental assistance, or homelessness services?",
+    "answer_mode": "broad_topic_total",
+    "expected_answer_mode": "broad_topic_total",
+    "actual_answer_mode": "",
+    "classify_match": false,
+    "expected_divisions": [
+      "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES"
+    ],
+    "actual_divisions": [],
+    "route_match": false,
+    "answer_mode_reason": "",
+    "division_answers": [],
+    "final_answer": "PIPELINE ERROR: Connection error.",
+    "retrieved_chunk_count": 0,
+    "retrieved_chunks": [],
+    "mapped_chunk_count": 0,
+    "mapped_chunks": [],
+    "judge": {
+      "overall_score": -1,
+      "reasoning": "Judge error: Connection error.",
+      "fact_checks": [],
+      "error_checks": [],
+      "structural_checks": {
+        "passed": false,
+        "issues": [
+          "Connection error."
+        ]
+      }
+    }
+  },
+  {
+    "question_id": "broad_4",
+    "question": "What FY2026 funding is available for local law enforcement, community violence prevention, or police hiring?",
+    "answer_mode": "broad_topic_total",
+    "expected_answer_mode": "broad_topic_total",
+    "actual_answer_mode": "",
+    "classify_match": false,
+    "expected_divisions": [
+      "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES"
+    ],
+    "actual_divisions": [],
+    "route_match": false,
+    "answer_mode_reason": "",
+    "division_answers": [],
+    "final_answer": "PIPELINE ERROR: Connection error.",
+    "retrieved_chunk_count": 0,
+    "retrieved_chunks": [],
+    "mapped_chunk_count": 0,
+    "mapped_chunks": [],
+    "judge": {
+      "overall_score": -1,
+      "reasoning": "Judge error: Connection error.",
+      "fact_checks": [],
+      "error_checks": [],
+      "structural_checks": {
+        "passed": false,
+        "issues": [
+          "Connection error."
+        ]
+      }
+    }
+  },
+  {
+    "question_id": "broad_5",
+    "question": "What FY2026 funding is available for brownfields cleanup, Superfund cleanup, or environmental remediation?",
+    "answer_mode": "broad_topic_total",
+    "expected_answer_mode": "broad_topic_total",
+    "actual_answer_mode": "",
+    "classify_match": false,
+    "expected_divisions": [
+      "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES"
+    ],
+    "actual_divisions": [],
+    "route_match": false,
+    "answer_mode_reason": "",
+    "division_answers": [],
+    "final_answer": "PIPELINE ERROR: Connection error.",
+    "retrieved_chunk_count": 0,
+    "retrieved_chunks": [],
+    "mapped_chunk_count": 0,
+    "mapped_chunks": [],
+    "judge": {
+      "overall_score": -1,
+      "reasoning": "Judge error: Connection error.",
+      "fact_checks": [],
+      "error_checks": [],
+      "structural_checks": {
+        "passed": false,
+        "issues": [
+          "Connection error."
+        ]
+      }
+    }
+  },
+  {
+    "question_id": "mechanism_4",
+    "question": "Does the FY2026 text provide a specific dollar amount for CISA, or only a continuing-appropriations mechanism?",
+    "answer_mode": "funding_mechanism_no_amount",
+    "expected_answer_mode": "funding_mechanism_no_amount",
+    "actual_answer_mode": "",
+    "classify_match": false,
+    "expected_divisions": [
+      "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"
+    ],
+    "actual_divisions": [],
+    "route_match": false,
+    "answer_mode_reason": "",
+    "division_answers": [],
+    "final_answer": "PIPELINE ERROR: Connection error.",
+    "retrieved_chunk_count": 0,
+    "retrieved_chunks": [],
+    "mapped_chunk_count": 0,
+    "mapped_chunks": [],
+    "judge": {
+      "overall_score": -1,
+      "reasoning": "Judge error: Connection error.",
+      "fact_checks": [],
+      "error_checks": [],
+      "structural_checks": {
+        "passed": false,
+        "issues": [
+          "Connection error."
+        ]
+      }
+    }
+  },
+  {
+    "question_id": "mechanism_5",
+    "question": "What happens to agencies or accounts funded under the continuing resolution if no full-year appropriation is provided?",
+    "answer_mode": "funding_mechanism_no_amount",
+    "expected_answer_mode": "funding_mechanism_no_amount",
+    "actual_answer_mode": "",
+    "classify_match": false,
+    "expected_divisions": [
+      "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS"
+    ],
+    "actual_divisions": [],
+    "route_match": false,
+    "answer_mode_reason": "",
+    "division_answers": [],
+    "final_answer": "PIPELINE ERROR: Connection error.",
+    "retrieved_chunk_count": 0,
+    "retrieved_chunks": [],
+    "mapped_chunk_count": 0,
+    "mapped_chunks": [],
+    "judge": {
+      "overall_score": -1,
+      "reasoning": "Judge error: Connection error.",
+      "fact_checks": [],
+      "error_checks": [],
+      "structural_checks": {
+        "passed": false,
+        "issues": [
+          "Connection error."
+        ]
+      }
+    }
+  },
+  {
+    "question_id": "recon_1",
+    "question": "Break down the FY2026 FDA Salaries and Expenses account by FDA center/activity and user-fee source, and explain what should not be added separately.",
+    "answer_mode": "reconciliation_breakdown",
+    "expected_answer_mode": "reconciliation_breakdown",
+    "actual_answer_mode": "",
+    "classify_match": false,
+    "expected_divisions": [
+      "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES"
+    ],
+    "actual_divisions": [],
+    "route_match": false,
+    "answer_mode_reason": "",
+    "division_answers": [],
+    "final_answer": "PIPELINE ERROR: Connection error.",
+    "retrieved_chunk_count": 0,
+    "retrieved_chunks": [],
+    "mapped_chunk_count": 0,
+    "mapped_chunks": [],
+    "judge": {
+      "overall_score": -1,
+      "reasoning": "Judge error: Connection error.",
+      "fact_checks": [],
+      "error_checks": [],
+      "structural_checks": {
+        "passed": false,
+        "issues": [
+          "Connection error."
+        ]
+      }
+    }
+  },
+  {
+    "question_id": "recon_3",
+    "question": "Break down the USDA Rural Water and Waste Disposal Program Account by loan authority, subsidy/grant funding, technical assistance, and set-asides. What should not be added together?",
+    "answer_mode": "reconciliation_breakdown",
+    "expected_answer_mode": "reconciliation_breakdown",
+    "actual_answer_mode": "",
+    "classify_match": false,
+    "expected_divisions": [
+      "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES"
+    ],
+    "actual_divisions": [],
+    "route_match": false,
+    "answer_mode_reason": "",
+    "division_answers": [],
+    "final_answer": "PIPELINE ERROR: Connection error.",
+    "retrieved_chunk_count": 0,
+    "retrieved_chunks": [],
+    "mapped_chunk_count": 0,
+    "mapped_chunks": [],
+    "judge": {
+      "overall_score": -1,
+      "reasoning": "Judge error: Connection error.",
+      "fact_checks": [],
+      "error_checks": [],
+      "structural_checks": {
+        "passed": false,
+        "issues": [
+          "Connection error."
+        ]
+      }
+    }
+  },
+  {
+    "question_id": "summary_3",
+    "question": "Summarize how FY2026 appropriations treat water infrastructure across USDA, EPA, and Energy-Water without doing a detailed dollar breakdown.",
+    "answer_mode": "general_summary",
+    "expected_answer_mode": "general_summary",
+    "actual_answer_mode": "",
+    "classify_match": false,
+    "expected_divisions": [
+      "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES",
+      "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
+      "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES"
+    ],
+    "actual_divisions": [],
+    "route_match": false,
+    "answer_mode_reason": "",
+    "division_answers": [],
+    "final_answer": "PIPELINE ERROR: Connection error.",
+    "retrieved_chunk_count": 0,
+    "retrieved_chunks": [],
+    "mapped_chunk_count": 0,
+    "mapped_chunks": [],
+    "judge": {
+      "overall_score": -1,
+      "reasoning": "Judge error: Connection error.",
+      "fact_checks": [],
+      "error_checks": [],
+      "structural_checks": {
+        "passed": false,
+        "issues": [
+          "Connection error."
+        ]
+      }
+    }
+  },
+  {
+    "question_id": "summary_5",
+    "question": "Summarize what the FY2026 Transportation-HUD division covers for local governments.",
+    "answer_mode": "general_summary",
+    "expected_answer_mode": "general_summary",
+    "actual_answer_mode": "",
+    "classify_match": false,
+    "expected_divisions": [
+      "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES"
+    ],
+    "actual_divisions": [],
+    "route_match": false,
+    "answer_mode_reason": "",
+    "division_answers": [],
+    "final_answer": "PIPELINE ERROR: Connection error.",
+    "retrieved_chunk_count": 0,
+    "retrieved_chunks": [],
+    "mapped_chunk_count": 0,
+    "mapped_chunks": [],
+    "judge": {
+      "overall_score": -1,
+      "reasoning": "Judge error: Connection error.",
+      "fact_checks": [],
+      "error_checks": [],
+      "structural_checks": {
+        "passed": false,
+        "issues": [
+          "Connection error."
+        ]
+      }
+    }
+  }
+]

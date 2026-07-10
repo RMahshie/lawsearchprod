@@ -181,19 +181,38 @@ def judge_answer(
     judge_llm = llm.bind(response_format={"type": "json_object"})
 
     user_prompt = _build_judge_prompt(question, final_answer, answer_mode, gold)
+    parse_error: json.JSONDecodeError | None = None
+    result: dict[str, Any] | None = None
 
-    messages = [
-        SystemMessage(content=JUDGE_SYSTEM_PROMPT),
-        HumanMessage(content=user_prompt),
-    ]
+    for attempt in range(2):
+        prompt = user_prompt
+        if parse_error is not None:
+            prompt = (
+                f"{user_prompt}\n\n"
+                "Your previous response was invalid JSON. Return only valid JSON for the exact schema. "
+                f"JSON parse error: {parse_error}"
+            )
+        messages = [
+            SystemMessage(content=JUDGE_SYSTEM_PROMPT),
+            HumanMessage(content=prompt),
+        ]
 
-    response = judge_llm.invoke(messages)
-    content = getattr(response, "content", response)
-    if isinstance(content, list):
-        content = "\n".join(str(block) for block in content)
-    content = str(content).strip()
+        response = judge_llm.invoke(messages)
+        content = getattr(response, "content", response)
+        if isinstance(content, list):
+            content = "\n".join(str(block) for block in content)
+        content = str(content).strip()
 
-    result = _parse_judge_response(content)
+        try:
+            result = _parse_judge_response(content)
+            break
+        except json.JSONDecodeError as exc:
+            parse_error = exc
+            if attempt == 1:
+                raise
+
+    if result is None:
+        raise ValueError("Judge returned no parseable result")
     result["question_id"] = question_id
 
     return result

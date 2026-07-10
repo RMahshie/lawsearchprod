@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 import sys
 import time
 import uuid
@@ -46,10 +47,22 @@ logger = logging.getLogger(__name__)
 DEFAULT_VECTOR_STORE_ID = "609b2b98-104e-4286-b410-a34337ba0ed5"
 DEFAULT_EMBEDDING_MODEL = "voyage-law-2"
 DEFAULT_THINKING_SPEED = "normal"
-DEFAULT_K = 12
+DEFAULT_K = 16
 DEFAULT_CONCURRENCY = 3
+NUMBER_MARKER_RE = re.compile(r"\[\[num:[^\]]+\]\]")
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
+
+
+def answer_for_judge(answer: str) -> str:
+    """Return the frontend-visible answer text used for content judging."""
+    return NUMBER_MARKER_RE.sub("", answer or "")
+
+
+def _preview(value: Any, limit: int = 700) -> str:
+    """Bound verbose chunk text in raw eval diagnostics."""
+    text = str(value or "")
+    return text if len(text) <= limit else text[:limit].rstrip() + "..."
 
 
 def _build_initial_state(
@@ -95,7 +108,32 @@ def _extract_intermediates(result: dict[str, Any]) -> dict[str, Any]:
         "selected_divisions": result.get("selected_divisions", []),
         "division_queries": result.get("division_queries", []),
         "retrieved_chunk_count": len(result.get("retrieved_chunks", [])),
+        "retrieved_chunks": [
+            {
+                "chunk_id": chunk.get("chunk_id"),
+                "division": chunk.get("division", ""),
+                "division_acronym": chunk.get("division_acronym", ""),
+                "score": chunk.get("score"),
+                "chunk_summary": chunk.get("chunk_summary"),
+                "metadata": chunk.get("metadata", {}),
+                "content_preview": _preview(chunk.get("content")),
+            }
+            for chunk in result.get("retrieved_chunks", [])
+        ],
         "mapped_chunk_count": len(result.get("mapped_chunks", [])),
+        "mapped_chunks": [
+            {
+                "chunk_id": chunk.get("chunk_id"),
+                "division": chunk.get("division", ""),
+                "division_acronym": chunk.get("division_acronym", ""),
+                "score": chunk.get("score"),
+                "chunk_snapshot": chunk.get("chunk_snapshot", ""),
+                "chunk_summary": chunk.get("chunk_summary", ""),
+                "relevance_counts": chunk.get("relevance_counts", {}),
+                "relevance_facts": chunk.get("relevance_facts", []),
+            }
+            for chunk in result.get("mapped_chunks", [])
+        ],
         "division_answers": [
             {
                 "division": da.get("division", ""),
@@ -252,7 +290,9 @@ def main() -> None:
             "division_answers": pipeline_out.get("division_answers", []),
             "final_answer": pipeline_out.get("final_answer", ""),
             "retrieved_chunk_count": pipeline_out.get("retrieved_chunk_count", 0),
+            "retrieved_chunks": pipeline_out.get("retrieved_chunks", []),
             "mapped_chunk_count": pipeline_out.get("mapped_chunk_count", 0),
+            "mapped_chunks": pipeline_out.get("mapped_chunks", []),
         }
 
         logger.info("[%s] Classify: %s (%s) | Route: %s (%s) | Chunks: %d/%d",
@@ -275,7 +315,7 @@ def main() -> None:
                         question.id,
                         question.question,
                         actual_mode,
-                        entry["final_answer"],
+                        answer_for_judge(entry["final_answer"]),
                         gold_dict,
                     )
                     entry["judge"] = judge_result
