@@ -33,7 +33,7 @@ from app.services.rag.service import RAGService
 from app.services.rag.state import RAGState
 from app.services.rag_prompting import DEFAULT_ANSWER_MODE
 from app.services.vector_store_service import division_acronym
-from tests.evals.e2e.gold_references import GOLD_REFERENCES, GoldReference
+from tests.evals.e2e.gold_references import GOLD_REFERENCES, validate_gold_references
 from tests.evals.e2e.judge import judge_answer
 from tests.evals.e2e.provenance import evaluate_provenance
 from tests.evals.e2e.report import generate_report
@@ -255,6 +255,10 @@ def main() -> None:
                         help="Run only these question IDs (default: all 25)")
     args = parser.parse_args()
 
+    # Fail before initializing models or the Vector Store if benchmark
+    # curation has drifted from the checked-in questions or source evidence.
+    validate_gold_references()
+
     start = time.time()
     timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     output_dir = RESULTS_DIR / timestamp
@@ -321,7 +325,7 @@ def main() -> None:
 
         actual_mode = pipeline_out.get("answer_mode", "")
         actual_divs = pipeline_out.get("selected_divisions", [])
-        gold = GOLD_REFERENCES.get(question.id, GoldReference())
+        gold = GOLD_REFERENCES[question.id]
 
         entry: dict[str, Any] = {
             "question_id": question.id,
@@ -363,20 +367,19 @@ def main() -> None:
                      entry["retrieved_chunk_count"], entry["mapped_chunk_count"])
 
         if not args.reference:
-            gold_dict = {
-                "required_facts": gold.required_facts,
-                "prohibited_errors": gold.prohibited_errors,
-                "notes": gold.notes,
-            }
+            # Pass the typed GoldReference through unchanged so the judge can
+            # consume its source-traceable ``to_judge_payload`` (legacy dict
+            # payloads remain supported by judge_answer).
             if gold.required_facts or gold.prohibited_errors:
                 logger.info("[%s] Judging...", question.id)
                 try:
                     judge_result = judge_answer(
                         question.id,
                         question.question,
-                        actual_mode,
-                        answer_for_judge(entry["final_answer"]),
-                        gold_dict,
+                        expected_answer_mode=entry["expected_answer_mode"],
+                        actual_answer_mode=entry["actual_answer_mode"],
+                        final_answer=answer_for_judge(entry["final_answer"]),
+                        gold=gold,
                     )
                     entry["judge"] = judge_result
                     logger.info("[%s] Score: %s/10", question.id,
