@@ -167,7 +167,7 @@ Route success requires exact set equality, with no partial-credit or acceptable-
 
 ## Recommended improvement order
 
-No improvements were applied in this audit. For the next phase:
+The findings below were the recommended order at audit time:
 
 1. Correct the four major question/gold defects before using the suite for model comparisons.
 2. Add source-linked, typed fact records with verification metadata and explicit corpus scope for absence claims.
@@ -175,6 +175,20 @@ No improvements were applied in this audit. For the next phase:
 4. Give facts importance tiers or weights and report macro per-question/per-mode results alongside micro Fact Recall.
 5. Address the 11 minor question-specific issues, then rerun the full benchmark with deterministic provenance enabled.
 6. Remove or generate the duplicate `.md` artifact and add schema validation for judge output.
+
+## Implementation status — 2026-07-16
+
+The follow-up implementation resolves the four major and eleven minor findings recorded above:
+
+- all scored facts now have stable IDs, weights, fact types, verification status, and checked-in source-file/range/anchor evidence protected by bill hashes;
+- absence claims name a complete corpus scope and search target, while derived claims carry explicit equations;
+- the VA tranche, CDBG/HOME, airport-terminal, OJP/COPS, CR, NASA, IRS, EPA, FDA, DOE/NNSA, and Corps findings were corrected or pruned as recommended;
+- factual errors and custom answer-shape rules are separate, while routing is evaluated from `expected_divisions` rather than duplicated in the semantic judge;
+- judge output is schema-validated, retried on malformed output, and checked for the exact expected criterion IDs using the expected Answer Mode rubric;
+- reports retain historical micro Fact Recall and add weighted micro, macro per-question/per-mode, and route precision/recall/F1 diagnostics;
+- `gold_references.py` is the sole editable Gold Reference source; the duplicated `gold_references.md` was removed.
+
+Focused validation covers the schema, all audited corrections, judge retry/strictness, historical report compatibility, route diagnostics, and deterministic Number Annotation provenance. A new paid live benchmark has not been run, so the May results remain historical and should not be compared directly with future scores without noting the changed Gold References.
 
 ## Bottom line
 
