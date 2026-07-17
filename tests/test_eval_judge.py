@@ -127,6 +127,32 @@ def test_parse_rejects_duplicate_ids_even_when_set_matches():
         )
 
 
+@pytest.mark.parametrize("alias", ["direct_account_amount", "mode_direct_account_amount"])
+def test_parse_canonicalises_only_synthetic_mode_rule_aliases(alias):
+    value = _response()
+    value["structural_checks"]["rule_checks"][0]["rule_id"] = alias
+
+    parsed = judge._parse_judge_response(
+        __import__("json").dumps(value),
+        fact_ids={"fact.amount"},
+        error_ids={"error.add"},
+        rule_ids={"rule.lead", "mode:direct_account_amount"},
+    )
+
+    assert parsed["structural_checks"]["rule_checks"][0]["rule_id"] == "mode:direct_account_amount"
+
+
+def test_parse_still_rejects_wrong_authored_rule_id():
+    value = _response(rule_id="direct_account_amount")
+    with pytest.raises(judge.JudgeResponseError, match="criterion IDs"):
+        judge._parse_judge_response(
+            __import__("json").dumps(value),
+            fact_ids={"fact.amount"},
+            error_ids={"error.add"},
+            rule_ids={"rule.lead", "mode:direct_account_amount"},
+        )
+
+
 def test_no_gold_reference_keeps_legacy_skip_shape(monkeypatch):
     monkeypatch.setattr(judge, "create_chat_model", lambda *_args, **_kwargs: pytest.fail("must not call judge"))
     result = judge.judge_answer(
