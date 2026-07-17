@@ -338,6 +338,7 @@ def main() -> None:
             "actual_divisions": actual_divs,
             "route_match": set(actual_divs) == set(gold.expected_divisions or question.divisions),
             "answer_mode_reason": pipeline_out.get("answer_mode_reason", ""),
+            "division_queries": pipeline_out.get("division_queries", []),
             "division_answers": pipeline_out.get("division_answers", []),
             "final_answer": pipeline_out.get("final_answer", ""),
             "retrieved_chunk_count": pipeline_out.get("retrieved_chunk_count", 0),

@@ -115,7 +115,9 @@ def render_tiered_facts(facts: list[dict[str, Any]]) -> str:
         for fact in tier_facts:
             reason = fact.get("reason")
             suffix = f" (scope note: {reason})" if reason else ""
-            lines.append(f"- {fact.get('fact', '').strip()}{suffix}")
+            prompt_id = str(fact.get("prompt_id", "") or "").strip()
+            id_prefix = f"[{prompt_id}] " if prompt_id else ""
+            lines.append(f"- {id_prefix}{fact.get('fact', '').strip()}{suffix}")
         sections.append("\n".join(lines))
     return "\n\n".join(sections) or "Not responsive facts:\n- No relevant facts found."
 

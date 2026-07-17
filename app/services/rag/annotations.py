@@ -235,13 +235,18 @@ def source_number_annotations(
     return annotations
 
 
-def mark_text_with_source_annotations(text: str, annotations: list[NumberAnnotation]) -> str:
+def mark_text_with_source_annotations(
+    text: str,
+    annotations: list[NumberAnnotation],
+    *,
+    used_by_figure: dict[str, int] | None = None,
+) -> str:
     """Add hidden source markers to extracted fact text when figures match chunk evidence."""
     by_figure: dict[str, list[NumberAnnotation]] = {}
     for annotation in annotations:
         by_figure.setdefault(annotation.figure.lower(), []).append(annotation)
 
-    used_by_figure: dict[str, int] = {}
+    occurrence_counts = used_by_figure if used_by_figure is not None else {}
 
     def replace(match: re.Match[str]) -> str:
         figure = match.group(0)
@@ -250,8 +255,8 @@ def mark_text_with_source_annotations(text: str, annotations: list[NumberAnnotat
         candidates = by_figure.get(figure.lower(), [])
         if candidates:
             key = figure.lower()
-            candidate_index = min(used_by_figure.get(key, 0), len(candidates) - 1)
-            used_by_figure[key] = used_by_figure.get(key, 0) + 1
+            candidate_index = min(occurrence_counts.get(key, 0), len(candidates) - 1)
+            occurrence_counts[key] = occurrence_counts.get(key, 0) + 1
             return f"{figure} [[num:{candidates[candidate_index].id}]]"
         return figure
 
@@ -567,13 +572,53 @@ def render_figure_handle_answer(
         )
     )
     unknown_handles: list[str] = []
+    recovered_derived_placeholders: list[str] = []
+
+    marked_answer = str(marked.answer or "")
+    used_local_handles = {
+        match.group(1).upper() for match in _FIGURE_HANDLE_PATTERN.finditer(marked_answer)
+    }
+    for handle, proposal in derived_by_handle.items():
+        if handle.upper() in used_local_handles:
+            continue
+        # Some one-shot structured models correctly propose a validated
+        # Derived Figure but place its label or raw proposed figure in the
+        # prose instead of the required local handle. Recover an exact,
+        # distinctive label wherever it appears, or a unique exact raw
+        # figure. Arithmetic/source validation still decides whether the
+        # figure can survive. Labels may be repeated legitimately (for
+        # example in a bottom line and a validation row); raw figures are
+        # intentionally kept unique-only to avoid rebinding ordinary text.
+        replacement_candidates = (
+            (proposal.label.strip(), "label"),
+            (proposal.proposed_figure.strip(), "figure"),
+        )
+        for placeholder, placeholder_kind in replacement_candidates:
+            occurrence_count = marked_answer.count(placeholder)
+            if placeholder_kind == "label":
+                if len(placeholder) < 8 or occurrence_count < 1:
+                    continue
+                marked_answer = marked_answer.replace(placeholder, f"{{{{{handle}}}}}")
+            elif len(placeholder) < 3 or occurrence_count != 1:
+                continue
+            else:
+                marked_answer = marked_answer.replace(placeholder, f"{{{{{handle}}}}}", 1)
+            recovered_derived_placeholders.append(
+                f"{handle}:{placeholder_kind}:{occurrence_count}"
+            )
+            break
 
     def expand_handle(match: re.Match[str]) -> str:
         handle = match.group(1)
         displayed_figure = match.group(2)
         annotation = context.annotations_by_handle.get(handle)
         if annotation is not None:
-            if displayed_figure != annotation.figure:
+            # Prompt evidence is self-describing so the model can reason about
+            # the amount locally.  In output, however, a bare registered
+            # handle is already an unambiguous reference to backend-owned
+            # state.  Accept it while still rejecting an explicitly altered
+            # display amount.
+            if displayed_figure is not None and displayed_figure != annotation.figure:
                 unknown_handles.append(f"{handle}:display_mismatch")
                 return _UNVERIFIED_FIGURE_NOTICE
             return f"{annotation.figure} [[num:{annotation.id}]]"
@@ -583,7 +628,7 @@ def render_figure_handle_answer(
         unknown_handles.append(handle)
         return _UNVERIFIED_FIGURE_NOTICE
 
-    candidate_answer = _FIGURE_HANDLE_PATTERN.sub(expand_handle, str(marked.answer or ""))
+    candidate_answer = _FIGURE_HANDLE_PATTERN.sub(expand_handle, marked_answer)
     derived = validate_derived_annotations(
         proposed=canonical_proposals,
         target_answer=candidate_answer,
@@ -602,7 +647,7 @@ def render_figure_handle_answer(
         "figure_handle_contract query_id=%s stage=%s target=%s available_handles=%s "
         "used_handles=%s proposed_derived=%s accepted_derived=%s unknown_handles=%s "
         "prompt_omitted_figures=%s removed_prompt_markers=%s proposal_rejections=%s "
-        "output_issues=%s",
+        "recovered_derived_placeholders=%s output_issues=%s",
         query_id,
         stage,
         target_label,
@@ -614,6 +659,7 @@ def render_figure_handle_answer(
         list(context.omitted_figures),
         list(context.removed_marker_ids),
         proposal_rejections,
+        recovered_derived_placeholders,
         contract_issues,
     )
     return answer, derived

@@ -1,4 +1,5 @@
 import os
+import re
 
 import pytest
 
@@ -1578,6 +1579,45 @@ def test_source_marker_insertion_uses_distinct_annotations_before_reuse():
     assert marked.count("[[num:src_program_b]]") == 2
 
 
+def test_source_marker_insertion_preserves_occurrence_order_across_fact_records():
+    from app.models.query import NumberAnnotation
+    from app.services.rag.annotations import mark_text_with_source_annotations
+
+    annotations = [
+        NumberAnnotation(
+            id="src_program_a",
+            kind="source",
+            figure="$5,000,000",
+            value=5_000_000,
+            label="Program A",
+            source={"chunk_id": "chunk-a"},
+        ),
+        NumberAnnotation(
+            id="src_program_b",
+            kind="source",
+            figure="$5,000,000",
+            value=5_000_000,
+            label="Program B",
+            source={"chunk_id": "chunk-a"},
+        ),
+    ]
+    occurrence_counts: dict[str, int] = {}
+
+    first = mark_text_with_source_annotations(
+        "Program A receives $5,000,000.",
+        annotations,
+        used_by_figure=occurrence_counts,
+    )
+    second = mark_text_with_source_annotations(
+        "Program B receives $5,000,000.",
+        annotations,
+        used_by_figure=occurrence_counts,
+    )
+
+    assert "[[num:src_program_a]]" in first
+    assert "[[num:src_program_b]]" in second
+
+
 def test_reduce_fact_priority_follows_requested_account_components():
     from app.services.rag.stages.reduce import _prioritize_generation_facts
 
@@ -1603,6 +1643,21 @@ def test_reduce_fact_priority_follows_requested_account_components():
 
     assert "earlier account tranche" in ordered[0]["fact"]
     assert "program activities" in ordered[-1]["fact"]
+
+
+def test_reduce_fact_labels_are_stable_and_separate_by_tier():
+    from app.services.rag.stages.reduce import _label_generation_facts
+
+    labeled, direct_ids = _label_generation_facts(
+        [
+            {"fact": "First direct", "responsiveness_tier": "direct"},
+            {"fact": "Context", "responsiveness_tier": "adjacent"},
+            {"fact": "Second direct", "responsiveness_tier": "direct"},
+        ]
+    )
+
+    assert [fact["prompt_id"] for fact in labeled] == ["D1", "A1", "D2"]
+    assert direct_ids == ["D1", "D2"]
 
 
 def test_unmarked_figures_allows_markdown_closer_before_marker():
@@ -1754,6 +1809,42 @@ def test_figure_handle_renderer_rejects_altered_display_amount():
     assert derived == []
 
 
+def test_figure_handle_renderer_accepts_bare_registered_source_handle():
+    from app.models.query import NumberAnnotation, NumberAnnotationTarget
+    from app.services.rag.annotations import (
+        prepare_figure_handle_context,
+        render_figure_handle_answer,
+    )
+    from app.services.rag.schemas import MarkedAnswer
+
+    annotation = NumberAnnotation(
+        id="src_bound",
+        kind="source",
+        figure="$3,036,606,000",
+        value=3_036_606_000,
+        label="Registered source figure",
+        source={"chunk_id": "chunk-a"},
+    )
+    context = prepare_figure_handle_context(
+        "$3,036,606,000 [[num:src_bound]]",
+        [annotation],
+    )
+
+    answer, derived = render_figure_handle_answer(
+        marked=MarkedAnswer(answer="Taxpayer services: {{F1}}."),
+        context=context,
+        available=[annotation],
+        target=NumberAnnotationTarget(scope="answer"),
+        debug_log=lambda *args, **kwargs: None,
+        query_id="query-test",
+        stage="synthesize",
+        target_label="answer",
+    )
+
+    assert answer == "Taxpayer services: $3,036,606,000 [[num:src_bound]]."
+    assert derived == []
+
+
 def test_figure_handle_renderer_validates_and_canonicalizes_derived_figure():
     from app.models.query import NumberAnnotation, NumberAnnotationTarget
     from app.services.rag.annotations import (
@@ -1816,6 +1907,126 @@ def test_figure_handle_renderer_validates_and_canonicalizes_derived_figure():
     assert "$10 [[num:src_a]]" in answer
     assert "$5 [[num:src_b]]" in answer
     assert "{{" not in answer
+
+
+def test_figure_handle_renderer_recovers_unique_derived_label_placeholder():
+    from app.models.query import NumberAnnotation, NumberAnnotationTarget
+    from app.services.rag.annotations import (
+        prepare_figure_handle_context,
+        render_figure_handle_answer,
+    )
+    from app.services.rag.schemas import MarkedAnswer, ProposedDerivedAnnotation
+
+    annotations = [
+        NumberAnnotation(
+            id="src_a",
+            kind="source",
+            figure="$10",
+            value=10,
+            label="A",
+            source={"chunk_id": "a"},
+        ),
+        NumberAnnotation(
+            id="src_b",
+            kind="source",
+            figure="$5",
+            value=5,
+            label="B",
+            source={"chunk_id": "b"},
+        ),
+    ]
+    context = prepare_figure_handle_context(
+        "$10 [[num:src_a]] plus $5 [[num:src_b]]",
+        annotations,
+    )
+
+    answer, derived = render_figure_handle_answer(
+        marked=MarkedAnswer(
+            answer="Combined: Identified comparable subtotal.",
+            derived_annotations=[
+                ProposedDerivedAnnotation(
+                    id="D1",
+                    figure="$15",
+                    value=15,
+                    label="Identified comparable subtotal",
+                    equation="$10 + $5 = $15",
+                    input_ids=["F1", "F2"],
+                )
+            ],
+        ),
+        context=context,
+        available=annotations,
+        target=NumberAnnotationTarget(scope="answer"),
+        debug_log=lambda *args, **kwargs: None,
+        query_id="query-test",
+        stage="synthesize",
+        target_label="answer",
+    )
+
+    assert len(derived) == 1
+    assert f"Combined: $15 [[num:{derived[0].id}]]." == answer
+
+
+def test_figure_handle_renderer_recovers_repeated_derived_label_placeholder():
+    from app.models.query import NumberAnnotation, NumberAnnotationTarget
+    from app.services.rag.annotations import (
+        prepare_figure_handle_context,
+        render_figure_handle_answer,
+    )
+    from app.services.rag.schemas import MarkedAnswer, ProposedDerivedAnnotation
+
+    annotations = [
+        NumberAnnotation(
+            id="src_a",
+            kind="source",
+            figure="$10",
+            value=10,
+            label="A",
+            source={"chunk_id": "a"},
+        ),
+        NumberAnnotation(
+            id="src_b",
+            kind="source",
+            figure="$5",
+            value=5,
+            label="B",
+            source={"chunk_id": "b"},
+        ),
+    ]
+    context = prepare_figure_handle_context(
+        "$10 [[num:src_a]] plus $5 [[num:src_b]]",
+        annotations,
+    )
+
+    answer, derived = render_figure_handle_answer(
+        marked=MarkedAnswer(
+            answer=(
+                "Bottom line: Identified comparable subtotal.\n"
+                "Validation: Identified comparable subtotal."
+            ),
+            derived_annotations=[
+                ProposedDerivedAnnotation(
+                    id="D1",
+                    figure="$15",
+                    value=15,
+                    label="Identified comparable subtotal",
+                    equation="$10 + $5 = $15",
+                    input_ids=["F1", "F2"],
+                )
+            ],
+        ),
+        context=context,
+        available=annotations,
+        target=NumberAnnotationTarget(scope="answer"),
+        debug_log=lambda *args, **kwargs: None,
+        query_id="query-test",
+        stage="synthesize",
+        target_label="answer",
+    )
+
+    assert len(derived) == 1
+    marker = f"$15 [[num:{derived[0].id}]]"
+    assert answer.count(marker) == 2
 
 
 def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
@@ -1960,11 +2171,11 @@ def test_broad_retrieval_preserves_primary_rewritten_hits_before_original_query(
         "rewritten-0",
         "rewritten-1",
         "rewritten-2",
-        "rewritten-3",
-        "rewritten-4",
         "original-0",
         "original-1",
         "original-2",
+        "original-3",
+        "original-4",
     ]
 
 
@@ -2038,13 +2249,68 @@ def test_broad_retrieval_uses_user_facets_not_alias_sweep():
     assert not any("airport grants" in call[0] for call in vectorstores.keyword_calls)
     assert not any("community development" in call[0] for call in vectorstores.keyword_calls)
     retrieved_ids = [chunk["chunk_id"] for chunk in result["retrieved_chunks"]]
-    assert retrieved_ids[:5] == [
+    assert retrieved_ids[:3] == [
         "primary-0",
         "primary-1",
         "primary-2",
-        "primary-3",
-        "primary-4",
     ]
+
+
+def test_broad_retrieval_uses_account_phrases_from_division_rewrite():
+    division = "GENERIC APPROPRIATIONS DIVISION"
+
+    class FakeVectorStore:
+        def __init__(self):
+            self.retrieve_calls = []
+            self.keyword_calls = []
+
+        def retrieve(self, question, division, k, vectorstore_root, embedding_model):
+            self.retrieve_calls.append(question)
+            prefix = re.sub(r"[^a-z]+", "-", question.lower()).strip("-")
+            return [
+                {
+                    "chunk_id": f"{prefix}-{index}",
+                    "division": division,
+                    "division_acronym": "GEN",
+                    "content": f"ordinary content {index}",
+                    "chunk_summary": None,
+                    "score": 0.1,
+                    "metadata": {},
+                }
+                for index in range(k)
+            ]
+
+        def keyword_retrieve(self, question, division, k, vectorstore_root, embedding_model):
+            self.keyword_calls.append(question)
+            return []
+
+    service = RAGService.__new__(RAGService)
+    vectorstores = FakeVectorStore()
+    service.vectorstores = vectorstores
+
+    service._retrieve_division(
+        {
+            "query_id": "query-test",
+            "question": "What funding supports neighborhood facilities or rental help?",
+            "retrieval_query": (
+                "Neighborhood Facilities Grant Rental Assistance Account "
+                "Supportive Housing Program"
+            ),
+            "division": division,
+            "max_results": 8,
+            "vector_store_root": "/tmp/store",
+            "vector_store_embedding_model": "text-embedding-3-large",
+            "answer_mode": "broad_topic_total",
+            "answer_mode_flags": {"mixed_financial_types": True},
+        }
+    )
+
+    assert "Neighborhood Facilities Grant" in vectorstores.retrieve_calls
+    assert "Rental Assistance Account" in vectorstores.retrieve_calls
+    assert "Supportive Housing Program" in vectorstores.retrieve_calls
+    assert "Neighborhood Facilities Grant" in vectorstores.keyword_calls
+    assert "Rental Assistance Account" in vectorstores.keyword_calls
+    assert "Supportive Housing Program" in vectorstores.keyword_calls
 
 
 def test_broad_retrieval_adds_bounded_previous_context_neighbors():
@@ -2114,11 +2380,11 @@ def test_broad_retrieval_adds_bounded_previous_context_neighbors():
         "previous-9",
         "primary-0",
         "previous-11",
-        "primary-1",
-        "primary-2",
-        "previous-13",
-        "primary-3",
-        "primary-4",
+        "original-0",
+        "original-1",
+        "original-2",
+        "original-3",
+        "original-4",
     ]
 
 
@@ -2286,6 +2552,103 @@ def test_retrieval_phrase_facets_extract_llm_account_phrases():
         "Operating Fund",
         "Homeless Assistance Grants",
         "Emergency Solutions Grant",
+    ]
+
+
+def test_retrieval_phrase_facets_respects_rewrite_delimiters():
+    from app.services.rag.stages.retrieve import _retrieval_phrase_facets
+
+    assert _retrieval_phrase_facets(
+        "FY2026 appropriations; Alpha Housing Partnership; "
+        "Community Development Grant; Continuum of Care; Emergency Grants"
+    ) == [
+        "Alpha Housing Partnership",
+        "Community Development Grant",
+        "Continuum of Care",
+        "Emergency Grants",
+    ]
+
+
+def test_retrieval_phrase_facets_accepts_lowercase_delimited_headings():
+    from app.services.rag.stages.retrieve import _retrieval_phrase_facets
+
+    assert _retrieval_phrase_facets(
+        "FY2026; community development block grant; project-based rental assistance"
+    ) == [
+        "community development block grant",
+        "project-based rental assistance",
+    ]
+
+
+def test_phrase_coverage_merge_prefers_account_heading_and_continuation():
+    from app.services.rag.stages.retrieve import _merge_phrase_coverage_chunks
+
+    incidental = {
+        "chunk_id": "incidental",
+        "content": "A later rule mentions the Neighborhood Facilities Grant near $9 for another purpose.",
+        "metadata": {"chunk_index": 4},
+    }
+    heading = {
+        "chunk_id": "heading",
+        "content": "\nNeighborhood Facilities Grant\nFor eligible projects, $100 is appropriated.",
+        "metadata": {"chunk_index": 20},
+    }
+    continuation = {
+        "chunk_id": "continuation",
+        "content": "Of that amount, $30 is reserved for local projects.",
+        "metadata": {"chunk_index": 21},
+    }
+
+    merged = _merge_phrase_coverage_chunks(
+        [incidental, heading],
+        [heading, continuation],
+        phrase="Neighborhood Facilities Grant",
+        limit=8,
+    )
+
+    assert [chunk["chunk_id"] for chunk in merged[:2]] == [
+        "heading",
+        "continuation",
+    ]
+
+
+def test_phrase_coverage_ignores_section_alias_when_ranking_account_heading():
+    from app.services.rag.stages.retrieve import _merge_phrase_coverage_chunks
+
+    incidental = {
+        "chunk_id": "incidental",
+        "content": "A rule refers to section 8 project-based rental assistance elsewhere.",
+        "metadata": {"chunk_index": 4},
+    }
+    heading = {
+        "chunk_id": "heading",
+        "content": "\nProject-Based Rental Assistance\nFor subsidy contracts, $100 is appropriated.",
+        "metadata": {"chunk_index": 20},
+    }
+
+    merged = _merge_phrase_coverage_chunks(
+        [incidental],
+        [heading],
+        phrase="Section 8 Project-Based Rental Assistance",
+        limit=8,
+    )
+
+    assert merged[0]["chunk_id"] == "heading"
+
+
+def test_broad_coverage_queries_interleave_rewrite_and_user_facets():
+    from app.services.rag.stages.retrieve import _interleave_coverage_queries
+
+    assert _interleave_coverage_queries(
+        ["Account A", "Account B", "Account C", "Account D"],
+        ["user need one", "user need two"],
+    ) == [
+        "Account A",
+        "user need one",
+        "Account B",
+        "user need two",
+        "Account C",
+        "Account D",
     ]
 
 
@@ -2659,6 +3022,23 @@ def test_general_summary_map_prompt_anchors_named_entity_scope():
     assert "Other agencies or programs in the same Division are adjacent or not_responsive" in prompt
 
 
+def test_map_prompt_uses_rewrite_only_as_scope_context():
+    from app.services.rag_prompting import build_map_prompt
+
+    prompt = build_map_prompt(
+        question="What support is available for neighborhood facilities?",
+        chunk_content="The source text controls what may be extracted.",
+        division_acronym="GEN",
+        answer_mode="broad_topic_total",
+        answer_mode_flags={},
+        retrieval_context="Community Facilities Grant Account",
+    )
+
+    assert "Community Facilities Grant Account" in prompt
+    assert "scope hint only" in prompt
+    assert "not source evidence" in prompt
+
+
 def test_general_summary_reduce_prompt_preserves_categories_without_detail(monkeypatch):
     from app.services.rag_service import MarkedAnswer
 
@@ -2706,7 +3086,7 @@ def test_general_summary_reduce_prompt_preserves_categories_without_detail(monke
     assert "Preserve concrete deadlines, timeframes, named recipients" in prompt
 
 
-def test_map_chunk_tracks_fact_level_relevance_and_marks_direct_numbers_only(monkeypatch):
+def test_map_chunk_tracks_relevance_and_marks_direct_and_adjacent_numbers(monkeypatch):
     response = {
         "facts": [
             {
@@ -2767,9 +3147,12 @@ def test_map_chunk_tracks_fact_level_relevance_and_marks_direct_numbers_only(mon
     assert "Direct facts:" in mapped["extracted_facts"]
     assert "Adjacent facts:" in mapped["extracted_facts"]
     assert "$10,000,000 [[num:" in mapped["extracted_facts"]
-    assert "$20,000,000 [[num:" not in mapped["extracted_facts"]
-    assert len(result["number_annotations"]) == 1
-    assert result["number_annotations"][0]["figure"] == "$10,000,000"
+    assert "$20,000,000 [[num:" in mapped["extracted_facts"]
+    assert len(result["number_annotations"]) == 2
+    assert [annotation["figure"] for annotation in result["number_annotations"]] == [
+        "$10,000,000",
+        "$20,000,000",
+    ]
     assert result["relevance_metadata"][0]["scope"] == "chunk"
     assert result["relevance_metadata"][0]["counts"] == {"direct": 1, "adjacent": 1, "not_responsive": 0}
 

@@ -15,7 +15,7 @@ from app.services.vector_store_service import division_acronym
 
 
 BREADTH_RETRIEVAL_MODES = {"broad_topic_total", "general_summary"}
-_BROAD_PRIMARY_RESULT_FRACTION = 0.625
+_BROAD_PRIMARY_RESULT_FRACTION = 0.25
 _BROAD_CONTEXT_NEIGHBOR_LIMIT = 4
 _GENERAL_SUMMARY_COVERAGE_TERMS = (
     "account accounts program programs activities projects grants assistance operations "
@@ -42,6 +42,9 @@ _PHRASE_SUFFIXES = {
     "initiatives",
     "loan",
     "loans",
+    "care",
+    "partnership",
+    "partnerships",
     "payment",
     "payments",
     "program",
@@ -73,8 +76,19 @@ _TOPIC_STOPWORDS = {
     "what",
     "which",
 }
+_GENERIC_REWRITE_FACET_WORDS = {
+    "appropriation",
+    "appropriations",
+    "budget",
+    "funding",
+    "fy",
+    "total",
+}
 _CONTINUATION_START_RE = re.compile(
     r"^(?:[a-z]|[),;:]|\(?\d+\)|[ivxlcdm]+\)|of\b|and\b|or\b|for\b|to\b|with\b|including\b)",
+)
+_OBVIOUS_FRAGMENT_START_RE = re.compile(
+    r"^(?:[),;:]|\(?\d+\)|[ivxlcdm]+\)|(?:of|and|or|for|to|with|including)\b|[a-z]\s+[A-Z])",
 )
 _STATUTORY_TITLE_FRAGMENT_RE = re.compile(
     r"^[A-Z][A-Za-z]+(?:,\s+[A-Z][A-Za-z]+){1,}.*\b(?:Act|Code)\b",
@@ -129,8 +143,46 @@ def _facet_sort_score(facet: str, question: str | None) -> int:
 
 def _retrieval_phrase_facets(retrieval_query: str, question: str | None = None) -> list[str]:
     """Extract account/program-like phrases from the LLM rewrite without adding vocabulary."""
-    words = re.findall(r"[A-Za-z0-9][A-Za-z0-9&/-]*", _normalized_query(retrieval_query))
+    normalized_query = _normalized_query(retrieval_query)
+    delimited_facets: list[str] = []
+    # Rewrite emits semicolon-delimited headings. Treat those boundaries as
+    # authoritative so adjacent account names cannot be fused into one query.
+    # Keep the suffix parser below as a fallback for older or nonconforming
+    # rewrite output.
+    for delimited_part in re.split(r"\s*[;|]\s*", normalized_query):
+        part = delimited_part.strip(" ,;:-")
+        part_words = re.findall(r"[A-Za-z0-9][A-Za-z0-9&/-]*", part)
+        meaningful_words = [
+            word
+            for word in part_words
+            if not word.isdigit()
+            and word.lower() not in _GENERIC_REWRITE_FACET_WORDS
+            and not re.fullmatch(r"fy\d{2,4}", word, re.IGNORECASE)
+        ]
+        if (
+            1 < len(part_words) <= 8
+            and meaningful_words
+        ):
+            delimited_facets.append(" ".join(part_words))
+
+    # When the rewrite obeys the delimiter contract, its explicit boundaries
+    # and order are more trustworthy than suffix inference. Re-sorting these
+    # headings by literal question overlap used to demote the rewrite's major
+    # formula/block-grant headings simply because the public-facing question
+    # used different words.
+    if ";" in normalized_query or "|" in normalized_query:
+        unique_delimited: list[str] = []
+        seen_delimited: set[str] = set()
+        for facet in delimited_facets:
+            key = facet.lower()
+            if key not in seen_delimited:
+                seen_delimited.add(key)
+                unique_delimited.append(facet)
+        if unique_delimited:
+            return unique_delimited[:12]
+
     facets: list[str] = []
+    words = re.findall(r"[A-Za-z0-9][A-Za-z0-9&/-]*", normalized_query)
     last_suffix_index = -1
     for index, word in enumerate(words):
         if word.lower() not in _PHRASE_SUFFIXES:
@@ -165,7 +217,11 @@ def _retrieval_phrase_facets(retrieval_query: str, question: str | None = None) 
             seen.add(key)
             unique.append(facet)
     unique.sort(key=lambda facet: -_facet_sort_score(facet, question))
-    return unique[:8]
+    # A broad question commonly spans more headings than the ten-result
+    # coverage lane can retain. Keep a slightly larger candidate pool so the
+    # question-overlap ranking, rather than early string position, determines
+    # which headings receive retrieval slots.
+    return unique[:12]
 
 
 def _round_robin_chunks(chunk_groups: list[list[dict[str, Any]]], *, limit: int) -> list[dict[str, Any]]:
@@ -192,6 +248,109 @@ def _round_robin_chunks(chunk_groups: list[list[dict[str, Any]]], *, limit: int)
         if not advanced:
             break
     return merged
+
+
+def _interleave_coverage_queries(
+    rewrite_phrases: list[str],
+    question_facets: list[str],
+) -> list[str]:
+    """Give both the rewrite and each user-stated need an early coverage lane."""
+    queries: list[str] = []
+    for index in range(max(len(rewrite_phrases), len(question_facets))):
+        if index < len(rewrite_phrases):
+            queries.append(rewrite_phrases[index])
+        if index < len(question_facets):
+            queries.append(question_facets[index])
+    return queries
+
+
+def _phrase_coverage_score(chunk: dict[str, Any], phrase: str) -> int:
+    """Prefer a phrase's account-heading/amount Chunk over incidental mentions."""
+    phrase_words = re.findall(r"[a-z0-9]+", phrase.lower())
+    # A rewrite may prefix an account heading with its statutory alias (for
+    # example, "Section 8"). The bill's actual heading often omits that alias.
+    # Score the heading core in that common structural case so an exact account
+    # heading with its appropriation outranks an incidental statutory mention.
+    match_words = phrase_words
+    if (
+        len(phrase_words) > 3
+        and phrase_words[0] == "section"
+        and phrase_words[1].isdigit()
+    ):
+        match_words = phrase_words[2:]
+    phrase_text = " ".join(match_words)
+    content = str(chunk.get("content") or "")
+    content_text = " ".join(re.findall(r"[a-z0-9$]+", content.lower()))
+    if not phrase_text or not content_text:
+        return 0
+
+    phrase_tokens = set(phrase_text.split())
+    content_tokens = set(content_text.split())
+    score = len(phrase_tokens & content_tokens)
+    phrase_words = phrase_text.split()
+    raw_phrase_pattern = re.compile(
+        r"\b" + r"[\s-]+".join(re.escape(word) for word in phrase_words) + r"\b",
+        re.IGNORECASE,
+    )
+    for line in content.splitlines():
+        line_text = " ".join(re.findall(r"[a-z0-9]+", line.lower()))
+        if line_text == phrase_text or (
+            raw_phrase_pattern.search(line) and len(line_text.split()) <= len(phrase_words) + 2
+        ):
+            score += 10
+            break
+    phrase_position = content_text.find(phrase_text)
+    if phrase_position >= 0:
+        score += 10
+        if phrase_position <= 600:
+            score += 2
+        dollar_positions = [match.start() for match in re.finditer(r"\$\d", content_text)]
+        if dollar_positions and min(abs(position - phrase_position) for position in dollar_positions) <= 600:
+            score += 8
+    if "$" in content:
+        score += 1
+    return score
+
+
+def _merge_phrase_coverage_chunks(
+    keyword_chunks: list[dict[str, Any]],
+    vector_chunks: list[dict[str, Any]],
+    *,
+    phrase: str,
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Merge lexical and semantic results, ranking likely account headings first."""
+    merged = _round_robin_chunks([keyword_chunks, vector_chunks], limit=limit)
+    indexed = list(enumerate(merged))
+    indexed.sort(
+        key=lambda item: (-_phrase_coverage_score(item[1], phrase), item[0])
+    )
+    if not indexed:
+        return []
+
+    _, top_chunk = indexed[0]
+    try:
+        top_index = int((top_chunk.get("metadata") or {}).get("chunk_index"))
+    except (TypeError, ValueError):
+        top_index = -1
+    continuations: list[tuple[int, int, dict[str, Any]]] = []
+    remaining: list[tuple[int, dict[str, Any]]] = []
+    for original_position, chunk in indexed[1:]:
+        try:
+            chunk_index = int((chunk.get("metadata") or {}).get("chunk_index"))
+        except (TypeError, ValueError):
+            chunk_index = -1
+        distance = chunk_index - top_index if top_index >= 0 and chunk_index >= 0 else -1
+        if 1 <= distance <= 3:
+            continuations.append((distance, original_position, chunk))
+        else:
+            remaining.append((original_position, chunk))
+    continuations.sort(key=lambda item: (item[0], item[1]))
+    return [
+        top_chunk,
+        *(chunk for _, _, chunk in continuations),
+        *(chunk for _, chunk in remaining),
+    ]
 
 
 def _append_unique_chunks(
@@ -238,13 +397,16 @@ def _previous_context_score(chunk: dict[str, Any], question_roots: set[str]) -> 
     overlap = len(question_roots & content_roots)
     statutory_title_fragment = bool(_STATUTORY_TITLE_FRAGMENT_RE.search(stripped[:220]))
     starts_continued = bool(_CONTINUATION_START_RE.search(stripped[:80]))
-    if not starts_continued and not statutory_title_fragment:
+    obvious_fragment = bool(_OBVIOUS_FRAGMENT_START_RE.search(stripped[:80]))
+    if not starts_continued and not statutory_title_fragment and not obvious_fragment:
         return 0
-    if overlap <= 0 and not statutory_title_fragment:
+    if overlap <= 0 and not statutory_title_fragment and not obvious_fragment:
         return 0
 
     score = min(overlap, 4)
     if starts_continued:
+        score += 3
+    if obvious_fragment:
         score += 3
     if statutory_title_fragment:
         score += 2
@@ -503,20 +665,26 @@ def retrieve_division(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
         mode = normalize_answer_mode(state.get("answer_mode", DEFAULT_ANSWER_MODE))  # type: ignore[arg-type]
         max_results = int(state["max_results"])
         question_facets = _query_facets(state["question"])  # type: ignore[typeddict-item]
+        rewrite_phrase_facets = _retrieval_phrase_facets(
+            retrieval_query,
+            state["question"],  # type: ignore[typeddict-item]
+        )
         breadth_coverage_queries = _breadth_coverage_queries(state, ctx, division)
         if mode == "general_summary":
             variant_queries = [
                 state["question"],  # type: ignore[typeddict-item]
-                *_retrieval_phrase_facets(retrieval_query, state["question"]),  # type: ignore[typeddict-item]
+                *rewrite_phrase_facets,
                 *question_facets,
             ]
         else:
             variant_queries = [
                 state["question"],  # type: ignore[typeddict-item]
+                *rewrite_phrase_facets,
                 *question_facets,
             ]
         seen_queries = {_normalized_query(retrieval_query).lower()}
-        variant_groups: list[list[dict[str, Any]]] = []
+        keyword_groups: list[tuple[str, list[dict[str, Any]]]] = []
+        vector_groups: list[tuple[str, list[dict[str, Any]]]] = []
         keyword_retrieve = getattr(ctx.vectorstores, "keyword_retrieve", None)
         if callable(keyword_retrieve):
             seen_keyword_queries: set[str] = set()
@@ -528,6 +696,7 @@ def retrieve_division(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
                 ]
             else:
                 keyword_queries = [
+                    *rewrite_phrase_facets,
                     state["question"],  # type: ignore[typeddict-item]
                     *question_facets,
                 ]
@@ -545,7 +714,7 @@ def retrieve_division(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
                     embedding_model=state.get("vector_store_embedding_model"),
                 )
                 if keyword_chunks:
-                    variant_groups.append(keyword_chunks)
+                    keyword_groups.append((key, keyword_chunks))
         for variant_query in variant_queries:
             normalized_variant = _normalized_query(variant_query)
             key = normalized_variant.lower()
@@ -559,18 +728,72 @@ def retrieve_division(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
                 vectorstore_root=state.get("vector_store_root"),
                 embedding_model=state.get("vector_store_embedding_model"),
             )
-            variant_groups.append(variant_chunks)
+            vector_groups.append((key, variant_chunks))
+        if mode == "general_summary":
+            variant_groups = [
+                chunks for _, chunks in [*keyword_groups, *vector_groups]
+            ]
+        else:
+            # For broad questions, keep the lexical and semantic lanes for
+            # each rewrite-derived account phrase adjacent.  Listing every
+            # lexical lane first meant a fixed result budget often never
+            # reached the semantic result that contained the actual account
+            # heading and appropriation.
+            keyword_by_query = dict(keyword_groups)
+            vector_by_query = dict(vector_groups)
+            rewrite_keys = {
+                _normalized_query(phrase).lower(): phrase
+                for phrase in rewrite_phrase_facets
+            }
+            ordered_query_keys: list[str] = []
+            if ";" in retrieval_query or "|" in retrieval_query:
+                ordered_coverage_queries = [
+                    *rewrite_phrase_facets,
+                    *question_facets,
+                ]
+            else:
+                ordered_coverage_queries = _interleave_coverage_queries(
+                    rewrite_phrase_facets,
+                    question_facets,
+                )
+            for coverage_query in [
+                *ordered_coverage_queries,
+                state["question"],  # type: ignore[typeddict-item]
+            ]:
+                key = _normalized_query(coverage_query).lower()
+                if key and key not in ordered_query_keys:
+                    ordered_query_keys.append(key)
+            variant_groups = []
+            for key in ordered_query_keys:
+                keyword_chunks = keyword_by_query.get(key, [])
+                vector_chunks = vector_by_query.get(key, [])
+                if key in rewrite_keys:
+                    combined = _merge_phrase_coverage_chunks(
+                        keyword_chunks,
+                        vector_chunks,
+                        phrase=rewrite_keys[key],
+                        limit=max_results,
+                    )
+                else:
+                    combined = _round_robin_chunks(
+                        [keyword_chunks, vector_chunks],
+                        limit=max_results,
+                    )
+                if combined:
+                    variant_groups.append(combined)
         if mode == "general_summary":
             chunks = _round_robin_chunks([chunks, *variant_groups], limit=max_results)
         else:
-            primary_floor = max(1, int(max_results * _BROAD_PRIMARY_RESULT_FRACTION))
-            chunks = _merge_preserving_primary_chunks(
-                chunks,
-                variant_groups,
-                limit=max_results,
-                primary_floor=primary_floor,
-            )
-            chunks = _with_context_neighbors(
+            # Keep a three-Chunk minimum at small K values so one split
+            # provision plus its context neighbor cannot be erased by the
+            # coverage lanes. At the production K=16, the 25% policy yields
+            # four primary/context slots and twelve breadth slots.
+            primary_floor = max(3, int(max_results * _BROAD_PRIMARY_RESULT_FRACTION))
+            # Add split-provision context to the primary result lane before
+            # merging coverage variants.  Expanding after the merge used to
+            # truncate the tail, which is exactly where phrase/facet results
+            # lived and could silently discard a requested topic.
+            primary_with_context = _with_context_neighbors(
                 chunks,
                 division=division,
                 question=state["question"],  # type: ignore[typeddict-item]
@@ -579,6 +802,12 @@ def retrieve_division(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
                 embedding_model=state.get("vector_store_embedding_model"),
                 limit=max_results,
                 neighbor_limit=_BROAD_CONTEXT_NEIGHBOR_LIMIT,
+            )
+            chunks = _merge_preserving_primary_chunks(
+                primary_with_context,
+                variant_groups,
+                limit=max_results,
+                primary_floor=primary_floor,
             )
         diversified = True
     ctx.debug_log(

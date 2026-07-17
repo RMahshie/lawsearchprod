@@ -42,6 +42,18 @@ _QUESTION_FACT_CUES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("service", ("service", "program", "activity")),
     ("use", ("use", "purpose", "expense", "activity")),
 )
+_RECONCILIATION_BOUNDARY_CUES = (
+    "transfer",
+    "cap",
+    "limitation",
+    "not to exceed",
+    "percent",
+    "rescission",
+    "set-aside",
+    "set aside",
+    "offsetting collection",
+    "user fee",
+)
 
 
 def _prioritize_generation_facts(
@@ -80,6 +92,50 @@ def _prioritize_generation_facts(
         return value
 
     return sorted(facts, key=score, reverse=True)
+
+
+def _label_generation_facts(
+    facts: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Add stable prompt-local ids so Reduce can audit Direct-fact coverage."""
+    counters = {"direct": 0, "adjacent": 0}
+    prefixes = {"direct": "D", "adjacent": "A"}
+    labeled: list[dict[str, Any]] = []
+    direct_ids: list[str] = []
+    for fact in facts:
+        tier = str(fact.get("responsiveness_tier", ""))
+        copied = dict(fact)
+        if tier in counters:
+            counters[tier] += 1
+            prompt_id = f"{prefixes[tier]}{counters[tier]}"
+            copied["prompt_id"] = prompt_id
+            if tier == "direct":
+                direct_ids.append(prompt_id)
+        labeled.append(copied)
+    return labeled, direct_ids
+
+
+def _required_fact_ids(
+    facts: list[dict[str, Any]],
+    *,
+    answer_mode: str,
+) -> list[str]:
+    """Select facts Reduce must explicitly cover or justify excluding."""
+    required: list[str] = []
+    reconciliation = answer_mode == "reconciliation_breakdown"
+    for fact in facts:
+        prompt_id = str(fact.get("prompt_id", "") or "")
+        if not prompt_id:
+            continue
+        tier = str(fact.get("responsiveness_tier", ""))
+        fact_text = str(fact.get("fact", "")).lower()
+        if tier == "direct" or (
+            reconciliation
+            and tier == "adjacent"
+            and any(cue in fact_text for cue in _RECONCILIATION_BOUNDARY_CUES)
+        ):
+            required.append(prompt_id)
+    return required
 
 
 def fan_out_reduce_divisions(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
@@ -168,11 +224,17 @@ def reduce_division(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
             generation_facts,
             state["question"],
         )
+        generation_facts, _ = _label_generation_facts(generation_facts)
+        required_fact_ids = _required_fact_ids(
+            generation_facts,
+            answer_mode=state.get("answer_mode", DEFAULT_ANSWER_MODE),
+        )
         facts = render_tiered_facts(generation_facts) if generation_facts else ""
     else:
         # Compatibility for persisted/test mapped items created before
         # fact-level relevance metadata was introduced.
         facts = "\n\n".join(item["extracted_facts"] for item in mapped_items)
+        required_fact_ids = []
     counts = merge_relevance_counts(
         [item.get("relevance_counts", {}) for item in mapped_items]
     )
@@ -216,6 +278,7 @@ def reduce_division(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
             answer_mode_flags=state.get("answer_mode_flags", {}),
             annotation_context=figure_handle_prompt_context(handle_context),
             facts=handle_context.prompt_text,
+            required_fact_ids=required_fact_ids,
         )
         marked = invoke_structured(
             llm,
@@ -225,6 +288,26 @@ def reduce_division(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
             stage="reduce",
             query_id=state.get("query_id", "unknown"),
             debug_log=ctx.debug_log,
+        )
+        covered_fact_ids = {
+            fact_id for fact_id in marked.covered_fact_ids if fact_id in required_fact_ids
+        }
+        excluded_fact_ids = {
+            fact_id for fact_id in marked.excluded_fact_ids if fact_id in required_fact_ids
+        }
+        missing_fact_ids = [
+            fact_id
+            for fact_id in required_fact_ids
+            if fact_id not in covered_fact_ids and fact_id not in excluded_fact_ids
+        ]
+        ctx.debug_log(
+            "reduce_fact_coverage query_id=%s division=%s required=%s covered=%s excluded=%s missing=%s",
+            state.get("query_id", "unknown"),
+            division_acronym_value,
+            len(required_fact_ids),
+            sorted(covered_fact_ids),
+            sorted(excluded_fact_ids),
+            missing_fact_ids,
         )
         proposed_derived_count = len(marked.derived_annotations)
         answer, derived = render_figure_handle_answer(

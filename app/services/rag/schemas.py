@@ -84,11 +84,25 @@ class MarkedAnswer(BaseModel):
 
     answer: str = Field(
         description=(
-            "Markdown using exact {{F#:$...}} source handles or {{D#}} derived handles "
-            "instead of raw dollar figures."
+            "Markdown using registered {{F#}} source handles (the evidence may show "
+            "them as {{F#:$...}}) or {{D#}} derived handles instead of raw dollar figures."
         ),
     )
     derived_annotations: list[ProposedDerivedAnnotation] = Field(default_factory=list)
+    covered_fact_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Internal prompt-local required fact ids materially represented in the answer. "
+            "Do not print these ids in answer markdown."
+        ),
+    )
+    excluded_fact_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Internal prompt-local required fact ids deliberately excluded under the "
+            "answer-mode coverage rule."
+        ),
+    )
 
 
 class SourceNumberCandidate(BaseModel):

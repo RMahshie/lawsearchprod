@@ -33,10 +33,13 @@ INVARIANT_RULES = """Invariant source and accounting rules:
 
 
 FIGURE_HANDLE_RULES = """Figure Handle contract:
-- Evidence dollar figures appear as self-describing atomic handles such as {{F1:$25,000}}. The amount is part of the handle. To use or repeat that figure, copy the whole exact handle. Do not type the dollar figure separately.
+- Evidence dollar figures appear as self-describing atomic handles such as {{F1:$25,000}}. The amount is part of the evidence handle so its meaning is visible locally.
+- In `answer`, refer to that registered source figure as either the exact evidence handle or its bare id form, such as {{F1}}. The backend renders the exact amount. Do not type the dollar figure separately.
 - Never output canonical [[num:...]] markers. The backend owns canonical marker rendering.
-- Never invent or alter an {{F#:$...}} handle. Use only exact whole handles present in the supplied evidence.
+- Never invent a source handle or alter the displayed amount inside a self-describing handle. Use only registered F handles present in the supplied evidence.
+- A source handle is permanently bound to the program, purpose, financial type, and parent-child relationship stated on its own evidence line. Never transplant a handle into the description of another fact, even when two amounts look similar. Copy the identifying account/program words from the same line before using its handle.
 - For a calculated figure, put a new handle such as {{D1}} in `answer` and add exactly one matching `derived_annotations` item with id `D1`.
+- Put the literal {{D1}} handle at the exact place where the calculated amount should appear; do not put the Derived Figure label there as a placeholder.
 - A Derived Figure's input_ids must contain existing local handles such as `F1`, `F2`, or an earlier `D1`, without braces.
 - Do not put any raw dollar figure outside a handle in `answer`. Every visible amount must be represented by an available {{F#:$...}} handle or a matching proposed {{D#}} handle."""
 
@@ -52,6 +55,8 @@ MAP_BASE_RULES = """Map extraction rules:
 - Preserve exact dollar figures, account names, agencies, fiscal years, and section references.
 - Preserve financial-type language around each dollar figure, such as account total, suballocation, grant, direct loan authority, guaranteed loan authority, loan subsidy cost, user fee, offsetting collection, transfer, rescission, set-aside, cap, or limitation.
 - Preserve relationship language such as 'of which', 'to remain available', 'derived from fees', 'transferred', 'rescinded', 'not to exceed', and 'loan authority'.
+- Start each numeric fact with the governing account, program, or statutory heading when that heading is visible in the source chunk. If it is not visible, preserve the visible item or program name and say that the parent heading is not visible in this Chunk; never infer a parent from the retrieval query or from another mapped fact.
+- Keep each fact atomic enough to retain one financial relationship. Never combine separate parent accounts into one fact. In a breakdown, put a parent amount and each materially distinct child, cap, transfer, rescission, or financing source in separate fact objects unless the child has no meaning without the parent clause.
 - If the chunk has relevant funding-mechanism evidence but no relevant dollar figure, extract that mechanism as a fact without a source_numbers item.
 - Funding-mechanism evidence includes continuing appropriations, rate-for-operations language, apportionment authority, extensions, and referenced prior laws.
 - Do not extract unrelated dollar figures merely because the question asks how much; unrelated figures must not be used as substitutes for missing topic-specific amounts.
@@ -65,6 +70,7 @@ MAP_BASE_RULES = """Map extraction rules:
 MAP_MODE_PROMPTS: dict[str, str] = {
     "direct_account_amount": """Mode-specific map rules (direct_account_amount):
 - Direct: facts about the named account, program, or agency in the question.
+- For a named account, Direct facts must be explicitly under that account heading or explicitly say they apply to it. A sibling account is not Direct merely because it belongs to the same agency or funds similar services.
 - Treat each clause of the question as part of the Direct scope. If the question asks for plural amounts, tranches, availability dates, or funding changes, Direct includes every named-account current, advance, or prior tranche that is relevant to the requested fiscal year, plus its availability period, reimbursements, transfers, and rescissions.
 - A rescission from an earlier named-account tranche is Direct when the question asks which amounts are identified or how those amounts are available. Preserve it as a rescission, not positive funding.
 - When a service or activity list is funded across the named account and sibling accounts, keep the list Direct if it answers the requested uses, but preserve the pooled multi-account scope explicitly.
@@ -74,6 +80,11 @@ MAP_MODE_PROMPTS: dict[str, str] = {
 - Preserve the named account's main appropriation amount and any allowed-use language as direct facts.""",
     "broad_topic_total": """Mode-specific map rules (broad_topic_total):
 - Direct: any fact that provides or controls funding for the same project type as the question, a closely related project type, or a relevant eligible population or geography, even when the chunk does not repeat the user's exact phrase.
+- A broader parent lane is Direct when its eligible recipients, activities, or statutory purpose substantively cover a user-stated need. Do not demote it merely because a narrower child line uses the user's exact wording.
+- A child line is Direct when it names a user-stated need or constitutes a material share of a directly responsive parent. Preserve the parent-child relationship.
+- A named child, set-aside, or suballocation under a directly responsive parent is Direct when it is needed to explain the parent funding lane or a user-stated facet; do not demote it merely because it is nested.
+- A visible parent or lead-in amount governing a directly responsive enumerated list is Direct even when the account heading begins in the preceding Chunk. Preserve only the parent wording and relationship visible in this Chunk; do not guess a missing name.
+- When the supplied preceding-Chunk scope context establishes the heading and the current source visibly continues it, use that heading to label current facts. If the current source contains the heading's lead-in total and a responsive child, extract both as separate Direct facts.
 - Direct includes top-level funding lanes for the topic: appropriated grants, assistance payments, benefit payments, direct loan authority, guaranteed loan authority, loan subsidy costs, dedicated program accounts, trust-fund accounts, major set-asides, and topic-specific fee or collection authorities.
 - When the question names multiple topics or project types, evaluate each named topic independently and preserve direct facts for each one before broader related facts.
 - Treat account, program, authority, eligible-activity, eligible-population, or geography language as direct when it substantively matches the user's requested topic, even if the bill text uses different wording than the question.
@@ -95,6 +106,8 @@ MAP_MODE_PROMPTS: dict[str, str] = {
 - Do not invent or infer a dollar figure from mechanism language; preserve the mechanism as a fact and leave the amount unspecified.""",
     "reconciliation_breakdown": """Mode-specific map rules (reconciliation_breakdown):
 - Direct (within the requested scope): parent account totals, child allocations and suballocations, financing sources such as user fees and offsetting collections, transfers in and out, caps, limitations, rescissions, set-asides, and exclusions needed to audit the math.
+- When the question names an account, Direct facts must be explicitly under that heading or visibly continue that account through account-specific statutory/program language. Sibling accounts under the same department or mission area are Adjacent or Not_responsive, even when they use similar financial types or serve a related population.
+- Do not treat generic phrases such as "under this heading" or "this account" as proof of the requested account when neither the requested heading nor account-specific program identity is visible in the Chunk.
 - Preserve parent-child relationship language on every fact: 'of which', 'to remain available', 'derived from fees', 'transferred', 'rescinded', 'not to exceed', 'loan authority'.
 - Preserve the financial-type label on each amount (account total, suballocation, grant, direct loan authority, guaranteed loan authority, loan subsidy cost, user fee, offsetting collection, transfer, rescission, set-aside, cap, limitation) so the reduce stage can classify additive relationships.
 - Adjacent: related accounting context inside the same account that does not bear on the requested reconciliation math.
@@ -152,6 +165,7 @@ Bad answer pattern: listing every internal activity amount unless the user asks 
 Bad answer pattern: listing each individual fee-source amount unless the user asks for a user-fee breakdown.""",
     "broad_topic_total": """Broad topic total reduce prompt:
 - Use only Direct facts for substantive answer content. Use Adjacent facts only for short not-included or scope notes. Do not use Not responsive facts in the answer.
+- Never place a fact under a named account or program merely because it appears near that account in the fact list. The fact itself must name the parent or preserve explicit source relationship language. If its parent heading is not established, keep it as a standalone responsive provision instead of guessing a hierarchy.
 - Preserve source citation markers and copy Figure Handles exactly where their figures belong.
 - Do not invent facts, dollar figures, or totals. If the facts do not answer the question, say that directly.
 - Output a compact division brief for synthesis, not a full ledger.
@@ -196,7 +210,7 @@ Good answer pattern: Use one controlling account/program bullet that names the c
 - Include retrieved payment/obligation categories that explain what can continue, such as personnel pay and benefits, mandatory payments, essential activities to protect life and property, and orderly termination of government functions.
 - Do not substitute unrelated dollar figures from the same division or source bucket.
 - Do not create Included / Not added separately sections, totals, or reconciliation tables.
-- Keep the response compact: one bottom-line sentence plus up to 3 mechanism bullets when useful.
+- Cover every distinct Direct mechanism dimension that exists: legal or prior-law basis, rate/baseline, duration or termination condition, apportionment, and payment/obligation restrictions. Use up to 6 compact bullets when necessary; completeness takes priority over an arbitrary shorter limit.
 - If you repeat or restate an evidence dollar figure, repeat the same Figure Handle for every occurrence.
 - For any calculated total, use a new Derived Figure Handle and a matching derived annotation whose input_ids reference existing local handles.
 
@@ -234,6 +248,9 @@ Bottom line: <account total / reconciliation summary>
 - <only if needed>
 
 - Use Direct facts for substantive answer content. Use Adjacent facts only for short not-included or scope notes. Do not use Not responsive facts in the answer.
+- An Adjacent transfer authority, cap, limitation, or other accounting boundary within the requested account may be retained under Not Added Separately when it prevents a reader from treating that provision as additional funding.
+- A percentage-based transfer authority is still a material accounting limitation even when it has no dollar figure. Include it under Transfers, caps, and limitations when it applies to the requested account.
+- Never assign a line item to a named parent account merely because it appears near that account in the fact list. Require the fact itself to name the parent or preserve explicit source relationship language; otherwise keep the item separate and state that the parent relationship is not established.
 - Preserve source citation markers and copy Figure Handles exactly where their figures belong.
 - Do not invent facts, dollar figures, or totals. If the facts do not answer the question, say that directly.
 - Do not use internal pipeline language in the answer, including "extracted facts", "provided facts", "retrieved facts", "mapped facts", "division answers", or "source chunks".
@@ -245,6 +262,10 @@ Bottom line: <account total / reconciliation summary>
 - Do not present a topical subtotal unless every component in the subtotal is listed, source-backed, same-scope, and comparable. If those components are incomplete or include nested child amounts, say no clean subtotal is established.
 - For combined-topic questions, provide one total found per topic and a combined total found only when those topic totals are clearly additive.
 - Preserve enough detail to audit the math.
+- When the question asks for a total and the retrieved top-level amounts are same-scope and additive, calculate and show that subtotal with a validated Derived Figure instead of only saying that the amounts can be summed.
+- Treat arithmetic subtotal and parent-total reconciliation as two separate findings. If two or more source-backed top-level amounts are comparable and additive, you MUST show their arithmetic subtotal with a literal Derived Figure Handle and matching `derived_annotations` item even when the bill states no parent total. Then say separately whether a source-backed parent exists and whether it matches.
+- Do not answer a reconciliation request only by saying that no parent total exists. Lack of a stated parent prevents parent validation; it does not prevent a clearly labeled arithmetic subtotal of the comparable top-level amounts.
+- Label every retained suballocation, cap, set-aside, transfer, or limitation with its stated purpose. Do not group several figures into one unlabeled list when their purposes differ.
 - If a broader parent account and one of its components both appear, include the parent account and explain that the component was not added separately.
 - Before finalizing the Included section, scan every Included amount for relationship language such as "within", "of which", "of the total", "from amounts made available", "reserved", "set aside", "not less than", "not to exceed", "for such grants", or "for this purpose". If an amount is a subset, reservation, cap, transfer, fee source, or component of another Included amount, move it to Not Added Separately and explain the parent-child relationship.
 - Never place the same child/suballocation amount in Included and Not Added Separately. Use Not Added Separately for the child when the parent is Included.
@@ -541,6 +562,8 @@ def build_map_prompt(
     division_acronym: str,
     answer_mode: str,
     answer_mode_flags: dict[str, Any] | None,
+    retrieval_context: str = "",
+    previous_chunk_context: str = "",
 ) -> str:
     """Build the map-stage extraction prompt."""
     mode = normalize_answer_mode(answer_mode)
@@ -560,6 +583,12 @@ def build_map_prompt(
         f"{mode_block}\n\n"
         f"{MAP_EXAMPLE}\n\n"
         f"Question:\n{question}\n\n"
+        "Division retrieval context (scope hint only; it is not source evidence and must never "
+        f"be quoted as a fact):\n{retrieval_context or 'None.'}\n\n"
+        "Immediately preceding retrieved Chunk (scope continuity only; dollar figures are redacted):\n"
+        f"{previous_chunk_context or 'None.'}\n"
+        "You may use this only to identify the governing heading or parent-child continuity for facts "
+        "visible in the Source chunk below. Never extract a fact or amount solely from this context.\n\n"
         f"Source chunk:\n{chunk_content}"
     )
 
@@ -573,8 +602,27 @@ def build_reduce_prompt(
     answer_mode_flags: dict[str, Any] | None,
     annotation_context: str,
     facts: str,
+    required_fact_ids: list[str] | None = None,
 ) -> str:
     """Build the reduce-stage prompt for one division."""
+    mode = normalize_answer_mode(answer_mode)
+    if mode == "reconciliation_breakdown":
+        coverage_exclusion_rule = (
+            "For reconciliation, a nested child is not excludable merely because its parent is "
+            "covered: represent it under Not Added Separately so the accounting remains auditable. "
+            "Exclude a required fact only when it is a duplicate or outside the exact requested "
+            "account/topic scope."
+        )
+    elif mode == "broad_topic_total":
+        coverage_exclusion_rule = (
+            "A material child or a line that answers a user-stated facet is not excludable merely "
+            "because its parent is covered; represent its substance with the parent or separately."
+        )
+    else:
+        coverage_exclusion_rule = (
+            "A required fact may be excluded only when it is a duplicate, outside the user's scope, "
+            "or wholly nested under a covered parent without adding requested detail."
+        )
     return (
         "Synthesize the extracted facts into a division-level answer. "
         "Return structured output with `answer` markdown and `derived_annotations`.\n\n"
@@ -586,6 +634,13 @@ def build_reduce_prompt(
         f"Question:\n{question}\n\n"
         f"Division: {division}\n\n"
         f"Figure Handle registry status:\n{annotation_context}\n\n"
+        "Required-fact coverage checklist:\n"
+        f"{', '.join(required_fact_ids or []) or 'None.'}\n"
+        "Before finalizing, put every listed required fact id in exactly one structured list: "
+        "`covered_fact_ids` if its substance is materially represented in the answer, or "
+        "`excluded_fact_ids` only under the rule below. Do not print fact ids in the answer. "
+        "An exclusion cannot be used merely to shorten the answer.\n"
+        f"{coverage_exclusion_rule}\n\n"
         f"Tiered extracted facts:\n{facts}"
     )
 
