@@ -49,11 +49,13 @@ class DivisionQueryPlan(BaseModel):
 
 
 class ProposedDerivedAnnotation(BaseModel):
-    """LLM-proposed derived figure provenance before deterministic validation."""
+    """LLM-proposed Derived Figure Handle before deterministic validation."""
 
     model_config = ConfigDict(populate_by_name=True)
 
-    id: str
+    id: str = Field(
+        description="Stage-local Derived Figure Handle such as D1, without braces.",
+    )
     proposed_figure: str = Field(
         alias="figure",
         description="Model-proposed figure text. The displayed figure is read from the answer marker context.",
@@ -62,7 +64,10 @@ class ProposedDerivedAnnotation(BaseModel):
     label: str
     equation: str
     rationale: str = ""
-    input_ids: list[str] = Field(default_factory=list)
+    input_ids: list[str] = Field(
+        default_factory=list,
+        description="Stage-local Figure Handles, such as F1 or an earlier D1.",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -75,9 +80,14 @@ class ProposedDerivedAnnotation(BaseModel):
 
 
 class MarkedAnswer(BaseModel):
-    """Structured answer text plus proposed derived number annotations."""
+    """Answer markdown with Figure Handles plus proposed Derived Figures."""
 
-    answer: str
+    answer: str = Field(
+        description=(
+            "Markdown using exact {{F#:$...}} source handles or {{D#}} derived handles "
+            "instead of raw dollar figures."
+        ),
+    )
     derived_annotations: list[ProposedDerivedAnnotation] = Field(default_factory=list)
 
 

@@ -8,14 +8,15 @@ from typing import Any
 from app.models.query import NumberAnnotationTarget
 from app.services.llm_factory import create_chat_model, format_model_spec, resolve_model
 from app.services.rag.annotations import (
-    annotation_prompt_context,
     annotations_from_dicts,
     count_number_markers,
+    figure_handle_prompt_context,
+    prepare_figure_handle_context,
+    render_figure_handle_answer,
     unmarked_figures,
-    validate_derived_annotations,
 )
 from app.services.rag.context import RAGContext
-from app.services.rag.llm_invocation import invoke_structured_or_text
+from app.services.rag.llm_invocation import invoke_structured
 from app.services.rag.response import log_answer_budget
 from app.services.rag.schemas import MarkedAnswer
 from app.services.rag.state import RAGState
@@ -89,40 +90,39 @@ def synthesize_final(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
         unmarked_figures(context),
         [annotation.id for annotation in available_annotations[:16]],
     )
+    handle_context = prepare_figure_handle_context(context, available_annotations)
     prompt = build_synthesis_prompt(
         question=state["question"],
         answer_mode=state.get("answer_mode", DEFAULT_ANSWER_MODE),
         answer_mode_flags=state.get("answer_mode_flags", {}),
-        annotation_context=annotation_prompt_context(available_annotations),
-        division_context=context,
+        annotation_context=figure_handle_prompt_context(handle_context),
+        division_context=handle_context.prompt_text,
     )
-    marked = invoke_structured_or_text(
+    marked = invoke_structured(
         llm,
         prompt,
         schema=MarkedAnswer,
         model_spec=synthesize_model,
-        fallback=lambda text: MarkedAnswer(answer=text),
         stage="synthesize",
         query_id=state.get("query_id", "unknown"),
         debug_log=ctx.debug_log,
     )
-    final_answer = marked.answer
-    log_answer_budget(
-        query_id=state.get("query_id", "unknown"),
-        stage="synthesize",
-        label="answer",
-        text=final_answer,
-        debug_log=ctx.debug_log,
-    )
-    derived = validate_derived_annotations(
-        proposed=marked.derived_annotations,
-        target_answer=final_answer,
+    final_answer, derived = render_figure_handle_answer(
+        marked=marked,
+        context=handle_context,
         available=available_annotations,
         target=NumberAnnotationTarget(scope="answer"),
         debug_log=ctx.debug_log,
         query_id=state.get("query_id", "unknown"),
         stage="synthesize",
         target_label="answer",
+    )
+    log_answer_budget(
+        query_id=state.get("query_id", "unknown"),
+        stage="synthesize",
+        label="answer",
+        text=final_answer,
+        debug_log=ctx.debug_log,
     )
     ctx.debug_log(
         "synthesize_done query_id=%s model=%s division_answers=%s input_chars=%s duration=%.2fs answer_chars=%s",

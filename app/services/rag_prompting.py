@@ -23,14 +23,22 @@ ANSWER_MODES: tuple[str, ...] = (
 
 
 INVARIANT_RULES = """Invariant source and accounting rules:
-- Preserve source, citation, and [[num:...]] number markers exactly where they belong.
-- Never invent placeholder number markers such as [[num:...]].
+- Preserve source and citation details exactly where they belong.
 - Do not invent facts, dollar figures, or totals.
 - Use only retrieved facts.
 - Only sum comparable additive amounts in the same scope.
 - Preserve caveats for transfers, rescissions, caps, fees, set-asides, suballocations, limitations, and non-comparable accounts.
 - Do not substitute unrelated dollar figures when the requested topic lacks a dollar amount.
 - Distinguish funding-mechanism evidence from dollar-figure evidence."""
+
+
+FIGURE_HANDLE_RULES = """Figure Handle contract:
+- Evidence dollar figures appear as self-describing atomic handles such as {{F1:$25,000}}. The amount is part of the handle. To use or repeat that figure, copy the whole exact handle. Do not type the dollar figure separately.
+- Never output canonical [[num:...]] markers. The backend owns canonical marker rendering.
+- Never invent or alter an {{F#:$...}} handle. Use only exact whole handles present in the supplied evidence.
+- For a calculated figure, put a new handle such as {{D1}} in `answer` and add exactly one matching `derived_annotations` item with id `D1`.
+- A Derived Figure's input_ids must contain existing local handles such as `F1`, `F2`, or an earlier `D1`, without braces.
+- Do not put any raw dollar figure outside a handle in `answer`. Every visible amount must be represented by an available {{F#:$...}} handle or a matching proposed {{D#}} handle."""
 
 
 MAP_BASE_RULES = """Map extraction rules:
@@ -57,6 +65,9 @@ MAP_BASE_RULES = """Map extraction rules:
 MAP_MODE_PROMPTS: dict[str, str] = {
     "direct_account_amount": """Mode-specific map rules (direct_account_amount):
 - Direct: facts about the named account, program, or agency in the question.
+- Treat each clause of the question as part of the Direct scope. If the question asks for plural amounts, tranches, availability dates, or funding changes, Direct includes every named-account current, advance, or prior tranche that is relevant to the requested fiscal year, plus its availability period, reimbursements, transfers, and rescissions.
+- A rescission from an earlier named-account tranche is Direct when the question asks which amounts are identified or how those amounts are available. Preserve it as a rescission, not positive funding.
+- When a service or activity list is funded across the named account and sibling accounts, keep the list Direct if it answers the requested uses, but preserve the pooled multi-account scope explicitly.
 - Adjacent: nearby provisions in the same section or title that are not the named account, and sibling accounts under the same parent agency that are not the requested one.
 - Not_responsive: unrelated accounts, unrelated suballocations, center-by-center figures, individual user-fee line amounts, and rent/transfer/limitation line items, unless the question asks for breakdown or reconciliation.
 - Do not promote nearby provisions to direct merely because they appear in the same chunk.
@@ -112,21 +123,26 @@ The separate nearby amount should be adjacent or not_responsive unless it direct
 REDUCE_MODE_PROMPTS: dict[str, str] = {
     "direct_account_amount": """Direct account reduce prompt:
 - Use only Direct facts to answer. Use Adjacent facts only for one short scope note when necessary. Do not use Not responsive facts in the answer.
-- Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
+- Preserve source citation markers and copy Figure Handles exactly where their figures belong.
 - Do not invent facts, dollar figures, or totals. If the facts do not answer the question, say that directly.
 - Answer the specific account/program question directly and compactly.
 - Default shape: main amount first, then 1 short paragraph. When summarizing multiple major allowed-use categories, use a short bullet list for readability.
 - Identify the account, give the main appropriation amount, and summarize major allowed uses when asked.
+- Answer every requested component. When the question asks for multiple amounts, tranches, availability dates, reimbursements, transfers, or rescissions, enumerate the relevant account-level Direct facts and label their relationships; do not collapse them to one headline amount.
+- Coverage priority is mandatory: first include every Direct account-level fact that answers an explicit amount, tranche, availability-date, reimbursement, transfer, or rescission clause; then summarize requested uses or services. Do not spend answer space on internal suballocation figures before those account-level facts are covered.
+- Do not substitute a different same-agency account amount for a requested named-account tranche.
+- If a retrieved service or activity list is pooled across the named account and sibling accounts, say so instead of attributing the whole list solely to the named account.
 - For "major allowed uses", summarize categories of use; do not list every center, activity, rent line, transfer, limitation, or user-fee amount unless the user asks for a detailed allocation, breakdown, or reconciliation.
 - For "major allowed uses", name categories only. Do not attach dollar figures to internal centers, activities, rent lines, or other suballocations unless the user asks for allocation, breakdown, line items, or "how much for each".
+- When the user asks what kinds of care, services, or activities are covered, state the category names without their internal set-aside amounts unless those amounts were also explicitly requested.
 - Separate internally: main appropriation amount, suballocations within that amount, user fees credited to the account, separate provisions outside the account, and limitations/transfers.
 - Surface only categories needed to answer the user.
 - Mention user fees as credited to the account only when useful for clarity; do not list each user-fee dollar amount unless the user asks for user fees or a funding-source breakdown.
 - Do not create Included / Not added separately sections unless the user asks for reconciliation/breakdown or excluding a specific amount is necessary to prevent likely double counting.
 - Prefer one concise caveat sentence over a ledger-style excluded-amount section.
 - Do not include nearby provisions merely because they were retrieved.
-- If you repeat or restate a marked dollar figure, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.
-- For any calculated total, add a new marker like [[num:drv_direct_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
+- If you repeat or restate an evidence dollar figure, repeat the same Figure Handle for every occurrence.
+- For any calculated total, use a new Derived Figure Handle and a matching derived annotation whose input_ids reference existing local handles.
 
 Direct account example:
 Question: What amount is appropriated for a named account in FY2026, and what are the major allowed uses?
@@ -136,7 +152,7 @@ Bad answer pattern: listing every internal activity amount unless the user asks 
 Bad answer pattern: listing each individual fee-source amount unless the user asks for a user-fee breakdown.""",
     "broad_topic_total": """Broad topic total reduce prompt:
 - Use only Direct facts for substantive answer content. Use Adjacent facts only for short not-included or scope notes. Do not use Not responsive facts in the answer.
-- Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
+- Preserve source citation markers and copy Figure Handles exactly where their figures belong.
 - Do not invent facts, dollar figures, or totals. If the facts do not answer the question, say that directly.
 - Output a compact division brief for synthesis, not a full ledger.
 - Default shape for divisions with direct evidence: Bottom line: <1 sentence naming the controlling agency/account(s) and whether a clean total is available>; Key buckets: <3-6 compact bullets when needed, grouped by controlling agency/account/program>; Local caveat: <optional 1 sentence only if needed to prevent double counting>.
@@ -156,8 +172,8 @@ Bad answer pattern: listing each individual fee-source amount unless the user as
 - Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
 - For routed divisions with no Direct facts, return only the heading plus one no-direct-info sentence using the best Adjacent reason.
 - When the question names multiple topics, preserve at least one decision-useful bucket for each named topic when Direct facts exist.
-- If you repeat or restate a marked dollar figure, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.
-- For any calculated comparable total, add a new marker like [[num:drv_broad_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
+- If you repeat or restate an evidence dollar figure, repeat the same Figure Handle for every occurrence.
+- For any calculated comparable total, use a new Derived Figure Handle and a matching derived annotation whose input_ids reference existing local handles.
 
 Broad total example:
 Question: how much for a named agency?
@@ -170,7 +186,7 @@ Facts include one controlling program account with direct loan authority, guaran
 Good answer pattern: Use one controlling account/program bullet that names the comparable and non-comparable financial types separately. Mention key assistance or grant buckets compactly only if they materially help the user locate the funding. Do not split every minor set-aside into separate bullets. Do not present loan authority plus grants or subsidy costs as one clean total.""",
     "funding_mechanism_no_amount": """Funding mechanism reduce prompt:
 - Use only Direct facts to answer. Use Adjacent facts only for one short scope note when necessary. Do not use Not responsive facts in the answer.
-- Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
+- Preserve source citation markers and copy Figure Handles exactly where their figures belong.
 - Do not invent facts, dollar figures, or totals.
 - Distinguish dollar-figure evidence from funding-mechanism evidence.
 - Continuing appropriations, rate-for-operations language, apportionment authority, extensions, and referenced prior laws can explain how funding continues, but they are not dollar amounts.
@@ -181,8 +197,8 @@ Good answer pattern: Use one controlling account/program bullet that names the c
 - Do not substitute unrelated dollar figures from the same division or source bucket.
 - Do not create Included / Not added separately sections, totals, or reconciliation tables.
 - Keep the response compact: one bottom-line sentence plus up to 3 mechanism bullets when useful.
-- If you repeat or restate a marked dollar figure, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.
-- For any calculated total, add a new marker like [[num:drv_mechanism_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
+- If you repeat or restate an evidence dollar figure, repeat the same Figure Handle for every occurrence.
+- For any calculated total, use a new Derived Figure Handle and a matching derived annotation whose input_ids reference existing local handles.
 
 Funding mechanism example:
 Question: how much money for a named agency under a continuing appropriation?
@@ -218,7 +234,7 @@ Bottom line: <account total / reconciliation summary>
 - <only if needed>
 
 - Use Direct facts for substantive answer content. Use Adjacent facts only for short not-included or scope notes. Do not use Not responsive facts in the answer.
-- Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
+- Preserve source citation markers and copy Figure Handles exactly where their figures belong.
 - Do not invent facts, dollar figures, or totals. If the facts do not answer the question, say that directly.
 - Do not use internal pipeline language in the answer, including "extracted facts", "provided facts", "retrieved facts", "mapped facts", "division answers", or "source chunks".
 - Use user-facing language such as "the identified provisions", "the account text", "the bill text", or "the available FY2026 text".
@@ -243,12 +259,12 @@ Bottom line: <account total / reconciliation summary>
 - Put excluded transfer, cap, administrative amount, component, or related figure under the relevant topic's Not added separately subsection rather than creating a new topic section.
 - Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
 - If figures are mixed but the user asked for reconciliation, preserve the math and label any cross-type arithmetic as a mixed identified total, not a clean funding pool.
-- If you repeat or restate a marked dollar figure, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.
-- For any calculated total, add a new marker like [[num:drv_recon_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
+- If you repeat or restate an evidence dollar figure, repeat the same Figure Handle for every occurrence.
+- For any calculated total, use a new Derived Figure Handle and a matching derived annotation whose input_ids reference existing local handles.
 
 Parent-total validation:
-- When same-scope child allocations sum to a source-backed parent account total, you may add a separate "reconciles to" line that re-states the parent figure with a [[num:drv_recon_1]] marker and a matching derived annotation whose input_ids reference the child source annotations.
-- Place the validation marker on its own re-stated parent figure, for example: "Programmatic allocations reconcile to: $6,957,972,000 [[num:drv_recon_1]]". Do not stack a derived marker on top of the parent's existing source marker.
+- When same-scope child allocations sum to a Source-backed Figure parent account total, you may add a separate "reconciles to" line using a new Derived Figure Handle and a matching derived annotation whose input_ids reference the child handles.
+- Place the new Derived Figure Handle on its own reconciliation line. Do not reuse the parent's Source-backed Figure Handle for the calculated validation line.
 - Label this as "reconciles to the account total" or "validation check", not as a new appropriation or funding pool.
 - Use this only when the math actually works (same financial type, same scope, children sum to parent). Do not force a reconciliation when figures do not sum cleanly. Do not extend this carve-out to mixed financial types.
 
@@ -258,7 +274,7 @@ Facts include one top-level account for the first topic, several top-level accou
 Good answer pattern: Start with one total found per topic and a combined topic total found only when the arithmetic is source-backed. Then use separate sections for each topic. Do not add a child component separately when the broader parent account is included.""",
     "general_summary": """General summary reduce prompt:
 - Use only Direct facts for substantive answer content. Use Adjacent facts only for one short scope note when necessary. Do not use Not responsive facts in the answer.
-- Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
+- Preserve source citation markers and copy Figure Handles exactly where their figures belong.
 - Do not invent facts, dollar figures, or totals. If the facts do not answer the question, say that directly.
 - Do not use internal pipeline language in the answer, including "extracted facts", "provided facts", "retrieved facts", "mapped facts", "division answers", or "source chunks".
 - Answer the user's question directly using the retrieved facts.
@@ -284,8 +300,8 @@ Good answer pattern: Start with one total found per topic and a combined topic t
 - For compare/contrast questions, explicitly state each retrieved side of the contrast and the practical difference between them.
 - Do not turn a non-numeric question into a reconciliation ledger.
 - Do not create Included / Not added separately sections unless the user explicitly asks for accounting.
-- If you repeat or restate a marked dollar figure, repeat the same [[num:...]] marker immediately after every occurrence of that same figure.
-- For any calculated total, add a new marker like [[num:drv_summary_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
+- If you repeat or restate an evidence dollar figure, repeat the same Figure Handle for every occurrence.
+- For any calculated total, use a new Derived Figure Handle and a matching derived annotation whose input_ids reference existing local handles.
 
 General summary example:
 Question: What does this division do for a named agency's facilities?
@@ -304,13 +320,15 @@ Use this markdown structure:
 
 Rules:
 - Use only the division answers. Do not invent facts, dollar figures, or totals.
-- Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
+- Preserve source citation markers and copy Figure Handles exactly where their figures belong.
 - Keep the final answer compact: main amount first, then 1-2 short paragraphs or up to 4 bullets for requested uses/context.
+- Preserve all distinct account-level tranches, availability dates, reimbursements, transfers, and rescissions when the question explicitly asks for them; do not reduce plural amounts to one headline amount.
+- Preserve any stated pooled multi-account scope for service or activity lists.
 - Do not introduce By Agency / Account, Included, or Not added separately sections.
 - Do not list every suballocation, center, activity, rent line, transfer, limitation, or user-fee amount unless the user asked for that detailed breakdown.
 - If more than one division has competing direct answers, say that clearly instead of merging them.
 - Routed divisions with no direct evidence should appear only as one-line Source Scope notes.
-- For any calculated total, add a new marker like [[num:drv_final_direct_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.""",
+- For any calculated total, use a new Derived Figure Handle and a matching derived annotation whose input_ids reference existing local handles.""",
     "broad_topic_total": """Broad topic synthesis prompt:
 Use this markdown structure. Only include sections that have content.
 
@@ -342,7 +360,7 @@ Use this markdown structure. Only include sections that have content.
 
 Rules:
 - Use only the division answers. Do not invent facts, dollar figures, or totals.
-- Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
+- Preserve source citation markers and copy Figure Handles exactly where their figures belong.
 - Do not mention "division answers", "extracted facts", "retrieved facts", "provided facts", or other pipeline/internal process language in the final answer.
 - Use these section titles exactly when applicable: "Topic-Specific or Targeted Funding", "Broader Related Funding", "Identified But Not Cleanly Topic-Specific", "Not Included", and "Caveats".
 - Do not generate long topic-expanded section names like "Rural Water or Wastewater-Specific or Rural Water or Wastewater-Targeted Funding".
@@ -364,7 +382,7 @@ Rules:
 - Do not compute or lead with a mixed identified total unless the user explicitly asks for a summed identified amount.
 - Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
 - Caveats must be cross-cutting only. Put local hierarchy or double-counting notes beside the relevant account.
-- For any calculated total, add a new marker like [[num:drv_final_broad_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.
+- For any calculated total, use a new Derived Figure Handle and a matching derived annotation whose input_ids reference existing local handles.
 
 Good pattern:
 ### Agency Program Office — Controlling Program Account [ACR]
@@ -393,7 +411,7 @@ Use this markdown structure:
 
 Rules:
 - Use only the division answers. Do not invent facts, dollar figures, or totals.
-- Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
+- Preserve source citation markers and copy Figure Handles exactly where their figures belong.
 - Do not include unrelated dollar figures from routed divisions.
 - Do not create totals, Included sections, Not added separately sections, or reconciliation tables.
 - If no direct dollar figure exists, say that no explicit dollar amount was found in the retrieved facts.
@@ -402,7 +420,7 @@ Rules:
 - For continuing-resolution questions about what happens without a full-year appropriation, state that the rate, authority, and conditions come from the applicable fiscal year 2025 appropriations Acts when that fact is in the division answer.
 - Include retrieved payment/obligation categories that explain what can continue, such as personnel pay and benefits, mandatory payments, essential activities to protect life and property, and orderly termination of government functions.
 - Routed divisions with no direct evidence should be omitted unless needed as a one-line missing-scope note.
-- For any calculated total, add a new marker like [[num:drv_final_mechanism_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.""",
+- For any calculated total, use a new Derived Figure Handle and a matching derived annotation whose input_ids reference existing local handles.""",
     "reconciliation_breakdown": """Reconciliation synthesis prompt:
 Use this markdown structure. Only include subsections that apply:
 ## Answer
@@ -421,7 +439,7 @@ Use this markdown structure. Only include subsections that apply:
 
 Rules:
 - Use only the division answers. Do not invent facts, dollar figures, or totals.
-- Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
+- Preserve source citation markers and copy Figure Handles exactly where their figures belong.
 - Do not use internal pipeline language in the answer, including "extracted facts", "provided facts", "retrieved facts", "mapped facts", "division answers", or "source chunks".
 - Use user-facing language such as "the identified provisions", "the account text", "the bill text", or "the available FY2026 text".
 - When explaining uncertainty, say what the bill text or identified provisions do and do not establish.
@@ -443,7 +461,7 @@ Rules:
 - Do not add account totals plus suballocations, loan authority plus loan subsidy cost, user fees plus account totals, transfers as new funding, rescissions as positive funding, or set-asides inside a broader amount unless the user specifically asks for that category and the facts support the relationship.
 - If cross-type arithmetic is retained for user visibility, label it as a mixed identified total, not a clean funding pool.
 - Group excluded caveats under the related topic instead of creating unrelated sections.
-- For any calculated total, add a new marker like [[num:drv_final_recon_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.""",
+- For any calculated total, use a new Derived Figure Handle and a matching derived annotation whose input_ids reference existing local handles.""",
     "general_summary": """General summary synthesis prompt:
 Use this markdown structure:
 ## Answer
@@ -451,7 +469,7 @@ Use this markdown structure:
 
 Rules:
 - Use only the division answers. Do not invent facts, dollar figures, or totals.
-- Preserve source, citation, and [[num:...]] markers immediately after the figures or clauses they support.
+- Preserve source citation markers and copy Figure Handles exactly where their figures belong.
 - Answer the user's question directly and concisely.
 - Do not force accounting sections.
 - Include dollar figures only when they directly explain the answer.
@@ -472,7 +490,7 @@ Rules:
 - For compare/contrast summaries, explicitly state the retrieved contrast and practical difference between the mechanisms.
 - Do not turn a summary question into a reconciliation ledger.
 - Routed divisions with no direct evidence should appear only as one-line scope notes when useful.
-- For any calculated total, add a new marker like [[num:drv_final_summary_1]] immediately after the visible total and add a matching derived annotation whose input_ids reference existing annotations.""",
+- For any calculated total, use a new Derived Figure Handle and a matching derived annotation whose input_ids reference existing local handles.""",
 }
 
 
@@ -560,13 +578,14 @@ def build_reduce_prompt(
     return (
         "Synthesize the extracted facts into a division-level answer. "
         "Return structured output with `answer` markdown and `derived_annotations`.\n\n"
+        f"{FIGURE_HANDLE_RULES}\n\n"
         "Answer shape:\n"
         f"- Start with a heading exactly like: ### [{division_acronym}] {division}\n"
         "- Then follow the selected answer-mode prompt exactly.\n\n"
         f"{_mode_reduce_prompt(answer_mode, answer_mode_flags)}\n\n"
         f"Question:\n{question}\n\n"
         f"Division: {division}\n\n"
-        f"Available annotations:\n{annotation_context}\n\n"
+        f"Figure Handle registry status:\n{annotation_context}\n\n"
         f"Tiered extracted facts:\n{facts}"
     )
 
@@ -583,8 +602,9 @@ def build_synthesis_prompt(
     return (
         "Create the final answer from the division-level answers. "
         "Return structured output with `answer` markdown and `derived_annotations`.\n\n"
+        f"{FIGURE_HANDLE_RULES}\n\n"
         f"{_mode_synthesis_prompt(answer_mode, answer_mode_flags)}\n\n"
         f"Question:\n{question}\n\n"
-        f"Available annotations:\n{annotation_context}\n\n"
+        f"Figure Handle registry status:\n{annotation_context}\n\n"
         f"Division answers:\n{division_context}"
     )

@@ -9,12 +9,11 @@ from langgraph.types import Send
 
 from app.services.llm_factory import create_chat_model, resolve_model
 from app.services.rag.annotations import (
-    fallback_source_number_candidates,
     mark_text_with_source_annotations,
     source_number_annotations,
 )
 from app.services.rag.context import RAGContext
-from app.services.rag.llm_invocation import invoke_structured_or_text, invoke_text
+from app.services.rag.llm_invocation import invoke_structured, invoke_text
 from app.services.rag.relevance import (
     normalize_mapped_fact_records,
     relevance_counts,
@@ -95,15 +94,11 @@ def map_chunk(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
     query_id = state.get("query_id", "unknown")
     with ThreadPoolExecutor(max_workers=3) as executor:
         facts_future = executor.submit(
-            invoke_structured_or_text,
+            invoke_structured,
             map_llm,
             extraction_prompt,
             schema=MappedFacts,
             model_spec=map_model,
-            fallback=lambda text: MappedFacts(
-                extracted_facts=text,
-                source_numbers=fallback_source_number_candidates(text),
-            ),
             stage="map",
             query_id=query_id,
             debug_log=ctx.debug_log,

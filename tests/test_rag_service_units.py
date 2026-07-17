@@ -56,6 +56,26 @@ class FakeLLM:
             return FakeMessage("Chunk summarizes CRX cybersecurity funding.")
         return FakeMessage("Extracted $10,000,000 for cybersecurity [CRX].")
 
+    def with_structured_output(self, schema):
+        from app.services.rag.schemas import MarkedAnswer, MappedFacts, SourceNumberCandidate
+
+        if schema is MappedFacts:
+            return FakeStructuredLLM(
+                MappedFacts(
+                    extracted_facts="Extracted $10,000,000 for cybersecurity [CRX].",
+                    source_numbers=[
+                        SourceNumberCandidate(
+                            figure="$10,000,000",
+                            value=10_000_000,
+                            label="Cybersecurity funding",
+                        )
+                    ],
+                )
+            )
+        if schema is MarkedAnswer:
+            return FakeStructuredLLM(MarkedAnswer(answer="Answer"))
+        raise AssertionError(f"Unexpected structured schema: {schema.__name__}")
+
 
 class FakeJsonLLM:
     def __init__(self, content='{"divisions":["DEPARTMENT OF DEFENSE"]}'):
@@ -95,6 +115,30 @@ def test_embedding_factory_exposes_voyage_configs():
     assert large.provider == "voyage"
     assert large.dimensions == 2048
     assert large.output_dimension == 2048
+
+
+def test_openai_chat_models_disable_client_retries(monkeypatch):
+    import app.services.llm_factory as llm_factory
+
+    calls = []
+
+    def fake_chat_openai(**kwargs):
+        calls.append(kwargs)
+        return kwargs
+
+    monkeypatch.setattr(llm_factory, "ChatOpenAI", fake_chat_openai)
+    llm_factory.create_chat_model.cache_clear()
+    try:
+        llm_factory.create_chat_model("unit-test-basic", "map")
+        llm_factory.create_chat_model(
+            "unit-test-reasoning",
+            "reduce",
+            reasoning_effort="medium",
+        )
+    finally:
+        llm_factory.create_chat_model.cache_clear()
+
+    assert [call["max_retries"] for call in calls] == [0, 0]
 
 
 def test_embedding_factory_requires_voyage_key():
@@ -928,28 +972,22 @@ def test_map_chunk_returns_facts_and_summary(monkeypatch):
     assert "$10,000,000" in mapped["extracted_facts"]
 
 
-def test_invoke_text_retries_once_for_transient_error(monkeypatch):
-    monkeypatch.setattr("app.services.rag.llm_invocation.time.sleep", lambda seconds: None)
+def test_invoke_text_does_not_retry_transient_error():
     service = RAGService.__new__(RAGService)
     llm = FlakyLLM(500)
 
-    result = service._invoke_text(llm, "prompt", stage="route", query_id="query-test")
+    with pytest.raises(FakeStatusError):
+        service._invoke_text(llm, "prompt", stage="route", query_id="query-test")
 
-    assert result == "Recovered response."
-    assert llm.calls == 2
+    assert llm.calls == 1
 
 
-def test_invoke_text_does_not_retry_non_transient_error(monkeypatch):
-    monkeypatch.setattr("app.services.rag.llm_invocation.time.sleep", lambda seconds: None)
+def test_invoke_text_does_not_retry_non_transient_error():
     service = RAGService.__new__(RAGService)
     llm = FlakyLLM(400)
 
-    try:
+    with pytest.raises(FakeStatusError):
         service._invoke_text(llm, "prompt", stage="route", query_id="query-test")
-    except FakeStatusError:
-        pass
-    else:
-        raise AssertionError("Expected non-transient error to be raised")
 
     assert llm.calls == 1
 
@@ -1015,7 +1053,7 @@ def test_deepseek_structured_invocation_invalid_json_fails_without_fallback():
     assert logs[0][0].startswith("structured_json_failed")
 
 
-def test_deepseek_structured_invocation_invalid_json_uses_text_fallback():
+def test_deepseek_structured_invocation_invalid_json_does_not_make_second_call():
     class FallbackLLM(FakeJsonLLM):
         def __init__(self):
             super().__init__("not json")
@@ -1030,19 +1068,18 @@ def test_deepseek_structured_invocation_invalid_json_uses_text_fallback():
 
     llm = FallbackLLM()
 
-    result = invoke_structured(
-        llm,
-        "Select divisions.",
-        schema=RouteDecision,
-        model_spec=ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
-        fallback=lambda text: RouteDecision.model_validate_json(text),
-        stage="route",
-        query_id="query-test",
-        debug_log=lambda *args, **kwargs: None,
-    )
+    with pytest.raises(ValueError):
+        invoke_structured(
+            llm,
+            "Select divisions.",
+            schema=RouteDecision,
+            model_spec=ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
+            stage="route",
+            query_id="query-test",
+            debug_log=lambda *args, **kwargs: None,
+        )
 
-    assert result.divisions == ["DEPARTMENT OF DEFENSE"]
-    assert len(llm.invoke_payloads) == 2
+    assert len(llm.invoke_payloads) == 1
 
 
 def test_response_includes_sources_and_division_results():
@@ -1455,6 +1492,38 @@ def test_source_number_annotations_allow_repeated_equal_amounts_with_different_l
     assert [annotation.label for annotation in annotations] == ["Program A", "Program B"]
 
 
+def test_source_number_annotations_complete_partial_structured_candidates():
+    from app.services.rag_service import SourceNumberCandidate
+
+    service = RAGService.__new__(RAGService)
+    chunk = {
+        "chunk_id": "chunk-a",
+        "division": "AAA",
+        "division_acronym": "AAA",
+        "content": "Account receives $10,000,000 with a $25,000 limitation.",
+        "chunk_summary": None,
+        "score": 0.1,
+        "metadata": {},
+    }
+
+    annotations = service._source_number_annotations(
+        chunk,
+        "Account receives $10,000,000 with a $25,000 limitation.",
+        [
+            SourceNumberCandidate(
+                figure="$10,000,000",
+                value=10_000_000,
+                label="Account appropriation",
+            )
+        ],
+    )
+
+    assert [annotation.figure for annotation in annotations] == [
+        "$10,000,000",
+        "$25,000",
+    ]
+
+
 def test_source_marker_insertion_repeats_single_annotation_for_reused_number():
     from app.models.query import NumberAnnotation
 
@@ -1509,10 +1578,244 @@ def test_source_marker_insertion_uses_distinct_annotations_before_reuse():
     assert marked.count("[[num:src_program_b]]") == 2
 
 
+def test_reduce_fact_priority_follows_requested_account_components():
+    from app.services.rag.stages.reduce import _prioritize_generation_facts
+
+    facts = [
+        {
+            "fact": "The account supports several program activities.",
+            "responsiveness_tier": "direct",
+        },
+        {
+            "fact": "An earlier account tranche became available in October and was partly rescinded.",
+            "responsiveness_tier": "direct",
+        },
+        {
+            "fact": "The current appropriation remains available through September.",
+            "responsiveness_tier": "direct",
+        },
+    ]
+
+    ordered = _prioritize_generation_facts(
+        facts,
+        "What amounts and availability dates are identified, and what services are covered?",
+    )
+
+    assert "earlier account tranche" in ordered[0]["fact"]
+    assert "program activities" in ordered[-1]["fact"]
+
+
 def test_unmarked_figures_allows_markdown_closer_before_marker():
     service = RAGService.__new__(RAGService)
 
     assert service._unmarked_figures("**$20,629,037,000** [[num:drv_final_1]]") == []
+
+
+def test_unmarked_figures_accepts_maximum_length_marker_id():
+    service = RAGService.__new__(RAGService)
+    marker_id = "x" * 80
+
+    assert service._unmarked_figures(f"$1,000 [[num:{marker_id}]]") == []
+
+
+def test_figure_handles_keep_equal_values_bound_to_distinct_annotations():
+    from app.models.query import NumberAnnotation
+    from app.services.rag.annotations import prepare_figure_handle_context
+
+    annotations = [
+        NumberAnnotation(
+            id="src_program_a",
+            kind="source",
+            figure="$5,000,000",
+            value=5_000_000,
+            label="Program A",
+            source={"chunk_id": "chunk-a"},
+        ),
+        NumberAnnotation(
+            id="src_program_b",
+            kind="source",
+            figure="$5,000,000",
+            value=5_000_000,
+            label="Program B",
+            source={"chunk_id": "chunk-b"},
+        ),
+    ]
+    context = prepare_figure_handle_context(
+        "A: $5,000,000 [[num:src_program_a]]. B: $5,000,000 [[num:src_program_b]].",
+        annotations,
+    )
+
+    assert context.prompt_text == (
+        "A: {{F1:$5,000,000}} . B: {{F2:$5,000,000}} ."
+    )
+    assert context.annotations_by_handle["F1"].id == "src_program_a"
+    assert context.annotations_by_handle["F2"].id == "src_program_b"
+    assert "[[num:" not in context.prompt_text
+    assert "src_program" not in context.prompt_text
+
+
+def test_figure_handles_reuse_one_handle_for_repeated_annotation():
+    from app.models.query import NumberAnnotation
+    from app.services.rag.annotations import prepare_figure_handle_context
+
+    annotation = NumberAnnotation(
+        id="src_repeat",
+        kind="source",
+        figure="$10",
+        value=10,
+        label="Repeated source figure",
+        source={"chunk_id": "chunk-a"},
+    )
+    context = prepare_figure_handle_context(
+        "$10 [[num:src_repeat]] and $10 [[num:src_repeat]]",
+        [annotation],
+    )
+
+    assert context.prompt_text.count("{{F1:$10}}") == 2
+    assert list(context.annotations_by_handle) == ["F1"]
+
+
+def test_figure_handle_renderer_expands_source_and_omits_unbound_figures():
+    from app.models.query import NumberAnnotation, NumberAnnotationTarget
+    from app.services.rag.annotations import (
+        prepare_figure_handle_context,
+        render_figure_handle_answer,
+    )
+    from app.services.rag.schemas import MarkedAnswer
+
+    annotation = NumberAnnotation(
+        id="src_bound",
+        kind="source",
+        figure="$10",
+        value=10,
+        label="Bound source figure",
+        source={"chunk_id": "chunk-a"},
+    )
+    context = prepare_figure_handle_context(
+        "$10 [[num:src_bound]]",
+        [annotation],
+    )
+    logs = []
+
+    answer, derived = render_figure_handle_answer(
+        marked=MarkedAnswer(
+            answer="Bound {{F1:$10}}; raw $99; unknown {{F9:$900}} [[num:made_up]]."
+        ),
+        context=context,
+        available=[annotation],
+        target=NumberAnnotationTarget(scope="answer"),
+        debug_log=lambda *args, **kwargs: logs.append(args),
+        query_id="query-test",
+        stage="synthesize",
+        target_label="answer",
+    )
+
+    assert "$10 [[num:src_bound]]" in answer
+    assert "$99" not in answer
+    assert "[[num:made_up]]" not in answer
+    assert answer.count("[unverified amount omitted]") == 2
+    assert derived == []
+    assert any(entry[0].startswith("figure_handle_contract") for entry in logs)
+
+
+def test_figure_handle_renderer_rejects_altered_display_amount():
+    from app.models.query import NumberAnnotation, NumberAnnotationTarget
+    from app.services.rag.annotations import (
+        prepare_figure_handle_context,
+        render_figure_handle_answer,
+    )
+    from app.services.rag.schemas import MarkedAnswer
+
+    annotation = NumberAnnotation(
+        id="src_bound",
+        kind="source",
+        figure="$10",
+        value=10,
+        label="Bound source figure",
+        source={"chunk_id": "chunk-a"},
+    )
+    context = prepare_figure_handle_context(
+        "$10 [[num:src_bound]]",
+        [annotation],
+    )
+
+    answer, derived = render_figure_handle_answer(
+        marked=MarkedAnswer(answer="Altered {{F1:$100}}."),
+        context=context,
+        available=[annotation],
+        target=NumberAnnotationTarget(scope="answer"),
+        debug_log=lambda *args, **kwargs: None,
+        query_id="query-test",
+        stage="synthesize",
+        target_label="answer",
+    )
+
+    assert answer == "Altered [unverified amount omitted]."
+    assert derived == []
+
+
+def test_figure_handle_renderer_validates_and_canonicalizes_derived_figure():
+    from app.models.query import NumberAnnotation, NumberAnnotationTarget
+    from app.services.rag.annotations import (
+        prepare_figure_handle_context,
+        render_figure_handle_answer,
+    )
+    from app.services.rag.schemas import MarkedAnswer, ProposedDerivedAnnotation
+
+    annotations = [
+        NumberAnnotation(
+            id="src_a",
+            kind="source",
+            figure="$10",
+            value=10,
+            label="A",
+            source={"chunk_id": "a"},
+        ),
+        NumberAnnotation(
+            id="src_b",
+            kind="source",
+            figure="$5",
+            value=5,
+            label="B",
+            source={"chunk_id": "b"},
+        ),
+    ]
+    context = prepare_figure_handle_context(
+        "$10 [[num:src_a]] plus $5 [[num:src_b]]",
+        annotations,
+    )
+
+    answer, derived = render_figure_handle_answer(
+        marked=MarkedAnswer(
+            answer="Combined: {{D1}} from {{F1:$10}} and {{F2:$5}}.",
+            derived_annotations=[
+                ProposedDerivedAnnotation(
+                    id="D1",
+                    figure="$15",
+                    value=15,
+                    label="Combined amount",
+                    equation="$10 + $5 = $15",
+                    input_ids=["F1", "F2"],
+                )
+            ],
+        ),
+        context=context,
+        available=annotations,
+        target=NumberAnnotationTarget(scope="answer"),
+        debug_log=lambda *args, **kwargs: None,
+        query_id="query-test",
+        stage="synthesize",
+        target_label="answer",
+    )
+
+    assert len(derived) == 1
+    assert derived[0].id.startswith("drv_synthesize_answer_d1")
+    assert derived[0].derived.input_ids == ["src_a", "src_b"]
+    assert derived[0].derived.source_input_ids == ["src_a", "src_b"]
+    assert f"$15 [[num:{derived[0].id}]]" in answer
+    assert "$10 [[num:src_a]]" in answer
+    assert "$5 [[num:src_b]]" in answer
+    assert "{{" not in answer
 
 
 def test_graph_preserves_one_mapped_chunk_per_retrieved_chunk(monkeypatch):
