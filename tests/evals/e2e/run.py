@@ -28,12 +28,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from app.core.config import get_settings
 from app.services.llm_factory import describe_model_strategy
+from app.services.rag.annotations import final_number_annotations
 from app.services.rag.service import RAGService
 from app.services.rag.state import RAGState
 from app.services.rag_prompting import DEFAULT_ANSWER_MODE
 from app.services.vector_store_service import division_acronym
 from tests.evals.e2e.gold_references import GOLD_REFERENCES, GoldReference
 from tests.evals.e2e.judge import judge_answer
+from tests.evals.e2e.provenance import evaluate_provenance
 from tests.evals.e2e.report import generate_report
 from tests.evals.questions import EVAL_QUESTIONS, EvalQuestion
 
@@ -63,6 +65,10 @@ def _preview(value: Any, limit: int = 700) -> str:
     """Bound verbose chunk text in raw eval diagnostics."""
     text = str(value or "")
     return text if len(text) <= limit else text[:limit].rstrip() + "..."
+
+
+def _noop_debug_log(*_args: Any, **_kwargs: Any) -> None:
+    """Suppress production response-shaping diagnostics during eval capture."""
 
 
 def _build_initial_state(
@@ -101,6 +107,7 @@ def _build_initial_state(
 
 
 def _extract_intermediates(result: dict[str, Any]) -> dict[str, Any]:
+    response_annotations = final_number_annotations(result, debug_log=_noop_debug_log)
     return {
         "answer_mode": result.get("answer_mode", ""),
         "answer_mode_reason": result.get("answer_mode_reason", ""),
@@ -143,6 +150,10 @@ def _extract_intermediates(result: dict[str, Any]) -> dict[str, Any]:
             }
             for da in result.get("division_answers", [])
         ],
+        "number_annotations": [
+            annotation.model_dump(mode="json", exclude_none=True)
+            for annotation in response_annotations
+        ],
         "final_answer": result.get("final_answer", ""),
     }
 
@@ -167,7 +178,18 @@ def run_pipeline(
         vectorstore_root=vectorstore_root,
     )
     result = service._graph.invoke(state, config={"recursion_limit": 50})
-    return _extract_intermediates(result)
+    extracted = _extract_intermediates(result)
+    extracted["provenance"] = evaluate_provenance(
+        {
+            "final_answer": extracted["final_answer"],
+            "division_answers": extracted["division_answers"],
+            "number_annotations": extracted["number_annotations"],
+            # Use full Chunk content for validation; the stored diagnostics retain
+            # only bounded previews to keep raw_results.json manageable.
+            "retrieved_chunks": result.get("retrieved_chunks", []),
+        }
+    )
+    return extracted
 
 
 def _generate_reference_output(
@@ -187,6 +209,16 @@ def _generate_reference_output(
         lines.append(f"**Question**: {q}\n")
         lines.append(f"**Answer Mode** (classify output): `{out['actual_answer_mode']}`")
         lines.append(f"**Answer Mode Reason**: {out.get('answer_mode_reason', '')}")
+
+        provenance = out.get("provenance", {})
+        lines.append(
+            f"**Provenance**: {'PASS' if provenance.get('passed') else 'FAIL'}"
+        )
+        for issue in provenance.get("issues", []):
+            lines.append(
+                f"- `{issue.get('code', 'unknown')}` ({issue.get('scope', 'unknown')}): "
+                f"{issue.get('detail', '')}"
+            )
 
         divs = out.get("actual_divisions", [])
         div_strs = [f"{division_acronym(d)} ({d})" for d in divs]
@@ -270,6 +302,21 @@ def main() -> None:
                 "selected_divisions": [],
                 "division_answers": [],
                 "final_answer": f"PIPELINE ERROR: {exc}",
+                "provenance": {
+                    "passed": False,
+                    "answer_marker_count": 0,
+                    "division_marker_count": 0,
+                    "annotation_count": 0,
+                    "source_annotation_count": 0,
+                    "derived_annotation_count": 0,
+                    "issues": [
+                        {
+                            "code": "pipeline_unavailable",
+                            "scope": "pipeline",
+                            "detail": str(exc),
+                        }
+                    ],
+                },
             }
 
         actual_mode = pipeline_out.get("answer_mode", "")
@@ -293,7 +340,20 @@ def main() -> None:
             "retrieved_chunks": pipeline_out.get("retrieved_chunks", []),
             "mapped_chunk_count": pipeline_out.get("mapped_chunk_count", 0),
             "mapped_chunks": pipeline_out.get("mapped_chunks", []),
+            "number_annotations": pipeline_out.get("number_annotations", []),
         }
+
+        entry["provenance"] = pipeline_out["provenance"]
+        provenance = entry["provenance"]
+        logger.info(
+            "[%s] Provenance: %s | Markers: %d/%d | Annotations: %d | Issues: %d",
+            question.id,
+            "PASS" if provenance["passed"] else "FAIL",
+            provenance["answer_marker_count"],
+            provenance["division_marker_count"],
+            provenance["annotation_count"],
+            len(provenance["issues"]),
+        )
 
         logger.info("[%s] Classify: %s (%s) | Route: %s (%s) | Chunks: %d/%d",
                      question.id, actual_mode,

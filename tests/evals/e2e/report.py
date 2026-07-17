@@ -1,7 +1,7 @@
 """Report generation for e2e eval results.
 
 Produces 4 levels:
-1. Overall summary — fact recall %, error rate, avg score, classify/route accuracy
+1. Overall summary — fact recall %, error rate, provenance, avg score, classify/route accuracy
 2. By answer_mode — same metrics grouped by question type
 3. Per-question detail — expected vs actual, score, missed facts, triggered errors
 4. Raw JSON — full pipeline state + judge output
@@ -30,17 +30,6 @@ def _scored_results(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def _summary_stats(results: list[dict[str, Any]]) -> dict[str, Any]:
     scored = _scored_results(results)
-    if not scored:
-        return {
-            "count": len(results),
-            "scored": 0,
-            "avg_score": 0.0,
-            "fact_recall_pct": 0.0,
-            "error_rate_pct": 0.0,
-            "classify_accuracy_pct": 0.0,
-            "route_accuracy_pct": 0.0,
-        }
-
     scores = [r["judge"]["overall_score"] for r in scored]
 
     total_facts = 0
@@ -59,6 +48,13 @@ def _summary_stats(results: list[dict[str, Any]]) -> dict[str, Any]:
 
     classify_correct = sum(1 for r in results if r.get("classify_match"))
     route_correct = sum(1 for r in results if r.get("route_match"))
+    provenance_results = [
+        r["provenance"]
+        for r in results
+        if isinstance(r.get("provenance"), dict)
+        and isinstance(r["provenance"].get("passed"), bool)
+    ]
+    provenance_passed = sum(1 for result in provenance_results if result["passed"])
 
     return {
         "count": len(results),
@@ -68,7 +64,18 @@ def _summary_stats(results: list[dict[str, Any]]) -> dict[str, Any]:
         "error_rate_pct": round(_pct(triggered_errors, total_errors), 1),
         "classify_accuracy_pct": round(_pct(classify_correct, len(results)), 1),
         "route_accuracy_pct": round(_pct(route_correct, len(results)), 1),
+        "provenance_checked": len(provenance_results),
+        "provenance_pass_rate_pct": (
+            round(_pct(provenance_passed, len(provenance_results)), 1)
+            if provenance_results
+            else None
+        ),
     }
+
+
+def _provenance_pct(stats: dict[str, Any]) -> str:
+    value = stats["provenance_pass_rate_pct"]
+    return f"{value}%" if value is not None else "n/a"
 
 
 def generate_report(results: list[dict[str, Any]], output_dir: Path) -> None:
@@ -96,18 +103,27 @@ def generate_report(results: list[dict[str, Any]], output_dir: Path) -> None:
     lines.append(f"- **Error Rate**: {overall['error_rate_pct']}%")
     lines.append(f"- **Classify Accuracy**: {overall['classify_accuracy_pct']}%")
     lines.append(f"- **Route Accuracy**: {overall['route_accuracy_pct']}%")
+    lines.append(
+        f"- **Provenance Pass Rate**: {_provenance_pct(overall)} "
+        f"({overall['provenance_checked']} checked)"
+    )
     lines.append("")
 
     # Level 2: By answer_mode
     lines.append("## By Answer Mode\n")
-    lines.append("| Mode | Count | Avg Score | Fact Recall | Error Rate | Classify | Route |")
-    lines.append("|------|-------|-----------|-------------|------------|----------|-------|")
+    lines.append(
+        "| Mode | Count | Avg Score | Fact Recall | Error Rate | Classify | Route | Provenance |"
+    )
+    lines.append(
+        "|------|-------|-----------|-------------|------------|----------|-------|------------|"
+    )
     for mode in sorted(by_mode.keys()):
         s = _summary_stats(by_mode[mode])
         lines.append(
             f"| {mode} | {s['count']} | {s['avg_score']} | "
             f"{s['fact_recall_pct']}% | {s['error_rate_pct']}% | "
-            f"{s['classify_accuracy_pct']}% | {s['route_accuracy_pct']}% |"
+            f"{s['classify_accuracy_pct']}% | {s['route_accuracy_pct']}% | "
+            f"{_provenance_pct(s)} |"
         )
     lines.append("")
 
@@ -130,6 +146,17 @@ def generate_report(results: list[dict[str, Any]], output_dir: Path) -> None:
         if not r.get("route_match"):
             lines.append(f"  - Expected: {expected_divs}")
             lines.append(f"  - Actual: {actual_divs}")
+
+        provenance = r.get("provenance")
+        if isinstance(provenance, dict) and isinstance(provenance.get("passed"), bool):
+            lines.append(f"**Provenance**: {'PASS' if provenance['passed'] else 'FAIL'}")
+            for issue in provenance.get("issues", []):
+                lines.append(
+                    f"  - `{issue.get('code', 'unknown')}` "
+                    f"({issue.get('scope', 'unknown')}): {issue.get('detail', '')}"
+                )
+        else:
+            lines.append("**Provenance**: NOT CHECKED")
 
         judge = r.get("judge", {})
 
