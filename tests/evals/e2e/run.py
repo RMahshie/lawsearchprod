@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 import sys
 import time
 import uuid
@@ -27,12 +28,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from app.core.config import get_settings
 from app.services.llm_factory import describe_model_strategy
+from app.services.rag.annotations import final_number_annotations
 from app.services.rag.service import RAGService
 from app.services.rag.state import RAGState
 from app.services.rag_prompting import DEFAULT_ANSWER_MODE
 from app.services.vector_store_service import division_acronym
-from tests.evals.e2e.gold_references import GOLD_REFERENCES, GoldReference
+from tests.evals.e2e.gold_references import GOLD_REFERENCES, validate_gold_references
 from tests.evals.e2e.judge import judge_answer
+from tests.evals.e2e.provenance import evaluate_provenance
 from tests.evals.e2e.report import generate_report
 from tests.evals.questions import EVAL_QUESTIONS, EvalQuestion
 
@@ -46,10 +49,26 @@ logger = logging.getLogger(__name__)
 DEFAULT_VECTOR_STORE_ID = "609b2b98-104e-4286-b410-a34337ba0ed5"
 DEFAULT_EMBEDDING_MODEL = "voyage-law-2"
 DEFAULT_THINKING_SPEED = "normal"
-DEFAULT_K = 12
+DEFAULT_K = 16
 DEFAULT_CONCURRENCY = 3
+NUMBER_MARKER_RE = re.compile(r"\[\[num:[^\]]+\]\]")
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
+
+
+def answer_for_judge(answer: str) -> str:
+    """Return the frontend-visible answer text used for content judging."""
+    return NUMBER_MARKER_RE.sub("", answer or "")
+
+
+def _preview(value: Any, limit: int = 700) -> str:
+    """Bound verbose chunk text in raw eval diagnostics."""
+    text = str(value or "")
+    return text if len(text) <= limit else text[:limit].rstrip() + "..."
+
+
+def _noop_debug_log(*_args: Any, **_kwargs: Any) -> None:
+    """Suppress production response-shaping diagnostics during eval capture."""
 
 
 def _build_initial_state(
@@ -88,6 +107,7 @@ def _build_initial_state(
 
 
 def _extract_intermediates(result: dict[str, Any]) -> dict[str, Any]:
+    response_annotations = final_number_annotations(result, debug_log=_noop_debug_log)
     return {
         "answer_mode": result.get("answer_mode", ""),
         "answer_mode_reason": result.get("answer_mode_reason", ""),
@@ -95,7 +115,32 @@ def _extract_intermediates(result: dict[str, Any]) -> dict[str, Any]:
         "selected_divisions": result.get("selected_divisions", []),
         "division_queries": result.get("division_queries", []),
         "retrieved_chunk_count": len(result.get("retrieved_chunks", [])),
+        "retrieved_chunks": [
+            {
+                "chunk_id": chunk.get("chunk_id"),
+                "division": chunk.get("division", ""),
+                "division_acronym": chunk.get("division_acronym", ""),
+                "score": chunk.get("score"),
+                "chunk_summary": chunk.get("chunk_summary"),
+                "metadata": chunk.get("metadata", {}),
+                "content_preview": _preview(chunk.get("content")),
+            }
+            for chunk in result.get("retrieved_chunks", [])
+        ],
         "mapped_chunk_count": len(result.get("mapped_chunks", [])),
+        "mapped_chunks": [
+            {
+                "chunk_id": chunk.get("chunk_id"),
+                "division": chunk.get("division", ""),
+                "division_acronym": chunk.get("division_acronym", ""),
+                "score": chunk.get("score"),
+                "chunk_snapshot": chunk.get("chunk_snapshot", ""),
+                "chunk_summary": chunk.get("chunk_summary", ""),
+                "relevance_counts": chunk.get("relevance_counts", {}),
+                "relevance_facts": chunk.get("relevance_facts", []),
+            }
+            for chunk in result.get("mapped_chunks", [])
+        ],
         "division_answers": [
             {
                 "division": da.get("division", ""),
@@ -104,6 +149,10 @@ def _extract_intermediates(result: dict[str, Any]) -> dict[str, Any]:
                 "chunks_retrieved": da.get("chunks_retrieved", 0),
             }
             for da in result.get("division_answers", [])
+        ],
+        "number_annotations": [
+            annotation.model_dump(mode="json", exclude_none=True)
+            for annotation in response_annotations
         ],
         "final_answer": result.get("final_answer", ""),
     }
@@ -129,7 +178,18 @@ def run_pipeline(
         vectorstore_root=vectorstore_root,
     )
     result = service._graph.invoke(state, config={"recursion_limit": 50})
-    return _extract_intermediates(result)
+    extracted = _extract_intermediates(result)
+    extracted["provenance"] = evaluate_provenance(
+        {
+            "final_answer": extracted["final_answer"],
+            "division_answers": extracted["division_answers"],
+            "number_annotations": extracted["number_annotations"],
+            # Use full Chunk content for validation; the stored diagnostics retain
+            # only bounded previews to keep raw_results.json manageable.
+            "retrieved_chunks": result.get("retrieved_chunks", []),
+        }
+    )
+    return extracted
 
 
 def _generate_reference_output(
@@ -149,6 +209,16 @@ def _generate_reference_output(
         lines.append(f"**Question**: {q}\n")
         lines.append(f"**Answer Mode** (classify output): `{out['actual_answer_mode']}`")
         lines.append(f"**Answer Mode Reason**: {out.get('answer_mode_reason', '')}")
+
+        provenance = out.get("provenance", {})
+        lines.append(
+            f"**Provenance**: {'PASS' if provenance.get('passed') else 'FAIL'}"
+        )
+        for issue in provenance.get("issues", []):
+            lines.append(
+                f"- `{issue.get('code', 'unknown')}` ({issue.get('scope', 'unknown')}): "
+                f"{issue.get('detail', '')}"
+            )
 
         divs = out.get("actual_divisions", [])
         div_strs = [f"{division_acronym(d)} ({d})" for d in divs]
@@ -184,6 +254,10 @@ def main() -> None:
     parser.add_argument("--questions", nargs="*",
                         help="Run only these question IDs (default: all 25)")
     args = parser.parse_args()
+
+    # Fail before initializing models or the Vector Store if benchmark
+    # curation has drifted from the checked-in questions or source evidence.
+    validate_gold_references()
 
     start = time.time()
     timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -232,11 +306,26 @@ def main() -> None:
                 "selected_divisions": [],
                 "division_answers": [],
                 "final_answer": f"PIPELINE ERROR: {exc}",
+                "provenance": {
+                    "passed": False,
+                    "answer_marker_count": 0,
+                    "division_marker_count": 0,
+                    "annotation_count": 0,
+                    "source_annotation_count": 0,
+                    "derived_annotation_count": 0,
+                    "issues": [
+                        {
+                            "code": "pipeline_unavailable",
+                            "scope": "pipeline",
+                            "detail": str(exc),
+                        }
+                    ],
+                },
             }
 
         actual_mode = pipeline_out.get("answer_mode", "")
         actual_divs = pipeline_out.get("selected_divisions", [])
-        gold = GOLD_REFERENCES.get(question.id, GoldReference())
+        gold = GOLD_REFERENCES[question.id]
 
         entry: dict[str, Any] = {
             "question_id": question.id,
@@ -249,11 +338,27 @@ def main() -> None:
             "actual_divisions": actual_divs,
             "route_match": set(actual_divs) == set(gold.expected_divisions or question.divisions),
             "answer_mode_reason": pipeline_out.get("answer_mode_reason", ""),
+            "division_queries": pipeline_out.get("division_queries", []),
             "division_answers": pipeline_out.get("division_answers", []),
             "final_answer": pipeline_out.get("final_answer", ""),
             "retrieved_chunk_count": pipeline_out.get("retrieved_chunk_count", 0),
+            "retrieved_chunks": pipeline_out.get("retrieved_chunks", []),
             "mapped_chunk_count": pipeline_out.get("mapped_chunk_count", 0),
+            "mapped_chunks": pipeline_out.get("mapped_chunks", []),
+            "number_annotations": pipeline_out.get("number_annotations", []),
         }
+
+        entry["provenance"] = pipeline_out["provenance"]
+        provenance = entry["provenance"]
+        logger.info(
+            "[%s] Provenance: %s | Markers: %d/%d | Annotations: %d | Issues: %d",
+            question.id,
+            "PASS" if provenance["passed"] else "FAIL",
+            provenance["answer_marker_count"],
+            provenance["division_marker_count"],
+            provenance["annotation_count"],
+            len(provenance["issues"]),
+        )
 
         logger.info("[%s] Classify: %s (%s) | Route: %s (%s) | Chunks: %d/%d",
                      question.id, actual_mode,
@@ -263,20 +368,19 @@ def main() -> None:
                      entry["retrieved_chunk_count"], entry["mapped_chunk_count"])
 
         if not args.reference:
-            gold_dict = {
-                "required_facts": gold.required_facts,
-                "prohibited_errors": gold.prohibited_errors,
-                "notes": gold.notes,
-            }
+            # Pass the typed GoldReference through unchanged so the judge can
+            # consume its source-traceable ``to_judge_payload`` (legacy dict
+            # payloads remain supported by judge_answer).
             if gold.required_facts or gold.prohibited_errors:
                 logger.info("[%s] Judging...", question.id)
                 try:
                     judge_result = judge_answer(
                         question.id,
                         question.question,
-                        actual_mode,
-                        entry["final_answer"],
-                        gold_dict,
+                        expected_answer_mode=entry["expected_answer_mode"],
+                        actual_answer_mode=entry["actual_answer_mode"],
+                        final_answer=answer_for_judge(entry["final_answer"]),
+                        gold=gold,
                     )
                     entry["judge"] = judge_result
                     logger.info("[%s] Score: %s/10", question.id,

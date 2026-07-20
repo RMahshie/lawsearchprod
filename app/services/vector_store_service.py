@@ -6,6 +6,7 @@ import gc
 import logging
 import os
 import re
+import threading
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,22 @@ from app.services.embedding_factory import create_embeddings
 logger = logging.getLogger(__name__)
 
 DIVISION_ACRONYMS = FY2026_DIVISION_ACRONYMS
+KEYWORD_STOPWORDS = {
+    "about",
+    "available",
+    "covers",
+    "does",
+    "funding",
+    "fy2026",
+    "government",
+    "local",
+    "money",
+    "seeking",
+    "summarize",
+    "what",
+    "which",
+    "with",
+}
 
 EMBEDDING_MODEL_FILE = ".embedding_model"
 
@@ -105,6 +122,7 @@ class VectorStoreService:
         self.embedding_model = embedding_model or persisted_model or self.settings.embedding_model
         self.settings.embedding_model = self.embedding_model
         self.embedder = create_embeddings(self.embedding_model, self.settings)
+        self._store_lock = threading.RLock()
 
     @lru_cache(maxsize=None)
     def get_store(self, vectorstore_root: str, store_name: str) -> Chroma:
@@ -209,14 +227,19 @@ class VectorStoreService:
         Returns:
             List of chunk dictionaries with content, score, id, division, and metadata.
         """
-        root, store = self._resolve_store(
-            division,
-            vectorstore_root,
-            embedding_model,
-            context=f"retrieval in {division_acronym(division)}",
-        )
-        store_name = self.settings.subcommittee_stores[division]
-        docs_with_scores = store.similarity_search_with_score(question, k=k)
+        if not vectorstore_root:
+            raise ValueError(f"Vector store root is required for retrieval in {division_acronym(division)}")
+        if not embedding_model:
+            raise ValueError(f"Embedding model is required for retrieval in {division_acronym(division)}")
+        with getattr(self, "_store_lock", threading.RLock()):
+            root, store = self._resolve_store(
+                division,
+                vectorstore_root,
+                embedding_model,
+                context=f"retrieval in {division_acronym(division)}",
+            )
+            store_name = self.settings.subcommittee_stores[division]
+            docs_with_scores = store.similarity_search_with_score(question, k=k)
         if self.settings.debug:
             logger.info(
                 "VECTOR_DEBUG retrieve root=%s store_name=%s division=%s embedding_model=%s requested_k=%s returned=%s",
@@ -251,6 +274,73 @@ class VectorStoreService:
             chunks.append(self._chunk_from_document(division, index, doc, score))
         return chunks
 
+    def keyword_retrieve(
+        self,
+        question: str,
+        division: str,
+        k: int,
+        vectorstore_root: str | Path | None = None,
+        embedding_model: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Retrieve chunks by lexical overlap against the active division store."""
+        query_tokens = [
+            token.removesuffix("ness").removesuffix("s")
+            for token in re.findall(r"[a-z0-9][a-z0-9-]{2,}", question.lower())
+            if token not in KEYWORD_STOPWORDS
+        ]
+        if not query_tokens:
+            return []
+        query_phrases = [
+            " ".join(query_tokens[index : index + 2])
+            for index in range(len(query_tokens) - 1)
+        ]
+        with getattr(self, "_store_lock", threading.RLock()):
+            _, store = self._resolve_store(
+                division,
+                vectorstore_root,
+                embedding_model,
+                context=f"keyword retrieval in {division_acronym(division)}",
+            )
+            result = store._collection.get(include=["documents", "metadatas"])  # noqa: SLF001
+
+        documents = result.get("documents") or []
+        metadatas = result.get("metadatas") or []
+        ids = result.get("ids") or []
+        scored: list[tuple[int, int, dict[str, Any]]] = []
+        for index, content in enumerate(documents):
+            text = (content or "").lower()
+            token_score = sum(1 for token in set(query_tokens) if token in text)
+            phrase_score = sum(2 for phrase in set(query_phrases) if phrase in text)
+            score = token_score + phrase_score
+            if score <= 0:
+                continue
+            metadata = dict((metadatas[index] if index < len(metadatas) else {}) or {})
+            chunk_id = metadata.get("chunk_id") or (ids[index] if index < len(ids) else None)
+            if not chunk_id:
+                continue
+            chunk_index = metadata.get("chunk_index")
+            try:
+                sort_index = int(chunk_index)
+            except (TypeError, ValueError):
+                sort_index = index
+            scored.append(
+                (
+                    score,
+                    sort_index,
+                    {
+                        "chunk_id": str(chunk_id),
+                        "division": division,
+                        "division_acronym": division_acronym(division),
+                        "content": content,
+                        "chunk_summary": None,
+                        "score": float(-score),
+                        "metadata": metadata,
+                    },
+                )
+            )
+        scored.sort(key=lambda item: (-item[0], item[1]))
+        return [chunk for _, _, chunk in scored[:k]]
+
     def get_chunk(
         self,
         division: str,
@@ -269,13 +359,14 @@ class VectorStoreService:
         Returns:
             Chunk dictionary when found, otherwise None.
         """
-        _, store = self._resolve_store(
-            division,
-            vectorstore_root,
-            embedding_model,
-            context=f"loading chunk {chunk_id}",
-        )
-        result = store._collection.get(ids=[chunk_id], include=["documents", "metadatas"])  # noqa: SLF001
+        with getattr(self, "_store_lock", threading.RLock()):
+            _, store = self._resolve_store(
+                division,
+                vectorstore_root,
+                embedding_model,
+                context=f"loading chunk {chunk_id}",
+            )
+            result = store._collection.get(ids=[chunk_id], include=["documents", "metadatas"])  # noqa: SLF001
         documents = result.get("documents") or []
         if not documents:
             return None
@@ -286,6 +377,44 @@ class VectorStoreService:
             "division_acronym": division_acronym(division),
             "content": documents[0],
             "metadata": dict(metadatas[0] or {}),
+        }
+
+    def get_chunk_by_index(
+        self,
+        division: str,
+        chunk_index: int,
+        vectorstore_root: str | Path | None = None,
+        embedding_model: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Load one source chunk by persisted division-local chunk index."""
+        with getattr(self, "_store_lock", threading.RLock()):
+            _, store = self._resolve_store(
+                division,
+                vectorstore_root,
+                embedding_model,
+                context=f"loading chunk index {chunk_index}",
+            )
+            result = store._collection.get(  # noqa: SLF001
+                where={"chunk_index": int(chunk_index)},
+                include=["documents", "metadatas"],
+            )
+        documents = result.get("documents") or []
+        if not documents:
+            return None
+        metadatas = result.get("metadatas") or [{}]
+        ids = result.get("ids") or []
+        metadata = dict(metadatas[0] or {})
+        chunk_id = metadata.get("chunk_id") or (ids[0] if ids else None)
+        if not chunk_id:
+            return None
+        return {
+            "chunk_id": str(chunk_id),
+            "division": division,
+            "division_acronym": division_acronym(division),
+            "content": documents[0],
+            "chunk_summary": None,
+            "score": None,
+            "metadata": metadata,
         }
 
     def _chunk_from_document(

@@ -56,10 +56,10 @@ EVAL_QUESTIONS: list[EvalQuestion] = [
     ),
     EvalQuestion(
         id="direct_5",
-        question="What amount is appropriated for VA Medical Services in FY2026, and what kinds of care or services does it cover?",
+        question="What VA Medical Services amounts are identified for FY2026, how are their availability dates described, and what kinds of care or services do the provisions cover?",
         answer_mode="direct_account_amount",
         divisions=[MCVA],
-        expected_behavior="Main amount + compact use summary; no ledger unless asked.",
+        expected_behavior="Report the dated Medical Services tranches and pooled-care scope without collapsing separate VA accounts; no ledger unless asked.",
     ),
 
     # ── broad_topic_total ──
@@ -79,10 +79,10 @@ EVAL_QUESTIONS: list[EvalQuestion] = [
     ),
     EvalQuestion(
         id="broad_3",
-        question="What FY2026 funding is available for airport infrastructure, runway improvements, or terminal upgrades?",
+        question="What FY2026 funding is available for airport infrastructure, runway or airport-safety improvements, and airport project grants?",
         answer_mode="broad_topic_total",
         divisions=[THUD],
-        expected_behavior="Grouped funding lanes by agency/account; label financial types; no fake total when mixed types.",
+        expected_behavior="Grouped airport funding lanes by heading; distinguish project grants from administrative support; do not infer terminal construction without source support.",
     ),
     EvalQuestion(
         id="broad_4",
@@ -123,7 +123,7 @@ EVAL_QUESTIONS: list[EvalQuestion] = [
     ),
     EvalQuestion(
         id="mechanism_4",
-        question="Does the FY2026 text provide a specific dollar amount for CISA, or only a continuing-appropriations mechanism?",
+        question="Within the identified FY2026 continuing-appropriations provisions, is a specific CISA dollar amount stated, or is only a continuing-appropriations mechanism supported?",
         answer_mode="funding_mechanism_no_amount",
         divisions=[CRX],
         expected_behavior="Explain CR/rate-for-operations/apportionment/extension; say when no explicit amount found.",

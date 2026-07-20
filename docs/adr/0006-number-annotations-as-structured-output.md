@@ -9,3 +9,16 @@ Regex over the answer markdown would happily match any dollar figure, but it can
 ## Trade-off accepted
 
 Higher prompt complexity, larger structured-output schemas, and a strict validator (`validate_kind_payload`) that rejects malformed annotations. Worth it: this is what makes the citation hover UI trustworthy rather than decorative.
+
+## Stage-local Figure Handles
+
+Reduce and Synthesize do not copy visible dollar figures and canonical `[[num:...]]` ids independently. Before each call, the backend replaces a bound figure-marker pair with a self-describing stage-local Figure Handle such as `{{F1:$25,000}}`. Keeping the display amount inside the evidence handle preserves the fact's local meaning without asking the model to join an opaque alias to a separate registry. The prompt does not duplicate a figure registry; backend state owns that mapping. In output the model may use the exact evidence handle or its registered bare form such as `{{F1}}`; either resolves to the same backend-owned figure. An explicitly altered display amount is rejected. The backend then renders the annotation's exact figure plus canonical marker.
+
+Map's structured `source_numbers` sidecar improves labels but is not trusted as exhaustive. The backend deterministically completes it from every exact dollar-figure occurrence that appears in both the mapped fact and its originating Chunk. This is not a model retry or provenance inference across sources: the same Chunk remains the Source-backed Figure's single provenance boundary.
+
+Equal displayed values remain occurrence-sensitive across fact objects. Marker assignment carries one occurrence counter across all responsive facts from the Chunk, so two programs that each use the same dollar value bind to their own labeled Source-backed Figures instead of both restarting at the first match.
+
+New calculations use a local `{{D1}}` handle plus a matching structured Derived Figure proposal. The backend resolves its input handles, validates source lineage and arithmetic, assigns the canonical Derived Figure id, and only then renders the figure and marker.
+If a one-shot structured result puts a proposal's unique exact label or proposed figure in the prose instead of its `{{D1}}` handle, the renderer may recover that local placeholder. The normal source-lineage and arithmetic validation still runs before any figure is exposed; ambiguous placeholders and invalid proposals remain rejected.
+
+Raw dollar figures, unknown handles, detached markers, and invalid Derived Figure handles fail closed at the response boundary: the unverified figure is omitted without guessing a source. This is validation and rendering, not regex provenance inference. Each model stage is invoked at most once; malformed structured output or provider errors are surfaced rather than retried or sent through a second plain-text call.

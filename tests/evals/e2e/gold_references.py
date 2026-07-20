@@ -7,16 +7,463 @@ and the expected classify/route outputs.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import hashlib
+import re
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any, Literal, Mapping, Sequence
+
+
+FactType = Literal["statutory", "derived", "inference", "absence"]
+RuleType = Literal["prohibited_error"]
+VerificationStatus = Literal["verified", "needs_review"]
+
+
+@dataclass(frozen=True)
+class SourceEvidence:
+    """A durable locator for the corpus evidence supporting a criterion."""
+
+    bill: str
+    division: str
+    locator: str
+    source_file: str = ""
+    line_start: int = 0
+    line_end: int = 0
+    anchor: str = ""
+    chunk_id: str | None = None
+    excerpt: str | None = None
+    source_hash: str | None = None
+
+
+@dataclass(frozen=True)
+class CorpusScope:
+    """The bounded corpus against which an absence claim was verified."""
+
+    bills: tuple[str, ...]
+    divisions: tuple[str, ...] = ()
+    description: str = ""
+    source_files: tuple[str, ...] = ()
+    complete: bool = False
+    search_query: str = ""
+
+
+@dataclass(frozen=True)
+class GoldFact:
+    id: str
+    statement: str
+    weight: int = 1
+    fact_type: FactType = "statutory"
+    verification_status: VerificationStatus = "verified"
+    evidence: tuple[SourceEvidence, ...] = ()
+    corpus_scope: CorpusScope | None = None
+    equation: str | None = None
+
+
+@dataclass(frozen=True)
+class GoldRule:
+    id: str
+    statement: str
+    weight: int = 1
+    fact_type: RuleType = "prohibited_error"
+    verification_status: VerificationStatus = "verified"
+    evidence: tuple[SourceEvidence, ...] = ()
+
+
+@dataclass(frozen=True)
+class AnswerShapeRule:
+    id: str
+    statement: str
+
+
+@dataclass(frozen=True)
+class GoldAlternative:
+    id: str
+    statement: str
+    satisfies: tuple[str, ...]
+
+
+# Descriptive aliases keep the schema discoverable without forcing callers to
+# depend on one naming convention.
+GoldEvidence = SourceEvidence
+GoldError = GoldRule
+StructuralRule = AnswerShapeRule
+
+
+_DIVISION_BILL: dict[str, str] = {
+    "AGRICULTURE, RURAL DEVELOPMENT, FOOD AND DRUG ADMINISTRATION, AND RELATED AGENCIES": "PL37",
+    "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES": "PL74",
+    "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES": "PL74",
+    "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES": "PL74",
+    "MILITARY CONSTRUCTION, VETERANS AFFAIRS, AND RELATED AGENCIES": "PL37",
+    "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES": "PL75",
+    "CONTINUING APPROPRIATIONS, EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS": "PL37/PL75",
+    "FINANCIAL SERVICES AND GENERAL GOVERNMENT": "PL75",
+}
+
+_BILL_FILE = {
+    "PL37": "data/bills/2026/FY2026_AGRICULTURE_LEGBRANCH_MILITARYCONSTRUCTIONVETERANSAFFAIRS.htm",
+    "PL74": "data/bills/2026/FY2026_CommerceJusticeScience_EnergyWaterDev_INTERIOREnvironmental.htm",
+    "PL75": "data/bills/2026/FY2026_CONSOLIDATED.htm",
+}
+
+# Full-file hashes make source changes fail benchmark validation and force an
+# explicit re-audit instead of silently preserving stale line references.
+_BILL_SHA256 = {
+    "PL37": "f65bc9332c21a79ff9597044a1832727545d48282e3b5ebbf3f65bf19abf0318",
+    "PL74": "363facdf52c87aa6801d56ae5720b096b20da8d2da94dccc21db9229e025abcd",
+    "PL75": "183c34fe55c7b8dab2a7c42675c9e8909b7c3a81c64b6990d459c8996d839fdc",
+}
+
+# Audit-checked source ranges.  A question may cite more than one bill; each
+# criterion receives all ranges relevant to that question so provenance stays
+# durable even when a paraphrase does not contain a verbatim quotation.
+_QUESTION_SOURCES: dict[str, tuple[tuple[str, int, int, str], ...]] = {
+    "direct_1": (("PL37", 2554, 2684, "Salaries and Expenses"),),
+    "direct_2": (("PL37", 1342, 1365, "Food Safety and Inspection Service"),),
+    "direct_3": (("PL74", 2144, 2165, "Science"),),
+    "direct_4": (("PL74", 7297, 7379, "Environmental Programs and Management"),),
+    "direct_5": (("PL37", 6511, 6537, "Medical Services"), ("PL37", 7601, 7622, "medical services")),
+    "broad_1": (("PL37", 2077, 2153, "Rural Water"), ("PL74", 4187, 4199, "Northwestern New Mexico"), ("PL74", 7466, 7819, "State and Tribal Assistance Grants")),
+    "broad_2": (("PL75", 12388, 13664, "Housing"),),
+    "broad_3": (("PL75", 9624, 9754, "Airport"),),
+    "broad_4": (("PL74", 1444, 1912, "Office of Justice Programs"),),
+    "broad_5": (("PL74", 7297, 7901, "Superfund"), ("PL74", 8762, 8766, "Health Sciences")),
+    "mechanism_1": (("PL37", 105, 222, "continuing appropriations"), ("PL75", 27241, 27277, "February 13, 2026")),
+    "mechanism_2": (("PL37", 105, 174, "Continuing Appropriations Act"), ("PL75", 27241, 27277, "February 13, 2026")),
+    "mechanism_3": (("PL37", 114, 127, "rate for operations"), ("PL37", 246, 250, "designated by the Congress"), ("PL75", 27241, 27277, "February 13, 2026")),
+    "mechanism_4": (("PL37", 114, 127, "continuing appropriations"), ("PL37", 643, 657, "rate for operations")),
+    "mechanism_5": (("PL37", 114, 222, "continuing appropriations"), ("PL37", 296, 361, "Payments")),
+    "recon_1": (("PL37", 2560, 2667, "Food and Drug Administration"),),
+    "recon_2": (("PL74", 2144, 2380, "National Aeronautics and Space Administration"),),
+    "recon_3": (("PL37", 2075, 2170, "Rural Water and Waste Disposal"), ("PL37", 3240, 3247, "Rural Utilities Service")),
+    "recon_4": (("PL74", 7466, 7758, "State and Tribal Assistance Grants"),),
+    "recon_5": (("PL75", 15748, 16078, "Internal Revenue Service"),),
+    "summary_1": (("PL37", 2554, 2655, "Food and Drug Administration"),),
+    "summary_2": (("PL74", 3474, 5209, "Energy and Water Development"),),
+    "summary_3": (("PL37", 2075, 2147, "Rural Water"), ("PL74", 3490, 4201, "civil works"), ("PL74", 7466, 7818, "water infrastructure")),
+    "summary_4": (("PL37", 105, 222, "continuing appropriations"), ("PL75", 27246, 27267, "February 13, 2026")),
+    "summary_5": (("PL75", 8780, 13656, "TRANSPORTATION, HOUSING AND"),),
+}
+
+
+def _stable_id(prefix: str, kind: str, statement: str) -> str:
+    digest = hashlib.sha1(statement.strip().encode("utf-8")).hexdigest()[:12]
+    return f"{prefix}-{kind}-{digest}"
+
+
+def _line_excerpt(source_file: str, line_start: int, line_end: int) -> str | None:
+    path = Path(__file__).resolve().parents[3] / source_file
+    if not path.is_file():
+        return None
+    lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    excerpt = " ".join(lines[line_start - 1 : min(line_end, line_start + 2)])
+    return excerpt[:1200] or None
+
+
+def _normalise_source_text(value: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", value)).strip().lower()
+
+
+def _source_slice(source_file: str, line_start: int, line_end: int) -> str | None:
+    path = Path(__file__).resolve().parents[3] / source_file
+    if not path.is_file():
+        return None
+    lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    return " ".join(lines[line_start - 1 : line_end])
+
+
+_DERIVED_EQUATIONS = {
+    "Programmatic allocations reconcile to $6,957,972,000": (
+        "$1,171,319,000 + $2,496,766,000 + $601,291,000 + $278,185,000 + "
+        "$894,063,000 + $71,758,000 + $688,038,000 + $205,180,000 + "
+        "$208,018,000 + $343,354,000 = $6,957,972,000"
+    ),
+    "The nine top-level NASA account amounts arithmetically sum to $24,438,336,000": (
+        "$7,250,000,000 + $935,000,000 + $920,500,000 + $7,783,000,000 + "
+        "$4,175,000,000 + $143,000,000 + $3,000,000,000 + $185,336,000 + "
+        "$46,500,000 = $24,438,336,000"
+    ),
+    "The three top-level IRS accounts arithmetically sum to $11,195,365,000": (
+        "$3,036,606,000 + $4,999,000,000 + $3,159,759,000 = $11,195,365,000"
+    ),
+}
+
+
+def _fact_type(statement: str) -> FactType:
+    lowered = statement.lower()
+    if "no clean" in lowered or "no single clean" in lowered:
+        return "inference"
+    if "inference" in lowered or "would require" in lowered:
+        return "inference"
+    if (
+        lowered.startswith(("no ", "does not ", "none "))
+        or "no separate" in lowered
+        or "do not provide a specific" in lowered
+        or "not present in the identified" in lowered
+        or "does not state a new" in lowered
+        or "no dollar amount" in lowered
+    ):
+        return "absence"
+    if any(token in lowered for token in ("sum to", "reconcile", "can be summed", "arithmetically")):
+        return "derived"
+    if any(token in lowered for token in ("should explain", "answer should", "be concise", "should not provide a derived")):
+        return "inference"
+    return "statutory"
+
+
+def _default_evidence(statement: str, divisions: Sequence[str], question_id: str = "") -> tuple[SourceEvidence, ...]:
+    if question_id in _QUESTION_SOURCES:
+        return tuple(
+            SourceEvidence(
+                bill=bill,
+                division=divisions[0] if divisions else "FY2026 appropriations corpus",
+                locator=f"{bill}:{line_start}-{line_end} ({anchor})",
+                source_file=_BILL_FILE[bill],
+                line_start=line_start,
+                line_end=line_end,
+                anchor=anchor,
+                excerpt=_line_excerpt(_BILL_FILE[bill], line_start, line_end),
+                source_hash=_BILL_SHA256[bill],
+            )
+            for bill, line_start, line_end, anchor in _QUESTION_SOURCES[question_id]
+        )
+    # Unknown registry keys must provide explicit evidence. Guessing a bill or
+    # pointing at line 1 would make a criterion look verified when it is not.
+    return ()
+
+
+def _default_scope(divisions: Sequence[str], statement: str = "") -> CorpusScope:
+    selected = tuple(_DIVISION_BILL.get(division, "FY2026 corpus") for division in divisions)
+    bills = tuple(dict.fromkeys(bill for value in selected for bill in value.split("/")))
+    lowered = statement.lower()
+    if "fy2026 laws" in lowered or "complete checked-in fy2026" in lowered:
+        bills = ("PL37", "PL74", "PL75")
+    return CorpusScope(
+        bills=bills or ("PL37", "PL74", "PL75"),
+        divisions=tuple(divisions),
+        description="Complete checked-in FY2026 bill text for the selected Division(s)",
+        source_files=tuple(_BILL_FILE[bill] for bill in (bills or ("PL37", "PL74", "PL75"))),
+        complete=True,
+        search_query=(f"search complete FY2026 corpus for: {statement}" if statement else "search complete FY2026 corpus"),
+    )
 
 
 @dataclass(frozen=True)
 class GoldReference:
-    required_facts: list[str] = field(default_factory=list)
-    prohibited_errors: list[str] = field(default_factory=list)
+    """Typed benchmark criteria with legacy text accessors.
+
+    ``required_facts`` and ``prohibited_errors`` intentionally remain text
+    lists so older runner code keeps working.  New judge code should call
+    :meth:`to_judge_payload`, which includes stable IDs, weights, types, and
+    provenance metadata.
+    """
+
+    required_facts: list[str | GoldFact] = field(default_factory=list)
+    prohibited_errors: list[str | GoldRule] = field(default_factory=list)
     expected_answer_mode: str = ""
     expected_divisions: list[str] = field(default_factory=list)
     notes: str = ""
+    structural_rules: list[AnswerShapeRule | str] = field(default_factory=list)
+    allowed_alternatives: list[GoldAlternative] = field(default_factory=list)
+    reviewer: str = "2026-07-16 audit"
+    verified_on: str = "2026-07-16"
+
+    def _typed_facts(self, question_id: str | None = None) -> tuple[GoldFact, ...]:
+        prefix = question_id or self._question_id()
+        return tuple(self._fact_from_value(value, index, prefix) for index, value in enumerate(self.required_facts, 1))
+
+    @property
+    def facts(self) -> tuple[GoldFact, ...]:
+        return self._typed_facts()
+
+    @property
+    def errors(self) -> tuple[GoldRule, ...]:
+        return tuple(self._rule_from_value(value, index) for index, value in enumerate(self.prohibited_errors, 1))
+
+    def _fact_from_value(self, value: Any, index: int, prefix: str = "gold") -> GoldFact:
+        if isinstance(value, GoldFact):
+            return value
+        if isinstance(value, Mapping):
+            return GoldFact(**value)
+        statement = str(value)
+        fact_id = _stable_id(prefix, "fact", statement)
+        fact_type = _fact_type(statement)
+        scope = _default_scope(self.expected_divisions, statement) if fact_type == "absence" else None
+        return GoldFact(
+            id=fact_id,
+            statement=statement,
+            weight=2 if index == 1 else 1,
+            fact_type=fact_type,
+            evidence=_default_evidence(statement, self.expected_divisions, prefix),
+            corpus_scope=scope,
+            equation=(
+                next((equation for key, equation in _DERIVED_EQUATIONS.items() if statement.startswith(key)), None)
+                if fact_type == "derived"
+                else None
+            ),
+        )
+
+    def _rule_from_value(self, value: Any, index: int, prefix: str | None = None) -> GoldRule:
+        if isinstance(value, GoldRule):
+            return value
+        if isinstance(value, Mapping):
+            return GoldRule(**value)
+        return GoldRule(
+            id=_stable_id(prefix or self._question_id(), "error", str(value)),
+            statement=str(value),
+            evidence=_default_evidence(str(value), self.expected_divisions, prefix or self._question_id()),
+        )
+
+    def _question_id(self) -> str:
+        # GoldReference is intentionally usable outside the registry; callers
+        # that need stable registry IDs pass question_id to to_judge_payload.
+        explicit = getattr(self, "_registry_key", None)
+        if explicit:
+            return explicit
+        registry = globals().get("GOLD_REFERENCES", {})
+        for key, value in registry.items():
+            if value is self:
+                return key
+        return "gold"
+
+    def to_judge_payload(self, question_id: str | None = None) -> dict[str, Any]:
+        prefix = question_id or self._question_id()
+        facts = [asdict(fact) for fact in self._typed_facts(prefix)]
+        errors = [asdict(self._rule_from_value(value, index, prefix)) for index, value in enumerate(self.prohibited_errors, 1)]
+        structural = [
+            asdict(rule) if isinstance(rule, AnswerShapeRule) else {"id": f"{prefix}-shape-{index:02d}", "statement": rule}
+            for index, rule in enumerate(self.structural_rules, 1)
+        ]
+        return {
+            "required_facts": facts,
+            "prohibited_errors": errors,
+            "structural_rules": structural,
+            "allowed_alternatives": [asdict(item) for item in self.allowed_alternatives],
+            "expected_answer_mode": self.expected_answer_mode,
+            "expected_divisions": list(self.expected_divisions),
+            "notes": self.notes,
+        }
+
+def validate_gold_references(
+    references: Mapping[str, GoldReference] | None = None,
+    questions: Sequence[Any] | None = None,
+) -> None:
+    """Fail fast when the benchmark registry is incomplete or untraceable."""
+    refs = GOLD_REFERENCES if references is None else references
+    if questions is None:
+        from tests.evals.questions import EVAL_QUESTIONS
+
+        questions = EVAL_QUESTIONS
+    expected = {question.id: question for question in questions}
+    missing = sorted(set(expected) - set(refs))
+    extra = sorted(set(refs) - set(expected))
+    if missing or extra:
+        raise ValueError(f"Gold References must exactly cover questions; missing={missing}, extra={extra}")
+    seen_ids: set[str] = set()
+    repo_root = Path(__file__).resolve().parents[3]
+    source_lines: dict[str, list[str]] = {}
+    source_hashes: dict[str, str] = {}
+
+    def _lines(source_file: str) -> list[str]:
+        if source_file not in source_lines:
+            source_lines[source_file] = (repo_root / source_file).read_text(
+                encoding="utf-8", errors="ignore"
+            ).splitlines()
+        return source_lines[source_file]
+
+    def _source_hash(source_file: str) -> str:
+        if source_file not in source_hashes:
+            source_hashes[source_file] = hashlib.sha256(
+                (repo_root / source_file).read_bytes()
+            ).hexdigest()
+        return source_hashes[source_file]
+
+    for question_id, reference in refs.items():
+        question = expected[question_id]
+        if not reference.reviewer.strip() or not reference.verified_on.strip():
+            raise ValueError(f"{question_id}: reviewer and verification date are required")
+        if reference.expected_answer_mode != question.answer_mode:
+            raise ValueError(f"{question_id}: expected answer mode does not match question")
+        if set(reference.expected_divisions) != set(question.divisions):
+            raise ValueError(f"{question_id}: expected Divisions do not match question")
+        facts = reference._typed_facts(question_id)
+        errors = tuple(reference._rule_from_value(value, index, question_id) for index, value in enumerate(reference.prohibited_errors, 1))
+        if not facts:
+            raise ValueError(f"{question_id}: at least one required fact is required")
+        for criterion in (*facts, *errors):
+            if criterion.id in seen_ids:
+                raise ValueError(f"duplicate Gold criterion id: {criterion.id}")
+            seen_ids.add(criterion.id)
+            if not criterion.statement.strip():
+                raise ValueError(f"{question_id}: empty Gold criterion statement")
+            if criterion.weight < 1:
+                raise ValueError(f"{question_id}/{criterion.id}: weight must be positive")
+            if criterion.verification_status != "verified":
+                raise ValueError(f"{question_id}/{criterion.id}: criterion is not verified")
+            if isinstance(criterion, GoldFact):
+                if criterion.statement.lower().startswith(("the answer should", "answer should", "should not")):
+                    raise ValueError(
+                        f"{question_id}/{criterion.id}: answer-shape instructions belong in structural_rules"
+                    )
+                if criterion.fact_type == "absence":
+                    if criterion.corpus_scope is None or not criterion.corpus_scope.bills:
+                        raise ValueError(f"{question_id}/{criterion.id}: absence claims require a corpus scope")
+                elif not criterion.evidence:
+                    raise ValueError(f"{question_id}/{criterion.id}: affirmative facts require source evidence")
+                if criterion.fact_type == "derived" and not criterion.equation:
+                    raise ValueError(f"{question_id}/{criterion.id}: derived facts require an equation")
+            else:
+                if "route outside" in criterion.statement.lower():
+                    raise ValueError(
+                        f"{question_id}/{criterion.id}: routing expectations belong in expected_divisions"
+                    )
+                if not criterion.evidence:
+                    raise ValueError(f"{question_id}/{criterion.id}: prohibited errors require source evidence")
+            for evidence in criterion.evidence:
+                source_path = repo_root / evidence.source_file
+                if not evidence.source_file or not source_path.is_file():
+                    raise ValueError(f"{question_id}/{criterion.id}: source file does not exist: {evidence.source_file}")
+                if evidence.line_start < 1 or evidence.line_end < evidence.line_start:
+                    raise ValueError(f"{question_id}/{criterion.id}: invalid source line range")
+                if evidence.line_end > len(_lines(evidence.source_file)):
+                    raise ValueError(f"{question_id}/{criterion.id}: source line range exceeds file")
+                if not evidence.source_hash or evidence.source_hash != _source_hash(
+                    evidence.source_file
+                ):
+                    raise ValueError(f"{question_id}/{criterion.id}: source file hash has changed")
+                expected_excerpt = _line_excerpt(evidence.source_file, evidence.line_start, evidence.line_end)
+                if evidence.excerpt != expected_excerpt:
+                    raise ValueError(f"{question_id}/{criterion.id}: stored excerpt does not match source range")
+                if evidence.anchor:
+                    source_slice = _source_slice(evidence.source_file, evidence.line_start, evidence.line_end) or ""
+                    if _normalise_source_text(evidence.anchor) not in _normalise_source_text(source_slice):
+                        raise ValueError(f"{question_id}/{criterion.id}: source anchor is absent from line range")
+            if isinstance(criterion, GoldFact) and criterion.fact_type == "absence" and criterion.corpus_scope:
+                if (
+                    not criterion.corpus_scope.complete
+                    or not criterion.corpus_scope.search_query
+                    or not criterion.corpus_scope.source_files
+                ):
+                    raise ValueError(f"{question_id}/{criterion.id}: absence scope must be complete and searchable")
+                for source_file in criterion.corpus_scope.source_files:
+                    if not (repo_root / source_file).is_file():
+                        raise ValueError(f"{question_id}/{criterion.id}: absence scope file does not exist: {source_file}")
+        structural_ids = [
+            rule.id if isinstance(rule, AnswerShapeRule) else f"{question_id}-shape-{index:02d}"
+            for index, rule in enumerate(reference.structural_rules, 1)
+        ]
+        if len(structural_ids) != len(set(structural_ids)) or seen_ids.intersection(structural_ids):
+            raise ValueError(f"{question_id}: duplicate structural rule id")
+        seen_ids.update(structural_ids)
+
+        alternative_ids = {criterion.id for criterion in facts}
+        seen_alternative_ids: set[str] = set()
+        for alternative in reference.allowed_alternatives:
+            if alternative.id in seen_alternative_ids or alternative.id in seen_ids:
+                raise ValueError(f"{question_id}: duplicate alternative id: {alternative.id}")
+            seen_alternative_ids.add(alternative.id)
+            if not alternative.satisfies or not set(alternative.satisfies) <= alternative_ids:
+                raise ValueError(f"{question_id}/{alternative.id}: unknown alternative target")
 
 
 GOLD_REFERENCES: dict[str, GoldReference] = {
@@ -31,11 +478,14 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "User fees are credited to the account, including prescription drug, medical device, human generic drug, biosimilar, animal drug, generic new animal drug, and tobacco product user fees",
         ],
         prohibited_errors=[
-            "Should not list center-by-center dollar amounts unless the user asked for a breakdown",
-            "Should not list individual user-fee dollar amounts unless the user asked for a user-fee breakdown",
             "Should not add user fees on top of the $6,957,972,000 account amount",
             "Should not include unrelated nearby provisions",
-            "Should not use internal pipeline language like extracted facts, retrieved facts, mapped facts, or source chunks",
+        ],
+        structural_rules=[
+            AnswerShapeRule(
+                id="direct_1-shape-no-internal-language",
+                statement="Do not expose internal pipeline terms such as extracted facts, mapped facts, or source chunks.",
+            ),
         ],
         expected_answer_mode="direct_account_amount",
         expected_divisions=[
@@ -50,13 +500,11 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "The funding carries out services authorized by the Federal Meat Inspection Act, Poultry Products Inspection Act, and Egg Products Inspection Act",
             "$1,000,000 may be credited to the account from laboratory accreditation fees",
             "Major activities include inspection and enforcement for meat, poultry, and egg products",
-            "Major activities include humane methods of slaughter inspections and enforcement",
+            "The humane methods of slaughter provision supports inspection/enforcement staffing of no fewer than 148 FTE; it is a staffing proviso, not a separate appropriation",
         ],
         prohibited_errors=[
             "Should not treat the $10,000 representation allowance cap as a separate major appropriation",
             "Should not add the $1,000,000 laboratory accreditation fees as a separate appropriation without saying they may be credited to the account",
-            "Should not route outside Agriculture",
-            "Should not turn the answer into a detailed reconciliation ledger",
         ],
         expected_answer_mode="direct_account_amount",
         expected_divisions=[
@@ -75,7 +523,6 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "Should not include unrelated NASA accounts such as Aeronautics, Exploration, Space Operations, SSMS, Construction, or OIG",
             "Should not compute a NASA-wide total",
             "Should not confuse NASA Science with another NASA account",
-            "Should not route outside Commerce, Justice, Science",
         ],
         expected_answer_mode="direct_account_amount",
         expected_divisions=[
@@ -90,34 +537,36 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "The funding remains available until September 30, 2027",
             "The account supports necessary expenses for personnel, travel, passenger motor vehicles, aircraft, reprints, library memberships, and administrative costs",
             "The account supports administrative costs of the brownfields program and implementation of a coal combustion residual permit program",
-            "Major set-asides include Energy Star, grants/projects/implementation/training, and Environmental Protection: National Priorities",
-            "Major set-asides include Geographic Programs $690,202,000",
+            "The account includes a $20,000,000 Alaska program and a separate $9,000,000 Toxic Substances Control Act amount",
         ],
         prohibited_errors=[
             "Should not imply the full $3,114,671,000 is brownfields cleanup funding",
             "Should not add set-asides on top of the parent account total",
-            "Should not over-focus on the $40,000 official reception cap",
-            "Should not route outside Interior/Environment",
         ],
         expected_answer_mode="direct_account_amount",
         expected_divisions=[
             "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
         ],
-        notes="Direct account amount, with compact support-purpose summary.",
+        notes="Direct account amount with a compact support-purpose summary. Geographic Programs ($690,202,000), Energy Star, grants/training, and National Priorities are supporting examples within the parent account, not mandatory details.",
     ),
 
     "direct_5": GoldReference(
         required_facts=[
-            "VA Medical Services amount directly paired with the care scope is $59,858,000,000",
-            "The amount is for FY2026 plus reimbursements",
+            "The VA Medical Services heading provides $59,858,000,000 plus reimbursements, available October 1, 2026 through September 30, 2027",
+            "$75,039,000,000 became available October 1, 2025, and $15,889,000,000 is rescinded from that earlier tranche",
             "Covered services include priority medical treatment and basic medical benefits for veterans in priority groups 1 through 6",
-            "Covered services include prescription drugs, prosthetics, women veterans care, suicide prevention, caregiver support, PTSD services, rural health care, homelessness programs, telehealth, opioid prevention and treatment, and intimate partner violence assistance",
+            "The heading covers prescription drugs and prosthetics; the section 251 service list is pooled across Medical Services, Medical Community Care, Medical Support and Compliance, Medical Facilities, and Cost of War Toxic Exposures rather than attributable solely to Medical Services",
+            "The pooled service list includes women veterans care, suicide prevention, caregiver support, PTSD services, rural health care, homelessness programs, telehealth, opioid prevention and treatment, and intimate partner violence assistance",
         ],
         prohibited_errors=[
-            "Should not merge multiple VA Medical Services figures without explaining the ambiguity",
-            "Should not use internal language like extracted facts in the final answer",
-            "Should not confuse VA Medical Services with Medical Community Care or other VA medical accounts",
-            "Should not route outside Military Construction, Veterans Affairs",
+            "Should not present $59,858,000,000 as the only FY2026-relevant tranche without explaining its October 1, 2026 availability and the earlier $75,039,000,000 tranche",
+            "Should not attribute the pooled section 251 service list solely to VA Medical Services or merge other VA medical accounts into its heading",
+        ],
+        structural_rules=[
+            AnswerShapeRule(
+                id="direct_5-shape-no-internal-language",
+                statement="Do not expose internal pipeline terminology in the final answer.",
+            ),
         ],
         expected_answer_mode="direct_account_amount",
         expected_divisions=[
@@ -163,28 +612,24 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
 
     "broad_2": GoldReference(
         required_facts=[
+            "Community Development Fund is $6,995,244,120, including $3,300,000,000 for Community Development Block Grants available to States and units of general local government",
+            "HOME Investment Partnerships receives $1,250,000,000",
             "THUD provides separate FY2026 funding streams for rental assistance and homelessness services",
             "Tenant-based rental assistance is appropriated $34,438,557,000",
-            "Tenant-based rental assistance includes $4,000,000,000 previously appropriated and available October 1, 2025",
-            "Tenant-based rental assistance includes $4,000,000,000 available October 1, 2026",
-            "Tenant-based rental assistance includes $34,957,000,000 for renewals of expiring Section 8 tenant-based annual contributions contracts",
             "Project-based rental assistance is provided $18,143,000,000",
             "Homeless Assistance Grants receive $4,417,000,000",
             "Homeless Assistance Grants include $290,000,000 for Emergency Solutions Grants",
             "Homeless Assistance Grants include $4,010,000,000 for Continuum of Care and rural housing stability assistance",
-            "Homeless Assistance Grants include $10,000,000 for national homeless data analysis",
             "Homelessness services include $107,000,000 for youth homelessness demonstration projects",
-            "Youth homelessness system improvement grants may receive up to $25,000,000",
             "Supportive housing for persons with disabilities includes $287,000,000 for Section 811 project rental assistance and associated supportive services",
             "Public Housing Fund at $8,319,393,000 is broader affordable-housing support, not the same as rental assistance or homelessness funding",
         ],
         prohibited_errors=[
             "Should not present a single clean city housing total",
             "Should not add renewal amounts, advance appropriations, and parent amounts without explaining timing and hierarchy",
-            "Should not add the $25,000,000 youth homelessness improvement amount on top of the $107,000,000 parent amount",
             "Should not omit homelessness services when the question asks affordable housing, rental assistance, or homelessness services",
             "Should not omit the main Homeless Assistance Grants parent account when answering homelessness services",
-            "Should not route outside THUD unless there is clearly responsive evidence elsewhere",
+            "Should not omit CDBG or HOME when answering a city-facing affordable-housing question",
         ],
         expected_answer_mode="broad_topic_total",
         expected_divisions=[
@@ -206,14 +651,13 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
         prohibited_errors=[
             "Should not add $542,356,000 and $35,000,000 on top of the $577,356,000 parent amount",
             "Should not claim a clean total unless it clearly explains the relationship between the $4,000,000,000 and $577,356,000 buckets",
-            "Should not omit runway improvements or terminal upgrades",
-            "Should not route outside THUD",
+            "Should not claim an affirmative terminal-upgrade construction amount when the checked-in corpus provides only administrative Airport Terminal Program support and a narrow baggage-reconfiguration reference",
         ],
         expected_answer_mode="broad_topic_total",
         expected_divisions=[
             "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
         ],
-        notes="A clean sum of the two top-level airport buckets may be acceptable only if the answer clearly does not double-count suballocations. Runway improvements and terminal upgrades are responsive examples when source-backed by project-table evidence.",
+        notes="A clean sum of the two top-level airport buckets may be acceptable only if the answer clearly does not double-count suballocations. Do not turn administrative Airport Terminal Program support into terminal construction.",
     ),
 
     "broad_4": GoldReference(
@@ -221,10 +665,9 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "Local law enforcement, community violence prevention, and police hiring funding is primarily in OJP and COPS",
             "OJP is $2,400,000,000",
             "OJP includes $964,000,000 for the Edward Byrne Memorial JAG program",
+            "OJP includes $84,000,000 for police-community relations, including $50,000,000 for community violence intervention and prevention",
             "COPS programs total $800,000,000",
             "COPS includes $253,093,613 for hiring and rehiring additional career law enforcement officers",
-            "COPS includes $84,000,000 for police-community relations",
-            "COPS includes $50,000,000 for community violence intervention and prevention",
             "COPS includes $18,000,000 for community policing development",
             "COPS includes $15,000,000 for de-escalation training",
             "COPS includes $32,000,000 for Tribal law enforcement hiring and activities",
@@ -235,7 +678,7 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "Should not add nested COPS program amounts on top of the $800,000,000 COPS total",
             "Should not add Byrne JAG on top of OJP as if it were separate from OJP",
             "Should not omit either OJP/Byrne JAG or COPS hiring/community violence funding",
-            "Should not route outside CJS",
+            "Should not attribute the OJP $84,000,000 police-community-relations or $50,000,000 community-violence lines to COPS",
         ],
         expected_answer_mode="broad_topic_total",
         expected_divisions=[
@@ -260,7 +703,6 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "Should not imply the full Environmental Programs and Management account is cleanup funding",
             "Should not treat fee authority with no stated dollar amount as a quantified funding line",
             "Should not omit Hazardous Substance Superfund or brownfields grants",
-            "Should not route outside Interior/Environment",
         ],
         expected_answer_mode="broad_topic_total",
         expected_divisions=[
@@ -283,8 +725,6 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
         prohibited_errors=[
             "Should not hallucinate a full-year DHS amount",
             "Should not add DHS component extensions into a DHS total",
-            "Should not classify this as a normal broad funding total",
-            "Should not route outside Continuing Appropriations, Extenders, Homeland Security, and Other Matters",
         ],
         expected_answer_mode="funding_mechanism_no_amount",
         expected_divisions=[
@@ -296,15 +736,15 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
     "mechanism_2": GoldReference(
         required_facts=[
             "The Further Continuing Appropriations Act, 2026 extends continuing appropriations for FY2026",
-            "It changes or extends the operative expiration date in the continuing appropriations framework",
+            "It changes or extends the operative expiration date to February 13, 2026 in the continuing appropriations framework",
             "It is a continuing resolution measure, not a full-year appropriations bill",
             "The core continuing appropriations mechanism is rate for operations under FY2025 appropriations acts and conditions",
+            "The identified Act does not state a new consolidated full-year dollar total",
         ],
         prohibited_errors=[
             "Should not invent a total dollar amount for the Further Continuing Appropriations Act",
             "Should not treat the CR as a normal full-year appropriations division",
             "Should not omit rate-for-operations language",
-            "Should not route outside Continuing Appropriations, Extenders, Homeland Security, and Other Matters",
         ],
         expected_answer_mode="funding_mechanism_no_amount",
         expected_divisions=[
@@ -326,7 +766,6 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "Should not invent a new FY2026 DRF dollar amount",
             "Should not substitute unrelated FEMA amounts from elsewhere",
             "Should not present a FEMA total without a source-backed current-year amount",
-            "Should not route outside Continuing Appropriations, Extenders, Homeland Security, and Other Matters",
         ],
         expected_answer_mode="funding_mechanism_no_amount",
         expected_divisions=[
@@ -337,8 +776,8 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
 
     "mechanism_4": GoldReference(
         required_facts=[
-            "The FY2026 text does not provide a specific CISA dollar amount in the identified provisions",
-            "CISA is described through a continuing-appropriations mechanism",
+            "The identified FY2026 continuing-appropriations provisions do not provide a specific CISA dollar amount",
+            "The generic continuing-appropriations mechanism can be applied to CISA only as an inference; the identified provisions do not name a CISA line item",
             "The continuing resolution date is extended to February 13, 2026",
             "Funding uses FY2025 rate-for-operations language",
             "A CISA dollar total would require a separate line-item appropriation or referenced baseline not present in the identified FY2026 provisions",
@@ -347,7 +786,6 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "Should not hallucinate a CISA dollar amount",
             "Should not substitute a broader DHS amount for CISA",
             "Should not treat CR extension language as a dollar amount",
-            "Should not route outside Continuing Appropriations, Extenders, Homeland Security, and Other Matters",
         ],
         expected_answer_mode="funding_mechanism_no_amount",
         expected_divisions=[
@@ -358,10 +796,11 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
 
     "mechanism_5": GoldReference(
         required_facts=[
-            "Agencies or accounts without full-year appropriations continue operating under the continuing resolution",
+            "Agencies or accounts covered by the continuing-resolution provisions without full-year appropriations continue operating under the Act",
             "They continue at the FY2025 rate and under the authority and conditions of applicable FY2025 appropriations Acts",
             "The continuation applies to continuing projects and activities through the date specified in section 106(3)",
             "They may continue only at the most limited funding action permitted",
+            "Apportionment limits the continuation to the rate and amounts authorized; the mechanism does not create a new full-year total",
             "The Act allows certain payments and obligations to continue, including personnel pay and benefits, mandatory payments, essential activities to protect life and property, and orderly termination of government functions",
             "Payments and reimbursements are made only to the extent and in the amounts provided in advance in appropriations Acts",
         ],
@@ -369,7 +808,6 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "Should not provide a new dollar amount",
             "Should not imply agencies receive a full-year appropriation",
             "Should not omit the FY2025 rate/authority/conditions concept",
-            "Should not route outside Continuing Appropriations, Extenders, Homeland Security, and Other Matters",
         ],
         expected_answer_mode="funding_mechanism_no_amount",
         expected_divisions=[
@@ -438,24 +876,22 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "NASA major accounts include Safety, Security and Mission Services $3,000,000,000",
             "NASA major accounts include Construction and Environmental Compliance and Restoration $185,336,000",
             "NASA major accounts include Office of Inspector General $46,500,000",
+            "The nine top-level NASA account amounts arithmetically sum to $24,438,336,000",
             "$58,417,135 is Community Project Funding/Congressionally Directed Spending within SSMS, not added separately",
             "$2,500,000 is a set-aside within the $46,500,000 OIG total",
             "$33,000,000 lease-proceeds availability cap is inside CECR and is not standalone budget authority",
             "Up to $38,500,000 may be transferred from SSMS to NASA's Working Capital Fund, but that is transfer authority, not new funding",
             "CECR prior-year project use is limited to not more than 20 percent or $50,000,000, whichever is less",
-            "Use the statutory NASA Science account amount unless the answer explicitly explains and cites any conflicting explanatory-statement figure",
         ],
         prohibited_errors=[
             "Should not add suballocations such as $58,417,135 or $2,500,000 on top of parent NASA account totals",
             "Should not treat lease proceeds or transfer authority as new appropriations",
-            "Should not merge conflicting Science figures without acknowledging the conflict",
-            "Should not route outside Commerce, Justice, Science",
         ],
         expected_answer_mode="reconciliation_breakdown",
         expected_divisions=[
             "COMMERCE, JUSTICE, SCIENCE, AND RELATED AGENCIES",
         ],
-        notes="NASA reconciliation should focus on account totals and non-additive suballocations/transfers, not force a clean NASA grand total if evidence is conflicted.",
+        notes="NASA reconciliation should identify the arithmetic sum of top-level accounts while keeping suballocations, caps, and transfers non-additive.",
     ),
 
     "recon_3": GoldReference(
@@ -500,7 +936,6 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
     "recon_4": GoldReference(
         required_facts=[
             "EPA State and Tribal Assistance Grants account totals $4,409,609,000",
-            "The answer should not provide a derived water-infrastructure subtotal unless it lists the exact source-backed components included in that subtotal",
             "Clean Water SRF capitalization grants are $1,638,861,000",
             "Drinking Water SRF capitalization grants are $1,126,101,000",
             "Safe Drinking Water Act section 1459A(a)-(j) grants are $28,500,000",
@@ -511,7 +946,7 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "STAG includes FWPCA section 221 grants of $41,000,000",
             "STAG includes America's Water Infrastructure Act section 4304(b) grants of $5,400,000",
             "STAG includes Save Our Seas section 302(a) grants of $3,500,000",
-            "STAG includes CPF/CDS remediation, construction, and environmental management projects of $20,364,000",
+            "STAG includes CPF/CDS remediation, construction, and environmental-management projects of $20,364,000; the source does not label this entire lane as water infrastructure",
             "U.S.-Mexico Border high-priority water and wastewater facilities are $35,000,000",
             "Alaska rural and Alaska Native Village drinking water and wastewater infrastructure needs are $39,000,000",
             "SRF and project-specific amounts sit within the broader STAG account structure",
@@ -523,7 +958,12 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "Should not present STAG's full $4,409,609,000 as entirely water infrastructure",
             "Should not assert a derived STAG water subtotal unless the listed components reconcile to it",
             "Should not omit either Clean Water SRF or Drinking Water SRF",
-            "Should not route outside Interior/Environment",
+        ],
+        structural_rules=[
+            AnswerShapeRule(
+                id="recon_4-shape-01",
+                statement="Do not provide a derived water-infrastructure subtotal unless the answer lists and reconciles every exact source-backed component included.",
+            ),
         ],
         expected_answer_mode="reconciliation_breakdown",
         expected_divisions=[
@@ -538,7 +978,9 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "IRS Taxpayer Services receives $3,036,606,000",
             "IRS Enforcement receives $4,999,000,000",
             "IRS Technology and Operations Support receives $3,159,759,000",
-            "No separate FY2026 dollar amount for Business Systems Modernization appears in the available text",
+            "No separate FY2026 dollar amount for Business Systems Modernization appears in the complete checked-in FY2026 text",
+            "No statutory IRS parent total is stated in the complete checked-in FY2026 text",
+            "The three top-level IRS accounts arithmetically sum to $11,195,365,000",
             "$7,000,000 is within the Taxpayer Advocate Service amount for identity theft and refund fraud casework",
             "$250,000,000 remains available within Enforcement and is not added on top",
             "$60,257,000 is within Enforcement for the Interagency Crime and Drug Enforcement program",
@@ -554,7 +996,6 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "Should not add within-account set-asides on top of their parent IRS account amounts",
             "Should not treat the 5 percent transfer authority as new funding",
             "Should not classify official reception and representation as a separate funding line",
-            "Should not route outside Financial Services and General Government",
         ],
         expected_answer_mode="reconciliation_breakdown",
         expected_divisions=[
@@ -570,16 +1011,10 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
     "summary_1": GoldReference(
         required_facts=[
             "The FY2026 Agriculture division funds FDA salaries and expenses",
+            "FDA support includes food, drug, biologic, device, veterinary, tobacco, inspection, and regulatory activities",
             "FDA activities are supported by user fees for prescription drugs, medical devices, human generic drugs, biosimilars, animal drugs, generic new animal drugs, and tobacco products",
-            "The FDA Commissioner must submit a detailed obligation plan to the Appropriations Committees within 30 days of enactment",
-            "The division bars use of funds to implement electronic distribution of prescribing information for certain drugs unless federal law authorizes it",
         ],
         prohibited_errors=[
-            "Should not turn the answer into a reconciliation ledger",
-            "Should not list every FDA center/activity dollar amount",
-            "Should not list every user-fee dollar amount",
-            "Should not omit the electronic prescribing-information restriction",
-            "Should not route outside Agriculture",
         ],
         expected_answer_mode="general_summary",
         expected_divisions=[
@@ -591,18 +1026,13 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
     "summary_2": GoldReference(
         required_facts=[
             "Energy and Water Development supports Department of Energy programs and water-related programs",
-            "Supported DOE areas include defense environmental cleanup, nuclear energy or atomic energy defense activities, tribal energy, fossil energy research and development, energy efficiency and renewable energy, cybersecurity/energy security/emergency response, electricity and grid deployment, and power administration facilities",
-            "Supported water and civil works activities include hydroelectric facility operations and upgrades",
-            "Supported water activities include Bureau of Reclamation and water storage or restoration projects",
-            "Supported water activities include regulatory program activities for navigable waters and wetlands",
-            "Supported cleanup/emergency activities include formerly utilized sites cleanup and flood control or coastal emergencies",
-            "The division also funds administration and oversight, including Departmental Administration and the Office of Inspector General",
+            "DOE coverage spans Office of Science/basic research, energy research and deployment, NNSA nuclear-security and atomic-energy defense work, environmental cleanup, and grid or emergency-response programs",
+            "Water and civil-works coverage includes hydroelectric operations, Bureau of Reclamation projects, and Army Corps navigation, flood-risk, or water infrastructure",
+            "The division also supports selected cleanup, flood/coastal emergency, administration, and inspector-general activities",
         ],
         prohibited_errors=[
-            "Should not turn the summary into a dollar-by-dollar account ledger",
             "Should not focus only on DOE and omit water/civil works",
             "Should not focus only on water and omit DOE energy programs",
-            "Should not route outside Energy and Water Development",
         ],
         expected_answer_mode="general_summary",
         expected_divisions=[
@@ -617,10 +1047,9 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "USDA supports rural water and waste disposal through Rural Utilities Service loans, guarantees, grants, and technical assistance",
             "EPA supports water infrastructure through STAG, Clean Water SRF, Drinking Water SRF, targeted border water/wastewater, Alaska rural and Native Village infrastructure, and WIFIA",
             "Energy-Water includes Bureau of Reclamation or water project activity, including rural water authorization/project material",
-            "The answer should explain that these are different funding mechanisms and should not be collapsed into a single clean total",
+            "Energy-Water also includes Army Corps of Engineers civil water infrastructure and related project activity",
         ],
         prohibited_errors=[
-            "Should not provide a detailed dollar-by-dollar breakdown",
             "Should not present one clean total across USDA, EPA, and Energy-Water",
             "Should not omit one of USDA, EPA, or Energy-Water",
             "Should not confuse loan authority, grant funding, loan subsidy cost, and authorization changes",
@@ -631,7 +1060,13 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "DEPARTMENT OF THE INTERIOR, ENVIRONMENT, AND RELATED AGENCIES",
             "ENERGY AND WATER DEVELOPMENT AND RELATED AGENCIES",
         ],
-        notes="Summary version of broad_1. Should explain landscape without full ledger.",
+        structural_rules=[
+            AnswerShapeRule(
+                id="summary_3-shape-01",
+                statement="Explain that these are different funding mechanisms and do not collapse them into a single clean total.",
+            ),
+        ],
+        notes="Summary version of broad_1. Explain landscape without full ledger.",
     ),
 
     "summary_4": GoldReference(
@@ -646,7 +1081,6 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "Should not invent a dollar amount for continuing appropriations",
             "Should not imply continuing appropriations are full-year regular appropriations",
             "Should not omit rate-for-operations concept",
-            "Should not route outside Continuing Appropriations when explaining CR mechanics",
         ],
         expected_answer_mode="general_summary",
         expected_divisions=[
@@ -661,17 +1095,20 @@ GOLD_REFERENCES: dict[str, GoldReference] = {
             "Transportation-side activities include airport grants, highway/transit or transportation infrastructure, safety, and related transportation programs",
             "HUD-side activities include tenant-based rental assistance, project-based rental assistance, public housing, homelessness services, supportive housing, and community/housing programs",
             "The division contains distinct accounts and programs rather than one single local-government funding pool",
-            "The answer should be concise and explanatory rather than a detailed funding ledger",
         ],
         prohibited_errors=[
             "Should not compute a THUD-wide total",
-            "Should not list every THUD account amount",
             "Should not omit either transportation or housing/HUD coverage",
-            "Should not route outside THUD",
         ],
         expected_answer_mode="general_summary",
         expected_divisions=[
             "TRANSPORTATION, HOUSING AND URBAN DEVELOPMENT, AND RELATED AGENCIES",
+        ],
+        structural_rules=[
+            AnswerShapeRule(
+                id="summary_5-shape-01",
+                statement="Keep the answer concise and explanatory rather than a detailed funding ledger.",
+            ),
         ],
         notes="Plain-English local-government summary of THUD scope.",
     ),

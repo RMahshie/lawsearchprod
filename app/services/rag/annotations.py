@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from dataclasses import dataclass
 from typing import Any, Callable
 
 from app.models.query import (
@@ -22,7 +23,11 @@ from app.models.query import (
     NumberAnnotationTarget,
     SourceNumberReference,
 )
-from app.services.rag.schemas import ProposedDerivedAnnotation, SourceNumberCandidate
+from app.services.rag.schemas import (
+    MarkedAnswer,
+    ProposedDerivedAnnotation,
+    SourceNumberCandidate,
+)
 from app.services.rag.state import (
     FIGURE_PATTERN,
     NUMBER_MARKER_PATTERN,
@@ -35,12 +40,29 @@ _LABEL_MAX_LEN = 120
 _LABEL_TRUNCATE_AT = 117
 _ID_MAX_LEN = 80
 _ID_TRUNCATE_AT = 68
+_FIGURE_HANDLE_PATTERN = re.compile(
+    r"\{\{([FD]\d+)(?::(\$(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?"
+    r"(?:\s*(?:thousand|million|billion|trillion))?))?\}\}",
+    re.IGNORECASE,
+)
+_LOCAL_HANDLE_PATTERN = re.compile(r"^[FD]\d+$")
+_UNVERIFIED_FIGURE_NOTICE = "[unverified amount omitted]"
 _SCALE_MULTIPLIERS: dict[str, int] = {
     "thousand": 1_000,
     "million": 1_000_000,
     "billion": 1_000_000_000,
     "trillion": 1_000_000_000_000,
 }
+
+
+@dataclass(frozen=True)
+class FigureHandleContext:
+    """Stage-local figure aliases and prompt evidence prepared for one LLM call."""
+
+    prompt_text: str
+    annotations_by_handle: dict[str, NumberAnnotation]
+    omitted_figures: tuple[str, ...] = ()
+    removed_marker_ids: tuple[str, ...] = ()
 
 
 def count_number_markers(text: str) -> int:
@@ -50,7 +72,7 @@ def count_number_markers(text: str) -> int:
 
 def immediate_number_marker(text: str, figure_end: int) -> re.Match[str] | None:
     """Return a marker only when it belongs to the figure that just ended."""
-    suffix = (text or "")[figure_end : figure_end + 80]
+    suffix = (text or "")[figure_end:]
     return re.match(r"^[\s,.;:)\*_~`]*\[\[num:([A-Za-z0-9_-]+)\]\]", suffix)
 
 
@@ -127,8 +149,20 @@ def source_label(extracted_facts: str, figure: str) -> str:
     return label[:_LABEL_TRUNCATE_AT].rstrip() + "..." if len(label) > _LABEL_MAX_LEN else label
 
 
+def source_label_at(extracted_facts: str, position: int) -> str:
+    """Build a label from the fact line containing a specific figure occurrence."""
+    line_start = extracted_facts.rfind("\n", 0, position) + 1
+    line_end = extracted_facts.find("\n", position)
+    if line_end < 0:
+        line_end = len(extracted_facts)
+    label = re.sub(r"\s+", " ", extracted_facts[line_start:line_end]).strip(" -*")
+    if not label:
+        return "Source-backed figure"
+    return label[:_LABEL_TRUNCATE_AT].rstrip() + "..." if len(label) > _LABEL_MAX_LEN else label
+
+
 def fallback_source_number_candidates(extracted_facts: str) -> list[SourceNumberCandidate]:
-    """Build source candidates from mapped facts when structured map output is unavailable."""
+    """Build deterministic candidates for every dollar figure in mapped facts."""
     candidates: list[SourceNumberCandidate] = []
     for match in FIGURE_PATTERN.finditer(extracted_facts):
         figure = match.group(0)
@@ -139,7 +173,7 @@ def fallback_source_number_candidates(extracted_facts: str) -> list[SourceNumber
             SourceNumberCandidate(
                 figure=figure,
                 value=value,
-                label=source_label(extracted_facts, figure),
+                label=source_label_at(extracted_facts, match.start()),
             )
         )
     return candidates
@@ -156,7 +190,23 @@ def source_number_annotations(
 
     annotations: list[NumberAnnotation] = []
     seen_keys: set[tuple[str, str]] = set()
-    source_candidates = candidates or fallback_source_number_candidates(extracted_facts)
+    # Structured candidates carry better labels when Map returns them, but the
+    # sidecar list can be partially complete. Add deterministic candidates only
+    # for figure occurrences beyond those already represented in the sidecar.
+    candidate_counts: dict[str, int] = {}
+    for candidate in candidates:
+        key = candidate.figure.strip().lower()
+        candidate_counts[key] = candidate_counts.get(key, 0) + 1
+    fallback_seen: dict[str, int] = {}
+    missing_candidates: list[SourceNumberCandidate] = []
+    for fallback in fallback_source_number_candidates(extracted_facts):
+        key = fallback.figure.strip().lower()
+        fallback_seen[key] = fallback_seen.get(key, 0) + 1
+        if fallback_seen[key] > candidate_counts.get(key, 0):
+            missing_candidates.append(fallback)
+    # The Chunk membership check below still decides whether a Source-backed
+    # Figure can be created.
+    source_candidates = [*candidates, *missing_candidates]
     for index, candidate in enumerate(source_candidates, start=1):
         figure = candidate.figure.strip()
         value = candidate.value if candidate.value is not None else normalize_figure(figure)
@@ -185,13 +235,18 @@ def source_number_annotations(
     return annotations
 
 
-def mark_text_with_source_annotations(text: str, annotations: list[NumberAnnotation]) -> str:
+def mark_text_with_source_annotations(
+    text: str,
+    annotations: list[NumberAnnotation],
+    *,
+    used_by_figure: dict[str, int] | None = None,
+) -> str:
     """Add hidden source markers to extracted fact text when figures match chunk evidence."""
     by_figure: dict[str, list[NumberAnnotation]] = {}
     for annotation in annotations:
         by_figure.setdefault(annotation.figure.lower(), []).append(annotation)
 
-    used_by_figure: dict[str, int] = {}
+    occurrence_counts = used_by_figure if used_by_figure is not None else {}
 
     def replace(match: re.Match[str]) -> str:
         figure = match.group(0)
@@ -200,8 +255,8 @@ def mark_text_with_source_annotations(text: str, annotations: list[NumberAnnotat
         candidates = by_figure.get(figure.lower(), [])
         if candidates:
             key = figure.lower()
-            candidate_index = min(used_by_figure.get(key, 0), len(candidates) - 1)
-            used_by_figure[key] = used_by_figure.get(key, 0) + 1
+            candidate_index = min(occurrence_counts.get(key, 0), len(candidates) - 1)
+            occurrence_counts[key] = occurrence_counts.get(key, 0) + 1
             return f"{figure} [[num:{candidates[candidate_index].id}]]"
         return figure
 
@@ -280,6 +335,334 @@ def annotations_from_dicts(annotations: Any) -> list[NumberAnnotation]:
         except Exception:
             continue
     return normalized
+
+
+def _apply_text_replacements(
+    text: str,
+    replacements: list[tuple[int, int, str]],
+) -> str:
+    """Apply non-overlapping text replacements from right to left."""
+    unique = {(start, end): replacement for start, end, replacement in replacements}
+    rendered = text
+    for (start, end), replacement in sorted(unique.items(), reverse=True):
+        rendered = f"{rendered[:start]}{replacement}{rendered[end:]}"
+    return rendered
+
+
+def _marker_span_after_figure(
+    figure_end: int,
+    marker_match: re.Match[str],
+) -> tuple[int, int]:
+    """Return the absolute marker-only span for an immediate marker match."""
+    marker_text = f"[[num:{marker_match.group(1)}]]"
+    marker_offset = marker_match.group(0).rfind(marker_text)
+    marker_start = figure_end + marker_offset
+    return marker_start, marker_start + len(marker_text)
+
+
+def prepare_figure_handle_context(
+    text: str,
+    annotations: list[NumberAnnotation],
+) -> FigureHandleContext:
+    """Replace bound figure-marker pairs with short stage-local Figure Handles.
+
+    Canonical Number Annotation ids never enter the generation prompt. Raw or
+    unknown figures are withheld instead of being offered to a later stage as
+    apparently source-backed evidence.
+    """
+    annotations_by_id = {annotation.id: annotation for annotation in annotations}
+    annotations_by_handle: dict[str, NumberAnnotation] = {}
+    handles_by_annotation_id: dict[str, str] = {}
+    replacements: list[tuple[int, int, str]] = []
+    consumed_marker_spans: set[tuple[int, int]] = set()
+    omitted_figures: list[str] = []
+    removed_marker_ids: list[str] = []
+
+    for figure_match in FIGURE_PATTERN.finditer(text or ""):
+        marker_match = immediate_number_marker(text, figure_match.end())
+        if marker_match is None:
+            omitted_figures.append(figure_match.group(0))
+            replacements.append(
+                (figure_match.start(), figure_match.end(), _UNVERIFIED_FIGURE_NOTICE)
+            )
+            continue
+
+        marker_id = marker_match.group(1)
+        marker_span = _marker_span_after_figure(figure_match.end(), marker_match)
+        consumed_marker_spans.add(marker_span)
+        replacements.append((*marker_span, ""))
+        annotation = annotations_by_id.get(marker_id)
+        if annotation is None:
+            omitted_figures.append(figure_match.group(0))
+            removed_marker_ids.append(marker_id)
+            replacements.append(
+                (figure_match.start(), figure_match.end(), _UNVERIFIED_FIGURE_NOTICE)
+            )
+            continue
+
+        handle = handles_by_annotation_id.get(annotation.id)
+        if handle is None:
+            handle = f"F{len(annotations_by_handle) + 1}"
+            handles_by_annotation_id[annotation.id] = handle
+            annotations_by_handle[handle] = annotation
+        replacements.append(
+            (
+                figure_match.start(),
+                figure_match.end(),
+                f"{{{{{handle}:{annotation.figure}}}}}",
+            )
+        )
+
+    for marker_match in NUMBER_MARKER_PATTERN.finditer(text or ""):
+        marker_span = marker_match.span()
+        if marker_span in consumed_marker_spans:
+            continue
+        replacements.append((*marker_span, ""))
+        removed_marker_ids.append(marker_match.group(1))
+
+    return FigureHandleContext(
+        prompt_text=_apply_text_replacements(text or "", replacements),
+        annotations_by_handle=annotations_by_handle,
+        omitted_figures=tuple(omitted_figures),
+        removed_marker_ids=tuple(removed_marker_ids),
+    )
+
+
+def figure_handle_prompt_context(context: FigureHandleContext) -> str:
+    """Describe the backend registry without duplicating evidence in the prompt."""
+    if not context.annotations_by_handle:
+        return "None."
+    return (
+        f"{len(context.annotations_by_handle)} source handles are registered. "
+        "Use only exact whole handles already present in the evidence below."
+    )
+
+
+def _normalize_local_handle(value: str) -> str:
+    """Normalize a bare or wrapped local Figure Handle."""
+    normalized = str(value or "").strip()
+    if normalized.startswith("{{") and normalized.endswith("}}"):
+        normalized = normalized[2:-2].strip()
+    return normalized
+
+
+def _canonicalize_derived_handle_proposals(
+    proposed: list[ProposedDerivedAnnotation],
+    *,
+    context: FigureHandleContext,
+    available: list[NumberAnnotation],
+    stage: str,
+    target_label: str,
+) -> tuple[list[ProposedDerivedAnnotation], dict[str, ProposedDerivedAnnotation], list[str]]:
+    """Resolve local Derived Figure handles to backend-owned canonical ids."""
+    available_ids = {annotation.id for annotation in available}
+    canonical_ids_by_handle: dict[str, str] = {}
+    original_by_handle: dict[str, ProposedDerivedAnnotation] = {}
+    rejected: list[str] = []
+
+    for proposal in proposed:
+        handle = _normalize_local_handle(proposal.id)
+        if not _LOCAL_HANDLE_PATTERN.fullmatch(handle) or not handle.startswith("D"):
+            rejected.append(f"invalid_derived_handle:{proposal.id}")
+            continue
+        if handle in canonical_ids_by_handle:
+            rejected.append(f"duplicate_derived_handle:{handle}")
+            continue
+        canonical_ids_by_handle[handle] = annotation_id(
+            "drv", stage, target_label, handle
+        )
+        original_by_handle[handle] = proposal
+
+    canonical: list[ProposedDerivedAnnotation] = []
+    canonical_by_handle: dict[str, ProposedDerivedAnnotation] = {}
+    for handle in sorted(original_by_handle, key=lambda item: int(item[1:])):
+        proposal = original_by_handle[handle]
+        resolved_input_ids: list[str] = []
+        for raw_input_id in proposal.input_ids:
+            input_handle = _normalize_local_handle(raw_input_id)
+            if input_handle in context.annotations_by_handle:
+                resolved_input_ids.append(
+                    context.annotations_by_handle[input_handle].id
+                )
+            elif input_handle in canonical_ids_by_handle:
+                resolved_input_ids.append(canonical_ids_by_handle[input_handle])
+            elif raw_input_id in available_ids:
+                resolved_input_ids.append(raw_input_id)
+            else:
+                resolved_input_ids.append(input_handle)
+
+        resolved = proposal.model_copy(
+            update={
+                "id": canonical_ids_by_handle[handle],
+                "input_ids": resolved_input_ids,
+            }
+        )
+        canonical.append(resolved)
+        canonical_by_handle[handle] = resolved
+
+    return canonical, canonical_by_handle, rejected
+
+
+def enforce_number_annotation_contract(
+    text: str,
+    annotations: list[NumberAnnotation],
+) -> tuple[str, list[str]]:
+    """Fail closed on raw figures, detached markers, or invalid marker bindings."""
+    annotations_by_id = {annotation.id: annotation for annotation in annotations}
+    replacements: list[tuple[int, int, str]] = []
+    valid_marker_spans: set[tuple[int, int]] = set()
+    issues: list[str] = []
+
+    for figure_match in FIGURE_PATTERN.finditer(text or ""):
+        marker_match = immediate_number_marker(text, figure_match.end())
+        if marker_match is None:
+            issues.append(f"unmarked_figure:{figure_match.group(0)}")
+            replacements.append(
+                (figure_match.start(), figure_match.end(), _UNVERIFIED_FIGURE_NOTICE)
+            )
+            continue
+
+        marker_id = marker_match.group(1)
+        marker_span = _marker_span_after_figure(figure_match.end(), marker_match)
+        annotation = annotations_by_id.get(marker_id)
+        displayed_value = normalize_figure(figure_match.group(0))
+        if (
+            annotation is not None
+            and displayed_value is not None
+            and values_close(displayed_value, annotation.value)
+        ):
+            valid_marker_spans.add(marker_span)
+            continue
+
+        reason = "unknown_marker" if annotation is None else "marker_value_mismatch"
+        issues.append(f"{reason}:{marker_id}")
+        replacements.append(
+            (figure_match.start(), figure_match.end(), _UNVERIFIED_FIGURE_NOTICE)
+        )
+        replacements.append((*marker_span, ""))
+
+    for marker_match in NUMBER_MARKER_PATTERN.finditer(text or ""):
+        if marker_match.span() in valid_marker_spans:
+            continue
+        issues.append(f"detached_marker:{marker_match.group(1)}")
+        replacements.append((*marker_match.span(), ""))
+
+    return _apply_text_replacements(text or "", replacements), issues
+
+
+def render_figure_handle_answer(
+    *,
+    marked: MarkedAnswer,
+    context: FigureHandleContext,
+    available: list[NumberAnnotation],
+    target: NumberAnnotationTarget,
+    debug_log: Callable[..., None],
+    query_id: str,
+    stage: str,
+    target_label: str,
+) -> tuple[str, list[NumberAnnotation]]:
+    """Render one structured model result into canonical, fail-closed markdown."""
+    canonical_proposals, derived_by_handle, proposal_rejections = (
+        _canonicalize_derived_handle_proposals(
+            list(marked.derived_annotations),
+            context=context,
+            available=available,
+            stage=stage,
+            target_label=target_label,
+        )
+    )
+    unknown_handles: list[str] = []
+    recovered_derived_placeholders: list[str] = []
+
+    marked_answer = str(marked.answer or "")
+    used_local_handles = {
+        match.group(1).upper() for match in _FIGURE_HANDLE_PATTERN.finditer(marked_answer)
+    }
+    for handle, proposal in derived_by_handle.items():
+        if handle.upper() in used_local_handles:
+            continue
+        # Some one-shot structured models correctly propose a validated
+        # Derived Figure but place its label or raw proposed figure in the
+        # prose instead of the required local handle. Recover an exact,
+        # distinctive label wherever it appears, or a unique exact raw
+        # figure. Arithmetic/source validation still decides whether the
+        # figure can survive. Labels may be repeated legitimately (for
+        # example in a bottom line and a validation row); raw figures are
+        # intentionally kept unique-only to avoid rebinding ordinary text.
+        replacement_candidates = (
+            (proposal.label.strip(), "label"),
+            (proposal.proposed_figure.strip(), "figure"),
+        )
+        for placeholder, placeholder_kind in replacement_candidates:
+            occurrence_count = marked_answer.count(placeholder)
+            if placeholder_kind == "label":
+                if len(placeholder) < 8 or occurrence_count < 1:
+                    continue
+                marked_answer = marked_answer.replace(placeholder, f"{{{{{handle}}}}}")
+            elif len(placeholder) < 3 or occurrence_count != 1:
+                continue
+            else:
+                marked_answer = marked_answer.replace(placeholder, f"{{{{{handle}}}}}", 1)
+            recovered_derived_placeholders.append(
+                f"{handle}:{placeholder_kind}:{occurrence_count}"
+            )
+            break
+
+    def expand_handle(match: re.Match[str]) -> str:
+        handle = match.group(1)
+        displayed_figure = match.group(2)
+        annotation = context.annotations_by_handle.get(handle)
+        if annotation is not None:
+            # Prompt evidence is self-describing so the model can reason about
+            # the amount locally.  In output, however, a bare registered
+            # handle is already an unambiguous reference to backend-owned
+            # state.  Accept it while still rejecting an explicitly altered
+            # display amount.
+            if displayed_figure is not None and displayed_figure != annotation.figure:
+                unknown_handles.append(f"{handle}:display_mismatch")
+                return _UNVERIFIED_FIGURE_NOTICE
+            return f"{annotation.figure} [[num:{annotation.id}]]"
+        proposal = derived_by_handle.get(handle)
+        if proposal is not None and displayed_figure is None:
+            return f"{proposal.proposed_figure} [[num:{proposal.id}]]"
+        unknown_handles.append(handle)
+        return _UNVERIFIED_FIGURE_NOTICE
+
+    candidate_answer = _FIGURE_HANDLE_PATTERN.sub(expand_handle, marked_answer)
+    derived = validate_derived_annotations(
+        proposed=canonical_proposals,
+        target_answer=candidate_answer,
+        available=available,
+        target=target,
+        debug_log=debug_log,
+        query_id=query_id,
+        stage=stage,
+        target_label=target_label,
+    )
+    answer, contract_issues = enforce_number_annotation_contract(
+        candidate_answer,
+        [*available, *derived],
+    )
+    debug_log(
+        "figure_handle_contract query_id=%s stage=%s target=%s available_handles=%s "
+        "used_handles=%s proposed_derived=%s accepted_derived=%s unknown_handles=%s "
+        "prompt_omitted_figures=%s removed_prompt_markers=%s proposal_rejections=%s "
+        "recovered_derived_placeholders=%s output_issues=%s",
+        query_id,
+        stage,
+        target_label,
+        len(context.annotations_by_handle),
+        len(_FIGURE_HANDLE_PATTERN.findall(str(marked.answer or ""))),
+        len(canonical_proposals),
+        len(derived),
+        unknown_handles,
+        list(context.omitted_figures),
+        list(context.removed_marker_ids),
+        proposal_rejections,
+        recovered_derived_placeholders,
+        contract_issues,
+    )
+    return answer, derived
 
 
 def annotation_prompt_context(annotations: list[NumberAnnotation]) -> str:
@@ -452,6 +835,7 @@ def final_number_annotations(
 
 
 __all__ = [
+    "FigureHandleContext",
     "count_number_markers",
     "immediate_number_marker",
     "unmarked_figures",
@@ -467,6 +851,10 @@ __all__ = [
     "flatten_source_input_ids",
     "annotations_from_dicts",
     "annotation_prompt_context",
+    "prepare_figure_handle_context",
+    "figure_handle_prompt_context",
+    "enforce_number_annotation_contract",
+    "render_figure_handle_answer",
     "validate_derived_annotations",
     "final_number_annotations",
 ]

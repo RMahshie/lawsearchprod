@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import Any
 
@@ -20,6 +21,7 @@ from app.services.vector_store_service import division_acronym
 
 logger = logging.getLogger(__name__)
 INCOMPATIBLE_QUESTION_ANSWER = FY2026_INCOMPATIBLE_QUESTION_ANSWER
+_ALIAS_SPLIT_RE = re.compile(r"\s*(?:,|;|\.)\s*")
 
 
 _ROUTE_SYSTEM_PROMPT = (
@@ -34,7 +36,8 @@ _ROUTE_SYSTEM_PROMPT = (
     "food safety, and tobacco product user fees route to AGRICULTURE, RURAL DEVELOPMENT, FOOD "
     "AND DRUG ADMINISTRATION, AND RELATED AGENCIES, not LHHS. NIH, CDC, CMS, HRSA, SAMHSA, "
     "ACF, ACL, and general HHS accounts route to LHHS. FEMA, DHS, continuing appropriations, "
-    "extenders, and disaster relief continuation language route to CONTINUING APPROPRIATIONS, "
+    "regular versus continuing appropriations, rate-for-operations, CR mechanisms, extenders, "
+    "and disaster relief continuation language route to CONTINUING APPROPRIATIONS, "
     "EXTENDERS, HOMELAND SECURITY, AND OTHER MATTERS. EPA routes to DEPARTMENT OF THE INTERIOR, "
     "ENVIRONMENT, AND RELATED AGENCIES, not ENERGY AND WATER DEVELOPMENT, unless the question "
     "is about Corps of Engineers, Bureau of Reclamation, or DOE water accounts. "
@@ -68,6 +71,31 @@ def normalize_route_divisions(divisions: list[str], valid_divisions: dict[str, s
             selected.append(division)
             seen.add(division)
 
+    return selected
+
+
+def _strong_alias_matches(question: str, alias_text: str) -> bool:
+    """Return true when configured routing metadata explicitly appears in the question."""
+    question_key = f" {re.sub(r'[^a-z0-9]+', ' ', question.lower()).strip()} "
+    for raw_alias in _ALIAS_SPLIT_RE.split(alias_text):
+        alias = raw_alias.strip()
+        alias_key = re.sub(r"[^a-z0-9]+", " ", alias.lower()).strip()
+        if not alias_key:
+            continue
+        alias_words = alias_key.split()
+        is_distinctive_acronym = alias.isupper() and len(alias_key) >= 2
+        is_distinctive_phrase = len(alias_words) >= 2
+        if (is_distinctive_acronym or is_distinctive_phrase) and f" {alias_key} " in question_key:
+            return True
+    return False
+
+
+def alias_route_divisions(question: str, valid_divisions: list[str], routing_aliases: dict[str, str]) -> list[str]:
+    """Recover explicit alias routes when the LLM returns no valid FY2026 Division."""
+    selected: list[str] = []
+    for division in valid_divisions:
+        if _strong_alias_matches(question, routing_aliases.get(division, "")):
+            selected.append(division)
     return selected
 
 
@@ -120,6 +148,11 @@ def route_divisions(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
         debug_log=ctx.debug_log,
     )
     selected = normalize_route_divisions(decision.divisions, settings.subcommittee_stores)
+    route_source = "llm"
+    if not selected:
+        selected = alias_route_divisions(state["question"], valid_divisions, settings.routing_aliases)
+        if selected:
+            route_source = "alias_rescue"
     if not selected:
         logger.info("Router returned no valid FY2026 divisions; ending as incompatible question")
         ctx.debug_log(
@@ -138,9 +171,10 @@ def route_divisions(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
             "final_answer": INCOMPATIBLE_QUESTION_ANSWER,
         }
     ctx.debug_log(
-        "route query_id=%s source=llm model=%s duration=%.2fs selected=%s divisions=%s "
+        "route query_id=%s source=%s model=%s duration=%.2fs selected=%s divisions=%s "
         "answer_mode=%s flags=%s reason=%s",
         state.get("query_id", "unknown"),
+        route_source,
         format_model_spec(routing_model),
         time.time() - start_time,
         len(selected),
@@ -152,4 +186,9 @@ def route_divisions(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
     return {"selected_divisions": selected}
 
 
-__all__ = ["route_divisions", "normalize_route_divisions", "INCOMPATIBLE_QUESTION_ANSWER"]
+__all__ = [
+    "route_divisions",
+    "normalize_route_divisions",
+    "alias_route_divisions",
+    "INCOMPATIBLE_QUESTION_ANSWER",
+]

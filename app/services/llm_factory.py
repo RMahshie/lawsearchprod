@@ -84,9 +84,9 @@ DEEPSEEK_MODEL_STRATEGIES = {
         "classify": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
         "route": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
         "rewrite": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
-        "map": ModelSpec("deepseek-v4-flash", provider="deepseek"),
+        "map": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
         "summary": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
-        "reduce": ModelSpec("deepseek-v4-flash", provider="deepseek", reasoning_effort="high"),
+        "reduce": ModelSpec("deepseek-v4-pro", provider="deepseek", reasoning_effort="high"),
         "synthesize": ModelSpec("deepseek-v4-pro", provider="deepseek", reasoning_effort="max"),
     },
 }
@@ -165,6 +165,7 @@ def create_chat_model(model: str, task: str, reasoning_effort: str | None = None
             "model": model,
             "api_key": api_key,
             "extra_body": {"thinking": {"type": thinking}},
+            "max_retries": 0,
         }
         base_url = os.getenv("DEEPSEEK_API_BASE") or get_settings().deepseek_api_base
         if base_url:
@@ -180,6 +181,7 @@ def create_chat_model(model: str, task: str, reasoning_effort: str | None = None
             model=model,
             reasoning_effort=reasoning_effort,
             verbosity="medium",
+            max_retries=0,
         )
 
-    return ChatOpenAI(model=model, temperature=0)
+    return ChatOpenAI(model=model, temperature=0, max_retries=0)

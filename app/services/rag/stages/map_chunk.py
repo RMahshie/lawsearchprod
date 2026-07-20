@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+import re
 from typing import Any
 
 from langgraph.types import Send
 
 from app.services.llm_factory import create_chat_model, resolve_model
 from app.services.rag.annotations import (
-    fallback_source_number_candidates,
     mark_text_with_source_annotations,
     source_number_annotations,
 )
 from app.services.rag.context import RAGContext
-from app.services.rag.llm_invocation import invoke_structured_or_text, invoke_text
+from app.services.rag.llm_invocation import invoke_structured, invoke_text
 from app.services.rag.relevance import (
     normalize_mapped_fact_records,
     relevance_counts,
@@ -39,6 +39,33 @@ _SNAPSHOT_PROMPT_TEMPLATE = (
     "Question:\n{question}\n\n"
     "Source chunk:\n{chunk}"
 )
+_SCOPE_CONTEXT_FIGURE_RE = re.compile(
+    r"\$\s*\d[\d,]*(?:\.\d+)?(?:\s*(?:thousand|million|billion|trillion))?",
+    re.IGNORECASE,
+)
+_MAX_SCOPE_CONTEXT_CHARS = 1800
+
+
+def _chunk_index(chunk: RetrievedChunkState) -> int | None:
+    try:
+        return int((chunk.get("metadata") or {}).get("chunk_index"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _previous_scope_context(
+    chunk: RetrievedChunkState,
+    chunks_by_position: dict[tuple[str, int], RetrievedChunkState],
+) -> str:
+    """Return redacted previous-Chunk text solely for heading continuity."""
+    index = _chunk_index(chunk)
+    if index is None or index <= 0:
+        return ""
+    previous = chunks_by_position.get((chunk["division"], index - 1))
+    if previous is None:
+        return ""
+    tail = str(previous.get("content", "") or "")[-_MAX_SCOPE_CONTEXT_CHARS:]
+    return _SCOPE_CONTEXT_FIGURE_RE.sub("[amount redacted]", tail)
 
 
 def fan_out_chunks(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
@@ -50,6 +77,17 @@ def fan_out_chunks(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
 def send_chunks_to_map(state: RAGState, ctx: RAGContext) -> list[Send]:
     """Create LangGraph Send events that map every retrieved chunk independently."""
     del ctx
+    retrieved_chunks = list(state.get("retrieved_chunks", []))
+    chunks_by_position = {
+        (chunk["division"], index): chunk
+        for chunk in retrieved_chunks
+        if (index := _chunk_index(chunk)) is not None
+    }
+    queries_by_division = {
+        item["division"]: item["query"]
+        for item in state.get("division_queries", [])
+        if item.get("division") and item.get("query")
+    }
     return [
         Send(
             "map_chunk",
@@ -60,9 +98,17 @@ def send_chunks_to_map(state: RAGState, ctx: RAGContext) -> list[Send]:
                 "thinking_speed": state.get("thinking_speed", "normal"),
                 "answer_mode": state.get("answer_mode", DEFAULT_ANSWER_MODE),
                 "answer_mode_flags": state.get("answer_mode_flags", {}),
+                "retrieval_query": queries_by_division.get(
+                    chunk["division"],
+                    state["question"],
+                ),
+                "previous_chunk_context": _previous_scope_context(
+                    chunk,
+                    chunks_by_position,
+                ),
             },
         )
-        for chunk in state.get("retrieved_chunks", [])
+        for chunk in retrieved_chunks
     ]
 
 
@@ -88,6 +134,8 @@ def map_chunk(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
         division_acronym=chunk["division_acronym"],
         answer_mode=state.get("answer_mode", DEFAULT_ANSWER_MODE),
         answer_mode_flags=state.get("answer_mode_flags", {}),
+        retrieval_context=str(state.get("retrieval_query", "") or ""),
+        previous_chunk_context=str(state.get("previous_chunk_context", "") or ""),
     )
     summary_prompt = _SUMMARY_PROMPT_TEMPLATE.format(question=question, chunk=chunk["content"])
     snapshot_prompt = _SNAPSHOT_PROMPT_TEMPLATE.format(question=question, chunk=chunk["content"])
@@ -95,15 +143,11 @@ def map_chunk(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
     query_id = state.get("query_id", "unknown")
     with ThreadPoolExecutor(max_workers=3) as executor:
         facts_future = executor.submit(
-            invoke_structured_or_text,
+            invoke_structured,
             map_llm,
             extraction_prompt,
             schema=MappedFacts,
             model_spec=map_model,
-            fallback=lambda text: MappedFacts(
-                extracted_facts=text,
-                source_numbers=fallback_source_number_candidates(text),
-            ),
             stage="map",
             query_id=query_id,
             debug_log=ctx.debug_log,
@@ -129,19 +173,30 @@ def map_chunk(state: RAGState, ctx: RAGContext) -> dict[str, Any]:
         chunk_snapshot = snapshot_future.result()
 
     relevance_facts = normalize_mapped_fact_records(mapped_facts)
-    direct_text = "\n".join(
-        item["fact"] for item in relevance_facts if item["responsiveness_tier"] == "direct"
+    source_eligible_text = "\n".join(
+        item["fact"]
+        for item in relevance_facts
+        if item["responsiveness_tier"] in {"direct", "adjacent"}
     )
-    direct_candidates = [
+    source_eligible_candidates = [
         candidate
         for fact in mapped_facts.facts
-        if fact.responsiveness_tier == "direct"
+        if fact.responsiveness_tier in {"direct", "adjacent"}
         for candidate in fact.source_numbers
     ] or mapped_facts.source_numbers
-    annotations = source_number_annotations(chunk, direct_text, direct_candidates)
+    annotations = source_number_annotations(
+        chunk,
+        source_eligible_text,
+        source_eligible_candidates,
+    )
+    annotation_occurrences: dict[str, int] = {}
     for item in relevance_facts:
-        if item["responsiveness_tier"] == "direct":
-            item["fact"] = mark_text_with_source_annotations(item["fact"], annotations)
+        if item["responsiveness_tier"] in {"direct", "adjacent"}:
+            item["fact"] = mark_text_with_source_annotations(
+                item["fact"],
+                annotations,
+                used_by_figure=annotation_occurrences,
+            )
     extracted_facts = render_tiered_facts(relevance_facts)
     counts = relevance_counts(relevance_facts)
 

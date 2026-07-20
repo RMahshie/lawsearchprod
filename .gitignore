@@ -37,3 +37,7 @@ __pycache__/
 
 .agents/plans/
 .agents/diagnostics/
+
+# Generated local artifacts and evaluation runs
+/artifacts/
+/tests/evals/**/results/
